@@ -155,4 +155,8 @@ thanks to the depth knowledge (close or far points) a new condition can be added
 the local mapping and loop closing threads are deactivated and the camera is continuously localized by the tracking using relocalization if needed.
 
 # ORB-SLAM 3
-   
+## Introduction
+Addition to original ORB-SLAM:
+- Visual-Inertial SLAM (VI-SLAM): combining camera data (visual) with data from an inertial measurement unit (IMU).
+- Multimap Support: capability to work with multiple maps. This allows the system to operate in large environments and facilitates switching between maps when moving through disconnected areas or after long periods without features.
+- Performance improvements in: initialization, challenging environments, loop closure
