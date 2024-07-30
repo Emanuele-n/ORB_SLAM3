@@ -2,7 +2,7 @@ import tty
 import sys
 import termios
 import time
-from roboclaw_3 import Roboclaw
+from roboclaw_python.roboclaw_3 import Roboclaw
 
 # Save the original terminal settings for later restoration
 orig_settings = termios.tcgetattr(sys.stdin)

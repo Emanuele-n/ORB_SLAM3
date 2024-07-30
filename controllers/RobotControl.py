@@ -23,11 +23,15 @@ import json
 import socket
 import threading
 import time
-from roboclaw_3 import Roboclaw
+from roboclaw_python.roboclaw_3 import Roboclaw
+import serial
+import re
 
 
-class BendingControl:
-    def __init__(self, couple12_port, couple34_port, baud_rate=115200, plot=False):
+class RobotControl:
+    def __init__(
+        self, couple12_port, couple34_port, arduino_port, baud_rate=115200, plot=False
+    ):
 
         # Initialize motors
         self.couple12 = Roboclaw(couple12_port, baud_rate)
@@ -35,6 +39,9 @@ class BendingControl:
         self.couple12.Open()
         self.couple34.Open()
         self.address = 0x80
+
+        # Set up the serial connection
+        self.arduino = serial.Serial(arduino_port, 9600)
 
         # # Initialize state variables
         # self.horizontal_state = 0
@@ -59,10 +66,14 @@ class BendingControl:
         self.moving_down = False
         self.moving_right = False
         self.moving_left = False
+        self.moving_in = False
+        self.moving_out = False
         self.move_up_prev = False
         self.move_down_prev = False
         self.move_right_prev = False
         self.move_left_prev = False
+        self.moving_in_prev = False
+        self.moving_out_prev = False
 
         # Set intial position to zero
         self.go_to_zero()
@@ -84,7 +95,7 @@ class BendingControl:
         #     send_thread = threading.Thread(target=self.sendData, daemon=True)
         #     send_thread.start()
 
-        print("Bending control initialized")
+        print("Robot control initialized")
 
     def go_to_zero(self):
         print("Moving to zero position")
@@ -139,6 +150,41 @@ class BendingControl:
         print("Closing motors")
         self.go_to_zero()
 
+        print("Closing serial connection")
+        self.arduino.close()
+
+    def read_arduino(self):
+        pass
+        # try:
+        #     while True:
+        #         # Read a line from the serial port
+        #         line = arduino.readline().decode("utf-8").strip()
+        #         if self.debug:
+        #             print(line)
+
+        #         # Extract the pressure value using regex
+        #         match = re.search(r"Pressure from A0: (\d+\.\d+) MPa", line)
+        #         if match:
+        #             pressure_value = float(match.group(1))
+        #             # if self.debug : print(pressure_value)
+
+        #             if pressure_value < 0.0:
+        #                 pressure_value = 0.0
+
+        #             if pressure_value > 2:
+        #                 pressure_value = 2
+
+        #             # Set the pressure value
+        #             self.constraints[0].value = [pressure_value]
+        #             # if self.debug : print("Pressure value: " + str(self.constraints[0].value.value[0]))
+
+        # except KeyboardInterrupt:
+        #     # Close the serial connection when you terminate the script
+        #     arduino.close()
+        #     if self.debug:
+        #         print("Serial connection closed.")
+
+    # main loop
     def run(self):
         while self.running:
             # print("run")
@@ -167,7 +213,30 @@ class BendingControl:
             if not self.moving_left and self.move_left_prev:
                 self.stop_motors()
                 self.move_left_prev = False
+            if self.moving_in and not self.moving_in_prev:
+                if self.moving_out:
+                    self.moving_out = False
+                    continue
+                self.send_arduino("f")
+                self.moving_in_prev = True
+            if not self.moving_in and self.moving_in_prev:
+                self.send_arduino("s")
+                self.moving_in_prev = False
+            if self.moving_out and not self.moving_out_prev:
+                if self.moving_in:
+                    self.moving_in = False
+                    continue
+                self.send_arduino("b")
+                self.moving_out_prev = True
+            if not self.moving_out and self.moving_out_prev:
+                self.send_arduino("s")
+                self.moving_out_prev = False
             # time.sleep(0.01)
+
+    def send_arduino(self, command):
+        self.arduino.write(command.encode())
+        print(f"Sent '{command}' to Arduino")
+        time.sleep(0.1)
 
     # Set functions
     def set_moving_up(self, value):
@@ -181,6 +250,12 @@ class BendingControl:
 
     def set_moving_left(self, value):
         self.moving_left = value
+
+    def set_moving_in(self, value):
+        self.moving_in = value
+
+    def set_moving_out(self, value):
+        self.moving_out = value
 
     def stop(self):
         self.running = False

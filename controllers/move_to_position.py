@@ -1,5 +1,5 @@
 import time
-from roboclaw_3 import Roboclaw
+from roboclaw_python.roboclaw_3 import Roboclaw
 
 
 while True:
