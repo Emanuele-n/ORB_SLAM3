@@ -115,28 +115,40 @@ class RobotControl:
         time.sleep(1)
         print("Motors at zero position")
 
-    # Move functions
+    # Move functions TODO: adjust logic based on pressure sensors data
     def move_down(self):
         print("BC: Moving down")
+        # if pressure_1 < pressure_3:
         self.couple34.ForwardM1(self.address, self.speed)
+        # else:
+        #     self.couple12.BackwardM1(self.address, self.speed)
         print("Speed: {}".format(self.speed))
         time.sleep(0.1)
 
     def move_left(self):
         print("BC: Moving left")
+        # if pressure_2 < pressure_4:
         self.couple34.ForwardM2(self.address, self.speed)
+        # else:
+        #     self.couple12.BackwardM2(self.address, self.speed)
         print("Speed: {}".format(self.speed))
         time.sleep(0.1)
 
     def move_right(self):
         print("BC: Moving right")
+        # if pressure_2 > pressure_4:
         self.couple12.ForwardM2(self.address, self.speed)
+        # else:
+        #     self.couple34.BackwardM2(self.address, self.speed)
         print("Speed: {}".format(self.speed))
         time.sleep(0.1)
 
     def move_up(self):
         print("BC: Moving up")
+        # if pressure_1 > pressure_3:
         self.couple12.ForwardM1(self.address, self.speed)
+        # else:
+        #     self.couple34.BackwardM1(self.address, self.speed)
         print("Speed: {}".format(self.speed))
         time.sleep(0.1)
 
@@ -151,6 +163,7 @@ class RobotControl:
         self.go_to_zero()
 
         print("Closing serial connection")
+        self.send_arduino("s")
         self.arduino.close()
 
     def read_arduino(self):
