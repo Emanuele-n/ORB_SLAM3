@@ -26,6 +26,7 @@ import time
 from roboclaw_python.roboclaw_3 import Roboclaw
 import serial
 import re
+import subprocess
 
 
 class RobotControl:
@@ -43,15 +44,15 @@ class RobotControl:
         # Set up the serial connection
         self.arduino = serial.Serial(arduino_port, 9600)
 
-        # # Initialize state variables
-        # self.horizontal_state = 0
-        # self.vertical_state = 0
-
         # Initialize parameters
-        # self.horizontal_limit = [-4000000, 4000000]
-        # self.vertical_limit = [-3000000, 3000000]
         self.speed = 100
         self.running = True
+
+        # Pressure sensors [psi]
+        self.p1 = 0
+        self.p2 = 0
+        self.p3 = 0
+        self.p4 = 0
 
         # # Encoders moving average
         # moving_avg_size = 10
@@ -75,6 +76,10 @@ class RobotControl:
         self.moving_in_prev = False
         self.moving_out_prev = False
 
+        # Socket variables
+        self.host = "127.0.0.1"
+        self.port = 5000
+
         # Set intial position to zero
         self.go_to_zero()
 
@@ -85,6 +90,20 @@ class RobotControl:
         # Main thread
         self.main_thread = threading.Thread(target=self.run, daemon=True)
         self.main_thread.start()
+
+        # Read sensors thread
+        self.sensors_thread = threading.Thread(target=self.read_sensors, daemon=True)
+        self.sensors_thread.start()
+
+        # After the server thread is started, the client can connect to the server
+        # Run executable daq/cpp/build/read_sensors
+        result = subprocess.run(
+            ["daq/cpp/build/read_sensors"], capture_output=True, text=True
+        )
+
+        # To see the output
+        print("stdout:", result.stdout)
+        print("stderr:", result.stderr)
 
         # # Print thread
         # print_thread = threading.Thread(target=self.print_current_position, daemon=True)
@@ -166,36 +185,55 @@ class RobotControl:
         self.send_arduino("s")
         self.arduino.close()
 
-    def read_arduino(self):
-        pass
-        # try:
-        #     while True:
-        #         # Read a line from the serial port
-        #         line = arduino.readline().decode("utf-8").strip()
-        #         if self.debug:
-        #             print(line)
+    def read_sensors(self):
+        # Create a socket object using the AF_INET address family and SOCK_STREAM socket type
+        server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-        #         # Extract the pressure value using regex
-        #         match = re.search(r"Pressure from A0: (\d+\.\d+) MPa", line)
-        #         if match:
-        #             pressure_value = float(match.group(1))
-        #             # if self.debug : print(pressure_value)
+        # Bind the socket to the address and port number
+        server_socket.bind((self.host, self.port))
 
-        #             if pressure_value < 0.0:
-        #                 pressure_value = 0.0
+        # Start listening for incoming connections with a backlog of 5
+        server_socket.listen(5)
+        print(f"Server listening on {self.host}:{self.port}")
 
-        #             if pressure_value > 2:
-        #                 pressure_value = 2
+        try:
+            while True:
+                # Accept a connection
+                client_socket, addr = server_socket.accept()
+                print(f"Connected by {addr}")
 
-        #             # Set the pressure value
-        #             self.constraints[0].value = [pressure_value]
-        #             # if self.debug : print("Pressure value: " + str(self.constraints[0].value.value[0]))
+                try:
+                    while True:
+                        # Receive data from the client
+                        data = client_socket.recv(1024)
+                        if not data:
+                            break  # Break the loop if data is not received
+                        data_decoded = data.decode()
+                        print(f"Received: {data_decoded}")
 
-        # except KeyboardInterrupt:
-        #     # Close the serial connection when you terminate the script
-        #     arduino.close()
-        #     if self.debug:
-        #         print("Serial connection closed.")
+                        # Extract pressure values using regex
+                        matches = re.finditer(
+                            r"Channel (\d) voltage=[\d.]+V pressure=([-\d.]+)psi",
+                            data_decoded,
+                        )
+                        for match in matches:
+                            channel, pressure = int(match.group(1)), float(
+                                match.group(2)
+                            )
+                            setattr(
+                                self, f"p{channel}", pressure
+                            )  # Dynamically update pressure attributes
+
+                finally:
+                    client_socket.close()  # Ensure the client socket is closed after processing
+                    print("Connection closed.")
+
+        except KeyboardInterrupt:
+            print("Server is shutting down.")
+
+        finally:
+            server_socket.close()  # Ensure the server socket is closed when done
+            print("Server closed.")
 
     # main loop
     def run(self):
@@ -282,442 +320,3 @@ class RobotControl:
         self.couple34.ForwardM1(self.address, 0)
         self.couple34.ForwardM2(self.address, 0)
         time.sleep(0.1)
-
-
-"""
-OLD FUNCTIONS:
-
-
-    def check_limits(self):
-        if self.horizontal_state < self.horizontal_limit[0]:
-            print("Horizontal left limit reached")
-            return True
-        if self.horizontal_state > self.horizontal_limit[1]:
-            print("Horizontal right limit reached")
-            return True
-
-        if self.vertical_state < self.vertical_limit[0]:
-            print("Vertical down limit reached")
-            return True
-        if self.vertical_state > self.vertical_limit[1]:
-            print("Vertical up limit reached")
-            return True
-        return False
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    def listen_to_encoders(self):
-        while True:
-            self.update_states()
-            time.sleep(0.01)
-
-
-
-
-
-
-
-
-
-
-    def print_current_position(self):
-        print(
-            "Current position: x: {}, y: {}".format(
-                self.horizontal_state, self.vertical_state
-            )
-        )
-        time.sleep(0.1)
-
-
-
-
-
-
-
-
-
-
-
-
-    def read_current_position(self):
-        enc1 = self.couple12.ReadEncM1(self.address)[1]
-        enc2 = self.couple12.ReadEncM2(self.address)[1]
-        enc3 = self.couple34.ReadEncM1(self.address)[1]
-        enc4 = self.couple34.ReadEncM2(self.address)[1]
-        return enc1, enc2, enc3, enc4
-
-
-
-
-
-
-
-
-
-    def sendData(self):
-        print("Trying to connect")
-        host = "127.0.0.1"  # The server's hostname or IP address
-        port = 65432  # The port used by the server
-
-        while True:
-            try:
-                with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                    s.connect((host, port))
-                    print("Connection established")
-                    while True:
-                        enc1, enc2, enc3, enc4 = self.read_current_position()
-                        self.horizontal_state = enc2 - enc4
-                        self.vertical_state = enc1 - enc3
-                        data = {"x": self.horizontal_state, "y": self.vertical_state}
-                        json_data = (
-                            json.dumps(data) + "\n"
-                        )  # Append a newline to each JSON message
-                        s.sendall(json_data.encode("utf-8"))
-                        time.sleep(
-                            0.1
-                        )  # Throttle the data sending to prevent overwhelming the receiver
-            except Exception as e:
-                print(f"Connection failed: {e}")
-                print("Retrying to connect...")
-                time.sleep(1)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    def update_states(self):
-        # Read current position from encoders
-        start_time = time.time()
-        raw_enc1, raw_enc2, raw_enc3, raw_enc4 = self.read_current_position()
-        end_time = time.time()
-
-        elapsed_time = end_time - start_time
-        print("Time to read encoders: {} seconds".format(elapsed_time))
-
-        # Update buffers
-        self.enc1_buffer.append(raw_enc1)
-        self.enc2_buffer.append(raw_enc2)
-        self.enc3_buffer.append(raw_enc3)
-        self.enc4_buffer.append(raw_enc4)
-
-        # Maintain buffer size
-        self.enc1_buffer.pop(0)
-        self.enc2_buffer.pop(0)
-        self.enc3_buffer.pop(0)
-        self.enc4_buffer.pop(0)
-
-        # Calculate moving averages
-        avg_enc1 = sum(self.enc1_buffer) / len(self.enc1_buffer)
-        avg_enc2 = sum(self.enc2_buffer) / len(self.enc2_buffer)
-        avg_enc3 = sum(self.enc3_buffer) / len(self.enc3_buffer)
-        avg_enc4 = sum(self.enc4_buffer) / len(self.enc4_buffer)
-
-        # Update state variables with averaged values
-        self.horizontal_state = int(avg_enc2 - avg_enc4)
-        self.vertical_state = int(avg_enc1 - avg_enc3)
-        print("x: {}, y: {}".format(self.horizontal_state, self.vertical_state))
-        time.sleep(0.01)
-
-        # Check limits
-        if self.check_limits():
-            self.stop_motors()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    def control_position(self, direction):
-        # Check direction is valid
-        if direction not in ["up", "down", "left", "right"]:
-            print("Invalid direction")
-            return
-        print(f"Moving {direction}")
-
-        # Get current position
-        current_horizontal = self.horizontal_state
-        current_vertical = self.vertical_state
-
-        # Check if the new position is within the limits
-        if (
-            direction == "up"
-            and current_vertical + self.increment > self.vertical_limit[1]
-        ):
-            print("Vertical limit reached")
-            return
-        if (
-            direction == "down"
-            and current_vertical - self.increment < self.vertical_limit[0]
-        ):
-            print("Vertical limit reached")
-            return
-        if (
-            direction == "right"
-            and current_horizontal + self.increment > self.horizontal_limit[1]
-        ):
-            print("Horizontal limit reached")
-            return
-        if (
-            direction == "left"
-            and current_horizontal - self.increment < self.horizontal_limit[0]
-        ):
-            print("Horizontal limit reached")
-            return
-
-        if current_vertical >= self.increment:
-            # 1
-            if direction == "up":
-                print("Case 1")
-                new_position = current_vertical + self.increment
-                self.couple12.SpeedAccelDeccelPositionM1(
-                    self.address,
-                    self.acceleration,
-                    self.speed,
-                    self.deceleration,
-                    new_position,
-                    1,
-                )
-            # 2
-            if direction == "down":
-                print("Case 2")
-                new_position = current_vertical - self.increment
-                self.couple34.SpeedAccelDeccelPositionM1(
-                    self.address,
-                    self.acceleration,
-                    self.speed,
-                    self.deceleration,
-                    new_position,
-                    1,
-                )
-        elif 0 <= current_vertical < self.increment:
-            # 3
-            if direction == "up":
-                print("Case 3")
-                new_position = current_vertical + self.increment
-                self.couple12.SpeedAccelDeccelPositionM1(
-                    self.address,
-                    self.acceleration,
-                    self.speed,
-                    self.deceleration,
-                    new_position,
-                    1,
-                )
-            # 4
-            if direction == "down":
-                print("Case 4")
-                # Bring motor 1 to zero
-                self.couple12.SpeedAccelDeccelPositionM1(
-                    self.address, self.acceleration, self.speed, self.deceleration, 0, 1
-                )
-                # time.sleep(0.01)
-                new_position = abs(current_vertical - self.increment)
-                # Bring motor 3 to new position
-                self.couple34.SpeedAccelDeccelPositionM1(
-                    self.address,
-                    self.acceleration,
-                    self.speed,
-                    self.deceleration,
-                    new_position,
-                    1,
-                )
-        if current_vertical <= -self.increment:
-            # 5
-            if direction == "down":
-                print("Case 5")
-                new_position = abs(current_vertical - self.increment)
-                self.couple34.SpeedAccelDeccelPositionM1(
-                    self.address,
-                    self.acceleration,
-                    self.speed,
-                    self.deceleration,
-                    new_position,
-                    1,
-                )
-            # 6
-            if direction == "up":
-                print("Case 6")
-                new_position = abs(current_vertical + self.increment)
-                self.couple34.SpeedAccelDeccelPositionM1(
-                    self.address,
-                    self.acceleration,
-                    self.speed,
-                    self.deceleration,
-                    new_position,
-                    1,
-                )
-        elif -self.increment < current_vertical < 0:
-            # 7
-            if direction == "down":
-                print("Case 7")
-                new_position = abs(current_vertical - self.increment)
-                self.couple34.SpeedAccelDeccelPositionM1(
-                    self.address,
-                    self.acceleration,
-                    self.speed,
-                    self.deceleration,
-                    new_position,
-                    1,
-                )
-            # 8
-            if direction == "up":
-                print("Case 8")
-                # Bring motor 3 to zero
-                self.couple34.SpeedAccelDeccelPositionM1(
-                    self.address, self.acceleration, self.speed, self.deceleration, 0, 1
-                )
-                # time.sleep(0.01)
-                new_position = abs(current_vertical + self.increment)
-                # Bring motor 1 to new position
-                self.couple12.SpeedAccelDeccelPositionM1(
-                    self.address,
-                    self.acceleration,
-                    self.speed,
-                    self.deceleration,
-                    new_position,
-                    1,
-                )
-        if current_horizontal >= self.increment:
-            # 9
-            if direction == "right":
-                print("Case 9")
-                new_position = current_horizontal + self.increment
-                self.couple12.SpeedAccelDeccelPositionM2(
-                    self.address,
-                    round(self.acceleration * 4 / 3),
-                    round(self.speed * 4 / 3),
-                    round(self.deceleration * 4 / 3),
-                    new_position,
-                    1,
-                )
-            # 10
-            if direction == "left":
-                print("Case 10")
-                new_position = current_horizontal - self.increment
-                self.couple34.SpeedAccelDeccelPositionM2(
-                    self.address,
-                    round(self.acceleration * 4 / 3),
-                    round(self.speed * 4 / 3),
-                    round(self.deceleration * 4 / 3),
-                    new_position,
-                    1,
-                )
-        elif 0 <= current_horizontal < self.increment:
-            # 11
-            if direction == "right":
-                print("Case 11")
-                new_position = current_horizontal + self.increment
-                self.couple12.SpeedAccelDeccelPositionM2(
-                    self.address,
-                    round(self.acceleration * 4 / 3),
-                    round(self.speed * 4 / 3),
-                    round(self.deceleration * 4 / 3),
-                    new_position,
-                    1,
-                )
-            # 12
-            if direction == "left":
-                print("Case 12")
-                # Bring motor 2 to zero
-                self.couple12.SpeedAccelDeccelPositionM2(
-                    self.address, self.acceleration, self.speed, self.deceleration, 0, 1
-                )
-                # time.sleep(0.01)
-                new_position = abs(current_horizontal - self.increment)
-                # Bring motor 4 to new position
-                self.couple34.SpeedAccelDeccelPositionM2(
-                    self.address,
-                    round(self.acceleration * 4 / 3),
-                    round(self.speed * 4 / 3),
-                    round(self.deceleration * 4 / 3),
-                    new_position,
-                    1,
-                )
-        if current_horizontal <= -self.increment:
-            # 13
-            if direction == "left":
-                print("Case 13")
-                new_position = abs(current_horizontal - self.increment)
-                self.couple34.SpeedAccelDeccelPositionM2(
-                    self.address,
-                    round(self.acceleration * 4 / 3),
-                    round(self.speed * 4 / 3),
-                    round(self.deceleration * 4 / 3),
-                    new_position,
-                    1,
-                )
-            # 14
-            if direction == "right":
-                print("Case 14")
-                new_position = abs(current_horizontal + self.increment)
-                self.couple34.SpeedAccelDeccelPositionM2(
-                    self.address,
-                    round(self.acceleration * 4 / 3),
-                    round(self.speed * 4 / 3),
-                    round(self.deceleration * 4 / 3),
-                    new_position,
-                    1,
-                )
-        elif -self.increment < current_horizontal < 0:
-            # 15
-            if direction == "left":
-                print("Case 15")
-                new_position = abs(current_horizontal - self.increment)
-                self.couple34.SpeedAccelDeccelPositionM2(
-                    self.address,
-                    round(self.acceleration * 4 / 3),
-                    round(self.speed * 4 / 3),
-                    round(self.deceleration * 4 / 3),
-                    new_position,
-                    1,
-                )
-            # 16
-            if direction == "right":
-                print("Case 16")
-                # Bring motor 4 to zero
-                self.couple34.SpeedAccelDeccelPositionM2(
-                    self.address, self.acceleration, self.speed, self.deceleration, 0, 1
-                )
-                # time.sleep(0.01)
-                new_position = abs(current_horizontal + self.increment)
-                # Bring motor 2 to new position
-                self.couple12.SpeedAccelDeccelPositionM2(
-                    self.address,
-                    round(self.acceleration * 4 / 3),
-                    round(self.speed * 4 / 3),
-                    round(self.deceleration * 4 / 3),
-                    new_position,
-                    1,
-                )
-        # time.sleep(0.001)
-
-"""

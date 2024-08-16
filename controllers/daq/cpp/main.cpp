@@ -2,7 +2,10 @@
 
 int main(int argc, char **argv)
 {
-    USB1408FS daqSystem;
+    std::string serverIP = "127.0.0.1";
+    int serverPort = 5000;
+
+    USB1408FS daqSystem(serverIP, serverPort);
     
     if (daqSystem.findDevice()) {
         daqSystem.initialize();

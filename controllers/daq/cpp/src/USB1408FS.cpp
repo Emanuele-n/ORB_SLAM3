@@ -4,12 +4,20 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <iostream>
+#include <cstring>
+#include <unistd.h> 
+
 #include "pmd.h"
 #include "usb-1408FS.h"
 
-USB1408FS::USB1408FS() : udev(nullptr), deviceFound(false) {
+USB1408FS::USB1408FS(const std::string& serverIP, int serverPort) 
+: udev(nullptr), deviceFound(false), sockfd(-1), serverIP(serverIP), serverPort(serverPort) {
     int result = libusb_init(NULL);
     checkLibUSBError(result, "Initialize libusb");
+    if (!initTCPConnection()) {
+        std::cerr << "Failed to initialize TCP connection\n";
+        exit(EXIT_FAILURE);
+    }
 }
 
 USB1408FS::~USB1408FS() {
@@ -17,6 +25,9 @@ USB1408FS::~USB1408FS() {
         libusb_close(udev);
     }
     libusb_exit(NULL);
+    if (sockfd != -1) {
+        close(sockfd);
+    }
 }
 
 bool USB1408FS::findDevice() {
@@ -49,11 +60,44 @@ void USB1408FS::readInputs() {
 
     for (uint8_t channel = 1; channel <= 4; channel++) {
         signed short svalue = usbAIn_USB1408FS(udev, channel - 1, gain);
-        std::cout << "Channel " << int(channel) << " voltage=" << convertToVoltage(svalue, gain) << "V" << " pressure=" << convertToPsi(convertToVoltage(svalue, gain)) << "psi" << std::endl;
-        sleep(1);
+        std::string message = "Channel " + std::to_string(channel) + " voltage=" + std::to_string(convertToVoltage(svalue, gain)) + "V" + " pressure=" + std::to_string(convertToPsi(convertToVoltage(svalue, gain))) + "psi";
+        sendData(message);
+        std::cout << message << std::endl;
+        usleep(500000); // Sleep for 500 milliseconds  
     }
 
     fcntl(fileno(stdin), F_SETFL, flag);
+}
+
+bool USB1408FS::initTCPConnection() {
+    sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (sockfd < 0) {
+        std::cerr << "Error opening socket.\n";
+        return false;
+    }
+
+    struct sockaddr_in serv_addr;
+    memset(&serv_addr, 0, sizeof(serv_addr));
+    serv_addr.sin_family = AF_INET;
+    serv_addr.sin_port = htons(serverPort);
+
+    if (inet_pton(AF_INET, serverIP.c_str(), &serv_addr.sin_addr) <= 0) {
+        std::cerr << "Invalid address/ Address not supported.\n";
+        return false;
+    }
+
+    if (connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
+        std::cerr << "Connection Failed.\n";
+        return false;
+    }
+
+    return true;
+}
+
+void USB1408FS::sendData(const std::string& data) {
+    if (send(sockfd, data.c_str(), data.length(), 0) < 0) {
+        std::cerr << "Failed to send data.\n";
+    }
 }
 
 void USB1408FS::checkLibUSBError(int result, const char* context) {

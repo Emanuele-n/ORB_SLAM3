@@ -5,6 +5,7 @@ couple34_port = "/dev/ttyACM1"
 arduino_port = "/dev/ttyACM2"
 
 if __name__ == "__main__":
+
     keyboard_controller = KeyboardController(
         couple12_port=couple12_port,
         couple34_port=couple34_port,
