@@ -1,32 +1,33 @@
 const ctx = document.getElementById('combinedHistogram').getContext('2d');
 const combinedHistogram = new Chart(ctx, {
+    plugins: [ChartDataLabels],
     type: 'bar',
     data: {
         labels: ['Values'],
         datasets: [
             {
-                label: 'p1',
+                label: 'p1_up',
                 data: [0],
                 backgroundColor: 'rgba(255, 99, 132, 0.5)',
                 borderColor: 'rgba(255, 99, 132, 1)',
                 borderWidth: 1
             },
             {
-                label: 'p2',
+                label: 'p2_right',
                 data: [0],
                 backgroundColor: 'rgba(54, 162, 235, 0.5)',
                 borderColor: 'rgba(54, 162, 235, 1)',
                 borderWidth: 1
             },
             {
-                label: 'p3',
+                label: 'p3_down',
                 data: [0],
                 backgroundColor: 'rgba(75, 192, 192, 0.5)',
                 borderColor: 'rgba(75, 192, 192, 1)',
                 borderWidth: 1
             },
             {
-                label: 'p4',
+                label: 'p4_left',
                 data: [0],
                 backgroundColor: 'rgba(153, 102, 255, 0.5)',
                 borderColor: 'rgba(153, 102, 255, 1)',
@@ -38,18 +39,35 @@ const combinedHistogram = new Chart(ctx, {
         scales: {
             y: {
                 beginAtZero: true,
-                min: 0,    // Set minimum y value
-                max: 30,   // Set maximum y value
+                min: 0,
+                max: 30,
                 ticks: {
-                    stepSize: 5 // Adds ticks every 5 units
+                    stepSize: 5,
+                    callback: function(value, index, values) {
+                        return value + ' psi';
+                    }
+                }
+            }
+        },
+        plugins: {
+            datalabels: {
+                align: 'end',
+                anchor: 'end',
+                formatter: function(value, context) {
+                    return value ;
+                },
+                color: '#444',
+                font: {
+                    weight: 'bold'
                 }
             }
         },
         animation: {
-            duration: 500  // Lower for more "real-time" updates
+            duration: 100
         }
     }
 });
+
 
 const ws = new WebSocket(`ws://${window.location.hostname}:65432`);
 ws.onmessage = function (event) {
