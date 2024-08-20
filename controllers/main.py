@@ -10,5 +10,6 @@ if __name__ == "__main__":
         couple12_port=couple12_port,
         couple34_port=couple34_port,
         arduino_port=arduino_port,
+        plot=True,
     )
     keyboard_controller.listener.join()

@@ -3,12 +3,12 @@ from RobotControl import RobotControl
 
 
 class KeyboardController:
-    def __init__(self, couple12_port, couple34_port, arduino_port):
+    def __init__(self, couple12_port, couple34_port, arduino_port, plot=False):
         self.robot_control = RobotControl(
             couple12_port=couple12_port,
             couple34_port=couple34_port,
             arduino_port=arduino_port,
-            plot=False,
+            plot=plot,
         )
         self.listener = keyboard.Listener(
             on_press=self.on_press, on_release=self.on_release

@@ -26,7 +26,7 @@ def start_server(host="127.0.0.1", port=5000):
                     if not data:
                         break  # Break the loop if data is not received
                     data_decoded = data.decode()
-                    print(f"Received: {data_decoded}")
+                    # print(f"Received: {data_decoded}")
 
                     # Extract pressure values using regex
                     matches = re.finditer(
@@ -36,7 +36,8 @@ def start_server(host="127.0.0.1", port=5000):
                     for match in matches:
                         channel, pressure = int(match.group(1)), float(match.group(2))
                         # setattr(self, f"p{channel}", pressure)  # D
-                        print(f"Channel {channel} pressure: {pressure} psi")
+                        if channel == 1:
+                            print(f"Channel {channel} pressure: {pressure} psi")
 
             finally:
                 client_socket.close()  # Ensure the client socket is closed after processing

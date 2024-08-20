@@ -19,6 +19,7 @@ motor_4      -   motor_2
 4000000      - 0 - 4000000
 """
 
+import collections
 import json
 import socket
 import threading
@@ -27,6 +28,7 @@ from roboclaw_python.roboclaw_3 import Roboclaw
 import serial
 import re
 import subprocess
+import websocket
 
 
 class RobotControl:
@@ -46,6 +48,9 @@ class RobotControl:
 
         # Initialize parameters
         self.speed = 100
+        self.pressure_switch_threshold = 5
+        self.max_pressure = 20
+        self.min_pressure = 1
         self.running = True
 
         # Pressure sensors [psi]
@@ -54,15 +59,14 @@ class RobotControl:
         self.p3 = 0
         self.p4 = 0
 
-        # # Encoders moving average
-        # moving_avg_size = 10
-        # self.moving_avg_size = moving_avg_size
-        # self.enc1_buffer = [0] * moving_avg_size
-        # self.enc2_buffer = [0] * moving_avg_size
-        # self.enc3_buffer = [0] * moving_avg_size
-        # self.enc4_buffer = [0] * moving_avg_size
+        # Moving averages initialization
+        self.moving_avg_size = 10
+        self.p1_buffer = collections.deque(maxlen=self.moving_avg_size)
+        self.p2_buffer = collections.deque(maxlen=self.moving_avg_size)
+        self.p3_buffer = collections.deque(maxlen=self.moving_avg_size)
+        self.p4_buffer = collections.deque(maxlen=self.moving_avg_size)
 
-        # Variable set byt the parent keyboard controller
+        # Variable set by the parent keyboard controller
         self.moving_up = False
         self.moving_down = False
         self.moving_right = False
@@ -83,10 +87,6 @@ class RobotControl:
         # Set intial position to zero
         self.go_to_zero()
 
-        # # Update states thread
-        # update_thread = threading.Thread(target=self.listen_to_encoders, daemon=True)
-        # update_thread.start()
-
         # Main thread
         self.main_thread = threading.Thread(target=self.run, daemon=True)
         self.main_thread.start()
@@ -96,23 +96,22 @@ class RobotControl:
         self.sensors_thread.start()
 
         # After the server thread is started, the client can connect to the server
-        # Run executable daq/cpp/build/read_sensors
-        result = subprocess.run(
-            ["daq/cpp/build/read_sensors"], capture_output=True, text=True
+        # Use subprocess.Popen for asynchronous execution
+        self.sensor_process = subprocess.Popen(
+            ["daq/cpp/build/read_sensors"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
         )
 
-        # To see the output
-        print("stdout:", result.stdout)
-        print("stderr:", result.stderr)
+        # Non-blocking way to get output from the subprocess
+        self.read_output_thread = threading.Thread(target=self.read_process_output)
+        self.read_output_thread.start()
 
-        # # Print thread
-        # print_thread = threading.Thread(target=self.print_current_position, daemon=True)
-        # print_thread.start()
-
-        # if plot:
-        #     # Send data thread
-        #     send_thread = threading.Thread(target=self.sendData, daemon=True)
-        #     send_thread.start()
+        if plot:
+            # Send data thread
+            send_thread = threading.Thread(target=self.send_data, daemon=True)
+            send_thread.start()
 
         print("Robot control initialized")
 
@@ -134,41 +133,65 @@ class RobotControl:
         time.sleep(1)
         print("Motors at zero position")
 
-    # Move functions TODO: adjust logic based on pressure sensors data
+    # Move functions ----------------------------
     def move_down(self):
         print("BC: Moving down")
-        # if pressure_1 < pressure_3:
-        self.couple34.ForwardM1(self.address, self.speed)
-        # else:
-        #     self.couple12.BackwardM1(self.address, self.speed)
-        print("Speed: {}".format(self.speed))
+        if self.p1 < self.pressure_switch_threshold:
+            if self.p3 < self.max_pressure:
+                self.couple34.ForwardM1(self.address, self.speed)
+            else:
+                print("Pressure max limit reached for motor 3")
+        else:
+            if self.p1 > self.min_pressure:
+                self.couple12.BackwardM1(self.address, self.speed)
+            else:
+                print("Pressure min limit reached for motor 1")
+
         time.sleep(0.1)
 
     def move_left(self):
         print("BC: Moving left")
-        # if pressure_2 < pressure_4:
-        self.couple34.ForwardM2(self.address, self.speed)
-        # else:
-        #     self.couple12.BackwardM2(self.address, self.speed)
-        print("Speed: {}".format(self.speed))
+        if self.p2 < self.pressure_switch_threshold:
+            if self.p4 < self.max_pressure:
+                self.couple34.ForwardM2(self.address, self.speed)
+            else:
+                print("Pressure max limit reached for motor 4")
+        else:
+            if self.p2 > self.min_pressure:
+                self.couple12.BackwardM2(self.address, self.speed)
+            else:
+                print("Pressure min limit reached for motor 2")
+
         time.sleep(0.1)
 
     def move_right(self):
         print("BC: Moving right")
-        # if pressure_2 > pressure_4:
-        self.couple12.ForwardM2(self.address, self.speed)
-        # else:
-        #     self.couple34.BackwardM2(self.address, self.speed)
-        print("Speed: {}".format(self.speed))
+        if self.p4 < self.pressure_switch_threshold:
+            if self.p2 < self.max_pressure:
+                self.couple12.ForwardM2(self.address, self.speed)
+            else:
+                print("Pressure max limit reached for motor 2")
+        else:
+            if self.p2 > self.min_pressure:
+                self.couple34.BackwardM2(self.address, self.speed)
+            else:
+                print("Pressure min limit reached for motor 4")
+
         time.sleep(0.1)
 
     def move_up(self):
         print("BC: Moving up")
-        # if pressure_1 > pressure_3:
-        self.couple12.ForwardM1(self.address, self.speed)
-        # else:
-        #     self.couple34.BackwardM1(self.address, self.speed)
-        print("Speed: {}".format(self.speed))
+        if self.p3 < self.pressure_switch_threshold:
+            if self.p1 < self.max_pressure:
+                self.couple12.ForwardM1(self.address, self.speed)
+            else:
+                print("Pressure max limit reached for motor 1")
+        else:
+            if self.p4 > self.min_pressure:
+                self.couple34.BackwardM1(self.address, self.speed)
+            else:
+                print("Pressure min limit reached for motor 3")
+
         time.sleep(0.1)
 
     # ----------------------------
@@ -176,7 +199,6 @@ class RobotControl:
     def on_close(self):
         # Stop run thread and close motors
         self.stop()
-        self.main_thread.join()
 
         print("Closing motors")
         self.go_to_zero()
@@ -184,6 +206,20 @@ class RobotControl:
         print("Closing serial connection")
         self.send_arduino("s")
         self.arduino.close()
+
+        print("Closing threads")
+
+        # Stop sensors thread
+        self.sensors_thread.join()
+        print("Sensors thread closed")
+
+        # Stop subprocess
+        self.sensor_process.terminate()
+        self.read_output_thread.join()
+        print("Subprocess closed")
+
+        self.main_thread.join()
+        print("Main thread closed")
 
     def read_sensors(self):
         # Create a socket object using the AF_INET address family and SOCK_STREAM socket type
@@ -197,19 +233,19 @@ class RobotControl:
         print(f"Server listening on {self.host}:{self.port}")
 
         try:
-            while True:
+            while self.running:
                 # Accept a connection
                 client_socket, addr = server_socket.accept()
                 print(f"Connected by {addr}")
 
                 try:
-                    while True:
+                    while self.running:
                         # Receive data from the client
                         data = client_socket.recv(1024)
                         if not data:
                             break  # Break the loop if data is not received
                         data_decoded = data.decode()
-                        print(f"Received: {data_decoded}")
+                        # print(f"Received: {data_decoded}")
 
                         # Extract pressure values using regex
                         matches = re.finditer(
@@ -220,9 +256,8 @@ class RobotControl:
                             channel, pressure = int(match.group(1)), float(
                                 match.group(2)
                             )
-                            setattr(
-                                self, f"p{channel}", pressure
-                            )  # Dynamically update pressure attributes
+
+                            self.update_pressure(channel, pressure)
 
                 finally:
                     client_socket.close()  # Ensure the client socket is closed after processing
@@ -234,6 +269,15 @@ class RobotControl:
         finally:
             server_socket.close()  # Ensure the server socket is closed when done
             print("Server closed.")
+
+    def read_process_output(self):
+        # Print stdout and stderr without blocking
+        stdout, stderr = self.sensor_process.communicate()
+        # print("Subprocess read_sensors stdout:", stdout)
+        print("Subprocess read_sensors stderr:", stderr)
+
+        if self.sensor_process.returncode != 0:
+            print(f"Process exited with code {self.sensor_process.returncode}")
 
     # main loop
     def run(self):
@@ -289,6 +333,30 @@ class RobotControl:
         print(f"Sent '{command}' to Arduino")
         time.sleep(0.1)
 
+    def send_data(self):
+        from websocket import create_connection
+
+        while self.running:
+            try:
+                ws = websocket.create_connection("ws://127.0.0.1:65432")
+                try:
+                    while self.running:
+                        data = json.dumps(
+                            {
+                                "p1": self.p1,
+                                "p2": self.p2,
+                                "p3": self.p3,
+                                "p4": self.p4,
+                            }
+                        )
+                        ws.send(data)
+                        time.sleep(0.1)
+                finally:
+                    ws.close()
+            except ConnectionRefusedError:
+                print("Connection refused. Retrying in 5 seconds.")
+                time.sleep(5)
+
     # Set functions
     def set_moving_up(self, value):
         self.moving_up = value
@@ -320,3 +388,17 @@ class RobotControl:
         self.couple34.ForwardM1(self.address, 0)
         self.couple34.ForwardM2(self.address, 0)
         time.sleep(0.1)
+
+    def update_pressure(self, channel, pressure):
+        # Get the appropriate buffer based on channel number
+        buffer = getattr(self, f"p{channel}_buffer")
+        buffer.append(pressure)  # Append new pressure reading
+
+        # Calculate moving average
+        avg_pressure = sum(buffer) / len(buffer)
+        if avg_pressure < 0:
+            avg_pressure = 0
+
+        setattr(self, f"p{channel}", avg_pressure)  # Update the pressure attribute
+
+        # print(f"Filtered pressure for Channel {channel}: {avg_pressure} psi")

@@ -63,7 +63,7 @@ void USB1408FS::readInputs() {
         std::string message = "Channel " + std::to_string(channel) + " voltage=" + std::to_string(convertToVoltage(svalue, gain)) + "V" + " pressure=" + std::to_string(convertToPsi(convertToVoltage(svalue, gain))) + "psi";
         sendData(message);
         std::cout << message << std::endl;
-        usleep(500000); // Sleep for 500 milliseconds  
+        usleep(1000); // Sleep for 1 milliseconds  
     }
 
     fcntl(fileno(stdin), F_SETFL, flag);
