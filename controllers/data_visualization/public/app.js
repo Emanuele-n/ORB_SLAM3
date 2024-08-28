@@ -40,7 +40,7 @@ const combinedHistogram = new Chart(ctx, {
             y: {
                 beginAtZero: true,
                 min: 0,
-                max: 30,
+                max: 100,
                 ticks: {
                     stepSize: 5,
                     callback: function(value, index, values) {

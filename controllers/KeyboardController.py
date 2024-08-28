@@ -3,12 +3,15 @@ from RobotControl import RobotControl
 
 
 class KeyboardController:
-    def __init__(self, couple12_port, couple34_port, arduino_port, plot=False):
+    def __init__(
+        self, couple12_port, couple34_port, arduino_port, plot=False, load=False
+    ):
         self.robot_control = RobotControl(
             couple12_port=couple12_port,
             couple34_port=couple34_port,
             arduino_port=arduino_port,
             plot=plot,
+            load=load,
         )
         self.listener = keyboard.Listener(
             on_press=self.on_press, on_release=self.on_release
@@ -35,6 +38,8 @@ class KeyboardController:
                 self.robot_control.set_moving_out(True)
             elif key.char == "l":
                 self.robot_control.load_pressure()
+            elif key.char == "t":
+                self.robot_control.test()
             elif key.char == "z":
                 self.robot_control.set_encoders_zero()
 

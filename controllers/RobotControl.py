@@ -33,7 +33,13 @@ import websocket
 
 class RobotControl:
     def __init__(
-        self, couple12_port, couple34_port, arduino_port, baud_rate=115200, plot=False
+        self,
+        couple12_port,
+        couple34_port,
+        arduino_port,
+        baud_rate=115200,
+        plot=False,
+        load=False,
     ):
 
         # Initialize motors
@@ -42,16 +48,22 @@ class RobotControl:
         self.couple12.Open()
         self.couple34.Open()
         self.address = 0x80
+        print("Motors initialized")
 
         # Set up the serial connection
         self.arduino = serial.Serial(arduino_port, 9600)
+        print("Arduino serial connection initialized")
 
         # Initialize parameters
-        self.speed = 100
-        self.pressure_switch_threshold = 5
-        self.max_pressure = 20
+        self.speed = 80
+        self.pressure_switch_threshold = 20
+        self.max_pressure_1 = 60
+        self.max_pressure_2 = 60
+        self.max_pressure_3 = 60
+        self.max_pressure_4 = 60
         self.min_pressure = 1
         self.running = True
+        print("Parameters initialized")
 
         # Pressure sensors [psi]
         self.p1 = 0
@@ -60,11 +72,12 @@ class RobotControl:
         self.p4 = 0
 
         # Moving averages initialization
-        self.moving_avg_size = 10
+        self.moving_avg_size = 100
         self.p1_buffer = collections.deque(maxlen=self.moving_avg_size)
         self.p2_buffer = collections.deque(maxlen=self.moving_avg_size)
         self.p3_buffer = collections.deque(maxlen=self.moving_avg_size)
         self.p4_buffer = collections.deque(maxlen=self.moving_avg_size)
+        print("Pressure sensors initialized")
 
         # Variable set by the parent keyboard controller
         self.moving_up = False
@@ -79,6 +92,7 @@ class RobotControl:
         self.move_left_prev = False
         self.moving_in_prev = False
         self.moving_out_prev = False
+        print("Movement variables initialized")
 
         # Socket variables
         self.host = "127.0.0.1"
@@ -86,6 +100,12 @@ class RobotControl:
 
         # Set intial position to zero
         self.go_to_zero()
+        print("Motors at zero position")
+
+        # Go to loaded state
+        if load:
+            self.go_to_loaded_state()
+            print("Motors at loaded state")
 
         # Main thread
         self.main_thread = threading.Thread(target=self.run, daemon=True)
@@ -115,29 +135,142 @@ class RobotControl:
 
         print("Robot control initialized")
 
+    def go_to_loaded_state(self):
+        # Read from file if it exists
+        try:
+            with open("loaded_state.txt", "r") as f:
+                enc1 = int(f.readline())
+                enc2 = int(f.readline())
+                enc3 = int(f.readline())
+                enc4 = int(f.readline())
+                print("Encoder values loaded from loaded_state.txt")
+                print(f"Motor 1: {enc1}")
+                print(f"Motor 2: {enc2}")
+                print(f"Motor 3: {enc3}")
+                print(f"Motor 4: {enc4}")
+        except FileNotFoundError:
+            print("No saved state found")
+            return
+
+        # Move to loaded state using move_to_position
+        self.move_to_position("1", enc1)
+        self.move_to_position("2", enc2)
+        self.move_to_position("3", enc3)
+        self.move_to_position("4", enc4)
+        time.sleep(1)
+
     def go_to_zero(self):
         print("Moving to zero position")
         # Position all motors to zero position
-        self.couple12.SpeedAccelDeccelPositionM1(
-            self.address, 320000, 500000, 320000, 0, 1
-        )
-        self.couple12.SpeedAccelDeccelPositionM2(
-            self.address, 320000, 500000, 320000, 0, 1
-        )
-        self.couple34.SpeedAccelDeccelPositionM1(
-            self.address, 320000, 500000, 320000, 0, 1
-        )
-        self.couple34.SpeedAccelDeccelPositionM2(
-            self.address, 320000, 500000, 320000, 0, 1
-        )
+        self.move_to_position("1", 0)
+        self.move_to_position("2", 0)
+        self.move_to_position("3", 0)
+        self.move_to_position("4", 0)
         time.sleep(1)
         print("Motors at zero position")
 
+    def load_pressure(self):
+        # Bring every motor to the switch pressure threshold
+        print("\nLoading pressure and saving new state")
+        # Load motor 1
+        while self.p1 < self.pressure_switch_threshold:
+            self.couple12.ForwardM1(self.address, self.speed // 10)
+            print(
+                f"\rPressure 1: {self.p1:.3f} / {self.pressure_switch_threshold}",
+                end="",
+                flush=True,
+            )
+            time.sleep(0.2)
+        print("\nStopping motor 1")
+        counter = 0
+        while counter < 10:
+            self.couple12.ForwardM1(self.address, 0)
+            time.sleep(0.2)
+            counter += 1
+        print("Motor 1 reached pressure threshold\n")
+        time.sleep(0.2)
+
+        # Load motor 2
+        while self.p2 < self.pressure_switch_threshold:
+            self.couple12.ForwardM2(self.address, self.speed // 10)
+            print(
+                f"\rPressure 2: {self.p2:.3f} / {self.pressure_switch_threshold}",
+                end="",
+                flush=True,
+            )
+            time.sleep(0.2)
+        print("\nStopping motor 2")
+        counter = 0
+        while counter < 10:
+            self.couple12.ForwardM2(self.address, 0)
+            time.sleep(0.2)
+            counter += 1
+        print("Motor 2 reached pressure threshold\n")
+        time.sleep(0.2)
+
+        # Load motor 3
+        while self.p3 < self.pressure_switch_threshold:
+            self.couple34.ForwardM1(self.address, self.speed // 10)
+            print(
+                f"\rPressure 3: {self.p3:.3f} / {self.pressure_switch_threshold}",
+                end="",
+                flush=True,
+            )
+            time.sleep(0.2)
+        print("\nStopping motor 3")
+        counter = 0
+        while counter < 10:
+            self.couple34.ForwardM1(self.address, 0)
+            time.sleep(0.2)
+            counter += 1
+        print("Motor 3 reached pressure threshold\n")
+        time.sleep(0.2)
+
+        # Load motor 4
+        while self.p4 < self.pressure_switch_threshold:
+            self.couple34.ForwardM2(self.address, self.speed // 10)
+            print(
+                f"\rPressure 4: {self.p4:.3f} / {self.pressure_switch_threshold}",
+                end="",
+                flush=True,
+            )
+            time.sleep(0.2)
+        print("\nStopping motor 4")
+        counter = 0
+        while counter < 10:
+            self.couple34.ForwardM2(self.address, 0)
+            time.sleep(0.2)
+            counter += 1
+        print("Motor 4 reached pressure threshold\n")
+        time.sleep(0.2)
+
+        print("Loading pressure completed\n")
+
+        # Read encoder values of each motor
+        print("Encoder values:")
+        enc1 = self.couple12.ReadEncM1(self.address)[1]
+        time.sleep(1)
+        enc2 = self.couple12.ReadEncM2(self.address)[1]
+        time.sleep(1)
+        enc3 = self.couple34.ReadEncM1(self.address)[1]
+        time.sleep(1)
+        enc4 = self.couple34.ReadEncM2(self.address)[1]
+        time.sleep(1)
+        print(f"Motor 1: {enc1}")
+        print(f"Motor 2: {enc2}")
+        print(f"Motor 3: {enc3}")
+        print(f"Motor 4: {enc4}")
+
+        # Save encoder values to file
+        with open("loaded_state.txt", "w") as f:
+            f.write(f"{enc1}\n{enc2}\n{enc3}\n{enc4}")
+            print("Encoder values saved to loaded_state.txt")
+
     # Move functions ----------------------------
     def move_down(self):
-        print("BC: Moving down")
+        print("RobotControl: Moving down")
         if self.p1 < self.pressure_switch_threshold:
-            if self.p3 < self.max_pressure:
+            if self.p3 < self.max_pressure_3:
                 self.couple34.ForwardM1(self.address, self.speed)
             else:
                 print("Pressure max limit reached for motor 3")
@@ -150,9 +283,9 @@ class RobotControl:
         time.sleep(0.1)
 
     def move_left(self):
-        print("BC: Moving left")
+        print("RobotControl: Moving left")
         if self.p2 < self.pressure_switch_threshold:
-            if self.p4 < self.max_pressure:
+            if self.p4 < self.max_pressure_4:
                 self.couple34.ForwardM2(self.address, self.speed)
             else:
                 print("Pressure max limit reached for motor 4")
@@ -165,9 +298,9 @@ class RobotControl:
         time.sleep(0.1)
 
     def move_right(self):
-        print("BC: Moving right")
+        print("RobotControl: Moving right")
         if self.p4 < self.pressure_switch_threshold:
-            if self.p2 < self.max_pressure:
+            if self.p2 < self.max_pressure_2:
                 self.couple12.ForwardM2(self.address, self.speed)
             else:
                 print("Pressure max limit reached for motor 2")
@@ -180,18 +313,37 @@ class RobotControl:
         time.sleep(0.1)
 
     def move_up(self):
-        print("BC: Moving up")
+        print("RobotControl: Moving up")
         if self.p3 < self.pressure_switch_threshold:
-            if self.p1 < self.max_pressure:
+            if self.p1 < self.max_pressure_1:
                 self.couple12.ForwardM1(self.address, self.speed)
             else:
                 print("Pressure max limit reached for motor 1")
         else:
-            if self.p4 > self.min_pressure:
+            if self.p3 > self.min_pressure:
                 self.couple34.BackwardM1(self.address, self.speed)
             else:
                 print("Pressure min limit reached for motor 3")
 
+        time.sleep(0.1)
+
+    def move_to_position(self, motor, position):
+        if motor == "1":
+            self.couple12.SpeedAccelDeccelPositionM1(
+                self.address, 320000, 500000, 320000, position, 0
+            )
+        if motor == "2":
+            self.couple12.SpeedAccelDeccelPositionM2(
+                self.address, 320000, 500000, 320000, position, 0
+            )
+        if motor == "3":
+            self.couple34.SpeedAccelDeccelPositionM1(
+                self.address, 320000, 500000, 320000, position, 0
+            )
+        if motor == "4":
+            self.couple34.SpeedAccelDeccelPositionM2(
+                self.address, 320000, 500000, 320000, position, 0
+            )
         time.sleep(0.1)
 
     # ----------------------------
@@ -214,6 +366,21 @@ class RobotControl:
         print("Sensors thread closed")
 
         # Stop subprocess
+        self.sensor_process.terminate()
+        self.read_output_thread.join()
+        print("Subprocess closed")
+
+        # Try to start and stop again before closing to avoid the double start problem
+        self.sensor_process = subprocess.Popen(
+            ["daq/cpp/build/read_sensors"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+
+        # Non-blocking way to get output from the subprocess
+        self.read_output_thread = threading.Thread(target=self.read_process_output)
+        self.read_output_thread.start()
         self.sensor_process.terminate()
         self.read_output_thread.join()
         print("Subprocess closed")
@@ -334,7 +501,6 @@ class RobotControl:
         time.sleep(0.1)
 
     def send_data(self):
-        from websocket import create_connection
 
         while self.running:
             try:
@@ -379,15 +545,22 @@ class RobotControl:
     def stop(self):
         self.running = False
 
+    def set_encoders_zero(self):
+        print("TODO")
+
     # ----------------------------
 
     def stop_motors(self):
-        print("BC: Stopping motors")
+        print("RobotControl: Stopping motors")
         self.couple12.ForwardM1(self.address, 0)
         self.couple12.ForwardM2(self.address, 0)
         self.couple34.ForwardM1(self.address, 0)
         self.couple34.ForwardM2(self.address, 0)
         time.sleep(0.1)
+
+    def test(self):
+        print("Test")
+        self.move_to_position("1", 1000000)
 
     def update_pressure(self, channel, pressure):
         # Get the appropriate buffer based on channel number
