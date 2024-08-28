@@ -10,7 +10,7 @@ calibration.yaml will be saved in em folder
 # ORB-SLAM
 how to run ORB-SLAM3 with the calibration.yaml file
 ```
-./Examples/Monocular/mono_realtime Vocabulary/ORBvoc.txt ./em/calibration.yaml
+./Examples/Monocular/mono_realtime Vocabulary/ORBvoc.txt ./em/calibration_Misumi_200p.yaml
 ```
 
 also change 

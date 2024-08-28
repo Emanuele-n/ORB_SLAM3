@@ -62,8 +62,22 @@ int main(int argc, char **argv)
 
         double tframe = chrono::duration_cast<chrono::duration<double>>(chrono::steady_clock::now().time_since_epoch()).count();
 
-        // Pass the image to the SLAM system
-        SLAM.TrackMonocular(frame, tframe);
+        // // Pass the image to the SLAM system
+        // SLAM.TrackMonocular(frame, tframe);
+
+        // Trying to print the camera pose
+        Sophus::SE3f Tcw = SLAM.TrackMonocular(frame, tframe);
+        std::cout << "Camera pose: " << Tcw.matrix() << std::endl;
+
+        Eigen::Vector3f position = Tcw.translation();  // Position in world coordinates
+        Eigen::Quaternionf orientation = Tcw.unit_quaternion();  // Orientation as a quaternion
+
+        // Print or log the position and orientation
+        std::cout << "Position: " << position.transpose() << std::endl;
+        std::cout << "Orientation (Quaternion): " << orientation.coeffs().transpose() << std::endl;
+
+        // TODO: in place of printing send the position and orientation to the visualizer
+
 
         // Exit if ESC key is pressed
         if(waitKey(30) >= 0) break;
