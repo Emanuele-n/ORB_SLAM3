@@ -21,6 +21,10 @@ also change
 ```
 in mono_realtime.cc to match the camera resolution and fps
 
+# Real time pose
+Currently the executable is sending the Tcw matrix to localhost:12345
+This is received by the navigation.py 
+
 # Things to try
 - change parameters to avoid tracking lost and initialization: 
 increase the number of features detected and decrease the threshold of ORBmatcher (ORBextractor.nFeature, ORBextractor.scaleFactor, ORBextractor.nLevels, ORBextractor.iniThFAST, and ORBextractor.minThFAST) ([issue](https://github.com/UZ-SLAMLab/ORB_SLAM3/issues/863), [issue](https://github.com/UZ-SLAMLab/ORB_SLAM3/issues/757), [issue](https://github.com/UZ-SLAMLab/ORB_SLAM3/issues/736))
