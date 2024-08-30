@@ -8,7 +8,12 @@
         "ranges": "cpp",
         "span": "cpp",
         "iostream": "cpp",
-        "shared_mutex": "cpp"
+        "shared_mutex": "cpp",
+        "system_error": "cpp",
+        "string": "cpp",
+        "*.tcc": "cpp",
+        "regex": "cpp",
+        "typeindex": "cpp"
     },
     "C_Cpp.errorSquiggles": "disabled"
 }
