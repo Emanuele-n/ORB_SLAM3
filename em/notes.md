@@ -10,7 +10,7 @@ calibration.yaml will be saved in em folder
 # ORB-SLAM
 how to run ORB-SLAM3 with the calibration.yaml file
 ```
-./Examples/Monocular/mono_realtime Vocabulary/ORBvoc.txt ./em/calibration.yaml
+./Examples/Monocular/mono_realtime Vocabulary/ORBvoc.txt ./em/calibration_Misumi_200p.yaml
 ```
 
 also change 
@@ -20,6 +20,10 @@ also change
     cap.set(CAP_PROP_FPS, 30); 
 ```
 in mono_realtime.cc to match the camera resolution and fps
+
+# Real time pose
+Currently the executable is sending the Tcw matrix to localhost:12345
+This is received by the navigation.py 
 
 # Things to try
 - change parameters to avoid tracking lost and initialization: 
