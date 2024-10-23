@@ -66,8 +66,8 @@ int main(int argc, char **argv)
         cap.open(argv[3]); // open the video file
     } else {
         cap.open(3); // change to 0 if you want to use the default camera
-        cap.set(CAP_PROP_FRAME_WIDTH, 200);
-        cap.set(CAP_PROP_FRAME_HEIGHT, 200);
+        cap.set(CAP_PROP_FRAME_WIDTH, 400);
+        cap.set(CAP_PROP_FRAME_HEIGHT, 380);
         cap.set(CAP_PROP_FPS, 30);
     }
 

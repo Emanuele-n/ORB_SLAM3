@@ -2729,11 +2729,12 @@ bool Tracking::TrackReferenceKeyFrame()
 
     int nmatches = matcher.SearchByBoW(mpReferenceKF,mCurrentFrame,vpMapPointMatches);
 
-    if(nmatches<15)
-    {
-        cout << "TRACK_REF_KF: Less than 15 matches!!\n";
-        return false;
-    }
+    // EMA: comment out the following line to allow tracking with less than 15 matches
+    // if(nmatches<15)
+    // {
+    //     cout << "TRACK_REF_KF: Less than 15 matches!!\n";
+    //     return false;
+    // }
 
     mCurrentFrame.mvpMapPoints = vpMapPointMatches;
     mCurrentFrame.SetPose(mLastFrame.GetPose());
