@@ -65,10 +65,10 @@ int main(int argc, char **argv)
     if (argc == 4) {
         cap.open(argv[3]); // open the video file
     } else {
-        cap.open(3); // change to 0 if you want to use the default camera
-        cap.set(CAP_PROP_FRAME_WIDTH, 400);
-        cap.set(CAP_PROP_FRAME_HEIGHT, 380);
-        cap.set(CAP_PROP_FPS, 30);
+        cap.open("rtsp://:@192.168.1.1:8554/session0.mpg"); // change to 0 if you want to use the default camera
+        cap.set(CAP_PROP_FRAME_WIDTH, 1280);
+        cap.set(CAP_PROP_FRAME_HEIGHT, 720);
+        cap.set(CAP_PROP_FPS, 59.94);
     }
 
     if(!cap.isOpened())
