@@ -3,13 +3,18 @@ import numpy as np
 import yaml
 
 # Camera name
-# camera_name = 'Misumi_200p'
-camera_name = "Misumi_400x380p"
+# camera_name = 'Misumi_200x200p'
+# camera_name = "Misumi_400x380p"
+camera_name = "videoscope_1280x720p"
 
 # Define the chessboard size
 chessboard_size = (9, 6)
-frame_size = (400, 380)
-
+# Take frame size from name
+frame_size = (
+    int(camera_name.split("_")[1].split("x")[0]),
+    int(camera_name.split("_")[1].split("x")[1].split("p")[0]),
+)
+FPS = 59.94
 # Termination criteria
 criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
 
@@ -23,10 +28,12 @@ imgpoints = []
 
 # Folder name calibration_images + camera name
 folder_name = "calibration_images_" + camera_name
+first = 16
+last = 72
 
 # Capture images of the calibration pattern
 images = [
-    cv2.imread(f"{folder_name}/image_{i}.jpg") for i in range(1, 21)
+    cv2.imread(f"{folder_name}/image_{i}.jpg") for i in range(first, last + 1)
 ]  # Assuming 20 images
 
 for img in images:
@@ -74,7 +81,7 @@ calibration_data = {
     # Tangential distortion coefficients. These parameters adjust for lens distortion that occurs when the lens and the image plane are not parallel.
     "Camera1.p1": float(dist_coeffs[0, 2]),
     "Camera1.p2": float(dist_coeffs[0, 3]),
-    "Camera.fps": 30,
+    "Camera.fps": FPS,
     # Indicates whether the camera outputs RGB color images (1 for true, 0 for false).
     "Camera.RGB": 1,
     # Represents the baseline times focal length, used in stereo cameras for depth perception.

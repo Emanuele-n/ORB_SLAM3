@@ -3,8 +3,9 @@ import os
 import time
 
 # Camera name
-# camera_name = 'Misumi_200p'
-camera_name = "Misumi_400x380p"
+# camera_name = 'Misumi_200x200p'
+# camera_name = "Misumi_400x380p"
+camera_name = "videoscope_1280x720p"
 
 # Settings
 save_dir = "calibration_images_" + camera_name
@@ -13,26 +14,37 @@ if not os.path.exists(save_dir):
     os.makedirs(save_dir)
 
 # Camera settings
-camera_index = 3  # Change if you have multiple cameras
-capture_interval = 1  # Time in seconds between captures
+# camera_index = 3  # Change if you have multiple cameras
+camera_index = "rtsp://:@192.168.1.1:8554/session0.mpg"
+capture_interval = 0.2  # Time in seconds between captures
 setting_time = 10  # Time in seconds to adjust camera settings
-total_images = 20  # Total number of images to capture
+total_images = 100  # Total number of images to capture
 
-# Open the camera
+# Ask user for input source
+source = input(
+    "Press 'v' to use a video file, anything else will use the live stream: "
+)
+if source.lower() == "v":
+    video_file = input("Enter path to video file: ")
+    camera_index = video_file
+else:
+    print("Using live stream.")
+
+# Open the source
 cap = cv2.VideoCapture(camera_index)
 if not cap.isOpened():
-    print("Error: Could not open camera.")
+    print("Error: Could not open source.")
     exit()
 
-# Show the camera feed to adjust settings for setting_time seconds
-print(f"Adjust camera settings for {setting_time} seconds.")
+# Show the source feed to adjust settings for setting_time seconds
+print(f"Adjust settings for {setting_time} seconds.")
 for i in range(setting_time):
     ret, frame = cap.read()
     if not ret:
         print("Error: Failed to capture image.")
         break
 
-    cv2.imshow("Camera Feed", frame)
+    cv2.imshow("Feed", frame)
     cv2.waitKey(1000)  # Display the image for 1000 ms
     print(f"Setting time remaining: {setting_time - i - 1} seconds.")
 
@@ -42,6 +54,12 @@ print(
 
 # Capture images
 for i in range(total_images):
+    # Flush the buffer to ensure the most recent frame is captured
+    for _ in range(
+        20
+    ):  # Adjust number as necessary based on how often your stream updates
+        cap.read()
+
     ret, frame = cap.read()
     if not ret:
         print("Error: Failed to capture image.")
@@ -59,7 +77,7 @@ for i in range(total_images):
     # Wait for the specified interval
     time.sleep(capture_interval)
 
-# Release the camera and close windows
+# Release the source and close windows
 cap.release()
 cv2.destroyAllWindows()
 

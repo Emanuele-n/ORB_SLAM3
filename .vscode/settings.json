@@ -13,7 +13,8 @@
         "string": "cpp",
         "*.tcc": "cpp",
         "regex": "cpp",
-        "typeindex": "cpp"
+        "typeindex": "cpp",
+        "bitset": "cpp"
     },
     "C_Cpp.errorSquiggles": "disabled"
 }
