@@ -14,7 +14,7 @@ frame_size = (
     int(camera_name.split("_")[1].split("x")[0]),
     int(camera_name.split("_")[1].split("x")[1].split("p")[0]),
 )
-FPS = 59.94
+FPS = 60
 # Termination criteria
 criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
 

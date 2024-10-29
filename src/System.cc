@@ -237,7 +237,7 @@ System::System(const string &strVocFile, const string &strSettingsFile, const eS
     }
 
     // Fix verbosity
-    Verbose::SetTh(Verbose::VERBOSITY_QUIET);
+    Verbose::SetTh(Verbose::VERBOSITY_NORMAL);
 
 }
 
@@ -462,15 +462,22 @@ Sophus::SE3f System::TrackMonocular(const cv::Mat &im, const double &timestamp, 
     if (mSensor == System::IMU_MONOCULAR)
         for(size_t i_imu = 0; i_imu < vImuMeas.size(); i_imu++)
             mpTracker->GrabImuData(vImuMeas[i_imu]);
-
+    auto start = chrono::steady_clock::now();
     Sophus::SE3f Tcw = mpTracker->GrabImageMonocular(imToFeed,timestamp,filename);
+    auto end = chrono::steady_clock::now();
+    auto duration = chrono::duration_cast<chrono::milliseconds>(end - start);
+    ofstream logfile("log.txt", ios::app);
+    if (logfile.is_open()) {
+        logfile << "\tSystem::TrackMonocular mpTracker->GrabImageMonocular " << duration.count() << " milliseconds" << endl;
+        logfile.close();
+    } else {
+        cerr << "Failed to open log file." << endl;
+    }
 
     unique_lock<mutex> lock2(mMutexState);
     mTrackingState = mpTracker->mState;
     mTrackedMapPoints = mpTracker->mCurrentFrame.mvpMapPoints;
     mTrackedKeyPointsUn = mpTracker->mCurrentFrame.mvKeysUn;
-
-    // TODO: send the current camera pose to external 
 
     return Tcw;
 }

@@ -1,0 +1,104 @@
+		System::TrackMonocular GrabImageMonocular.Frame 32 milliseconds
+		System::TrackMonocular GrabImageMonocular.Track 1 milliseconds
+	System::TrackMonocular mpTracker->GrabImageMonocular 33 milliseconds
+mono_realtime.SLAM.TrackMonocular: 34 milliseconds
+		System::TrackMonocular GrabImageMonocular.Frame 28 milliseconds
+		System::TrackMonocular GrabImageMonocular.Track 191 milliseconds
+	System::TrackMonocular mpTracker->GrabImageMonocular 219 milliseconds
+mono_realtime.SLAM.TrackMonocular: 219 milliseconds
+		System::TrackMonocular GrabImageMonocular.Frame 26 milliseconds
+		System::TrackMonocular GrabImageMonocular.Track 167 milliseconds
+	System::TrackMonocular mpTracker->GrabImageMonocular 194 milliseconds
+mono_realtime.SLAM.TrackMonocular: 194 milliseconds
+		System::TrackMonocular GrabImageMonocular.Frame 27 milliseconds
+		System::TrackMonocular GrabImageMonocular.Track 169 milliseconds
+	System::TrackMonocular mpTracker->GrabImageMonocular 196 milliseconds
+mono_realtime.SLAM.TrackMonocular: 196 milliseconds
+		System::TrackMonocular GrabImageMonocular.Frame 27 milliseconds
+		System::TrackMonocular GrabImageMonocular.Track 167 milliseconds
+	System::TrackMonocular mpTracker->GrabImageMonocular 194 milliseconds
+mono_realtime.SLAM.TrackMonocular: 195 milliseconds
+		System::TrackMonocular GrabImageMonocular.Frame 25 milliseconds
+		System::TrackMonocular GrabImageMonocular.Track 167 milliseconds
+	System::TrackMonocular mpTracker->GrabImageMonocular 192 milliseconds
+mono_realtime.SLAM.TrackMonocular: 192 milliseconds
+		System::TrackMonocular GrabImageMonocular.Frame 25 milliseconds
+		System::TrackMonocular GrabImageMonocular.Track 166 milliseconds
+	System::TrackMonocular mpTracker->GrabImageMonocular 192 milliseconds
+mono_realtime.SLAM.TrackMonocular: 193 milliseconds
+		System::TrackMonocular GrabImageMonocular.Frame 26 milliseconds
+		System::TrackMonocular GrabImageMonocular.Track 171 milliseconds
+	System::TrackMonocular mpTracker->GrabImageMonocular 198 milliseconds
+mono_realtime.SLAM.TrackMonocular: 198 milliseconds
+		System::TrackMonocular GrabImageMonocular.Frame 27 milliseconds
+		System::TrackMonocular GrabImageMonocular.Track 174 milliseconds
+	System::TrackMonocular mpTracker->GrabImageMonocular 202 milliseconds
+mono_realtime.SLAM.TrackMonocular: 202 milliseconds
+		System::TrackMonocular GrabImageMonocular.Frame 28 milliseconds
+		System::TrackMonocular GrabImageMonocular.Track 191 milliseconds
+	System::TrackMonocular mpTracker->GrabImageMonocular 219 milliseconds
+mono_realtime.SLAM.TrackMonocular: 219 milliseconds
+		System::TrackMonocular GrabImageMonocular.Frame 28 milliseconds
+		System::TrackMonocular GrabImageMonocular.Track 193 milliseconds
+	System::TrackMonocular mpTracker->GrabImageMonocular 222 milliseconds
+mono_realtime.SLAM.TrackMonocular: 222 milliseconds
+		System::TrackMonocular GrabImageMonocular.Frame 24 milliseconds
+		System::TrackMonocular GrabImageMonocular.Track 191 milliseconds
+	System::TrackMonocular mpTracker->GrabImageMonocular 215 milliseconds
+mono_realtime.SLAM.TrackMonocular: 216 milliseconds
+		System::TrackMonocular GrabImageMonocular.Frame 25 milliseconds
+		System::TrackMonocular GrabImageMonocular.Track 184 milliseconds
+	System::TrackMonocular mpTracker->GrabImageMonocular 209 milliseconds
+mono_realtime.SLAM.TrackMonocular: 210 milliseconds
+		System::TrackMonocular GrabImageMonocular.Frame 25 milliseconds
+		System::TrackMonocular GrabImageMonocular.Track 191 milliseconds
+	System::TrackMonocular mpTracker->GrabImageMonocular 217 milliseconds
+mono_realtime.SLAM.TrackMonocular: 217 milliseconds
+		System::TrackMonocular GrabImageMonocular.Frame 25 milliseconds
+		System::TrackMonocular GrabImageMonocular.Track 177 milliseconds
+	System::TrackMonocular mpTracker->GrabImageMonocular 203 milliseconds
+mono_realtime.SLAM.TrackMonocular: 203 milliseconds
+		System::TrackMonocular GrabImageMonocular.Frame 26 milliseconds
+		System::TrackMonocular GrabImageMonocular.Track 180 milliseconds
+	System::TrackMonocular mpTracker->GrabImageMonocular 207 milliseconds
+mono_realtime.SLAM.TrackMonocular: 207 milliseconds
+		System::TrackMonocular GrabImageMonocular.Frame 26 milliseconds
+		System::TrackMonocular GrabImageMonocular.Track 183 milliseconds
+	System::TrackMonocular mpTracker->GrabImageMonocular 209 milliseconds
+mono_realtime.SLAM.TrackMonocular: 209 milliseconds
+		System::TrackMonocular GrabImageMonocular.Frame 25 milliseconds
+		System::TrackMonocular GrabImageMonocular.Track 179 milliseconds
+	System::TrackMonocular mpTracker->GrabImageMonocular 205 milliseconds
+mono_realtime.SLAM.TrackMonocular: 205 milliseconds
+		System::TrackMonocular GrabImageMonocular.Frame 26 milliseconds
+		System::TrackMonocular GrabImageMonocular.Track 185 milliseconds
+	System::TrackMonocular mpTracker->GrabImageMonocular 212 milliseconds
+mono_realtime.SLAM.TrackMonocular: 212 milliseconds
+		System::TrackMonocular GrabImageMonocular.Frame 27 milliseconds
+		System::TrackMonocular GrabImageMonocular.Track 187 milliseconds
+	System::TrackMonocular mpTracker->GrabImageMonocular 215 milliseconds
+mono_realtime.SLAM.TrackMonocular: 215 milliseconds
+		System::TrackMonocular GrabImageMonocular.Frame 25 milliseconds
+		System::TrackMonocular GrabImageMonocular.Track 185 milliseconds
+	System::TrackMonocular mpTracker->GrabImageMonocular 211 milliseconds
+mono_realtime.SLAM.TrackMonocular: 212 milliseconds
+		System::TrackMonocular GrabImageMonocular.Frame 25 milliseconds
+		System::TrackMonocular GrabImageMonocular.Track 185 milliseconds
+	System::TrackMonocular mpTracker->GrabImageMonocular 211 milliseconds
+mono_realtime.SLAM.TrackMonocular: 211 milliseconds
+		System::TrackMonocular GrabImageMonocular.Frame 26 milliseconds
+		System::TrackMonocular GrabImageMonocular.Track 193 milliseconds
+	System::TrackMonocular mpTracker->GrabImageMonocular 220 milliseconds
+mono_realtime.SLAM.TrackMonocular: 220 milliseconds
+		System::TrackMonocular GrabImageMonocular.Frame 27 milliseconds
+		System::TrackMonocular GrabImageMonocular.Track 197 milliseconds
+	System::TrackMonocular mpTracker->GrabImageMonocular 224 milliseconds
+mono_realtime.SLAM.TrackMonocular: 224 milliseconds
+		System::TrackMonocular GrabImageMonocular.Frame 25 milliseconds
+		System::TrackMonocular GrabImageMonocular.Track 175 milliseconds
+	System::TrackMonocular mpTracker->GrabImageMonocular 201 milliseconds
+mono_realtime.SLAM.TrackMonocular: 201 milliseconds
+		System::TrackMonocular GrabImageMonocular.Frame 25 milliseconds
+		System::TrackMonocular GrabImageMonocular.Track 182 milliseconds
+	System::TrackMonocular mpTracker->GrabImageMonocular 208 milliseconds
+mono_realtime.SLAM.TrackMonocular: 208 milliseconds

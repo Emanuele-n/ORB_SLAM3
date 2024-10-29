@@ -1,0 +1,21 @@
+mono_realtime main:
+// Initialize the SLAM system. It launches the Local Mapping, Loop Closing and Viewer threads.
+ORB_SLAM3::System SLAM(argv[1], argv[2], ORB_SLAM3::System::MONOCULAR, true);
+
+// Proccess the given monocular frame and optionally imu data
+// Input images: RGB (CV_8UC3) or grayscale (CV_8U). RGB is converted to grayscale.
+// Returns the camera pose (empty if tracking fails).
+Tcw = SLAM.TrackMonocular(frame, tframe);
+
+    // Preprocess the input and call Track(). Extract features and performs stereo matching.
+    Tcw = mpTracker->GrabImageMonocular(imToFeed,timestamp,filename);
+        
+        // Initializes the member variables of the Frame object, extracts ORB features from the input image, 
+        // and performs additional computations and assignments based on the extracted features and provided data.
+        mCurrentFrame = Frame(mImGray,timestamp,mpORBextractorLeft,mpORBVocabulary,mpCamera,mDistCoef,mbf,mThDepth);
+
+        // Main tracking function.
+        Track()
+
+    
+

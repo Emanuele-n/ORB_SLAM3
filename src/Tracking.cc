@@ -34,7 +34,6 @@
 #include <mutex>
 #include <chrono>
 
-
 using namespace std;
 
 namespace ORB_SLAM3
@@ -1564,7 +1563,8 @@ Sophus::SE3f Tracking::GrabImageRGBD(const cv::Mat &imRGB,const cv::Mat &imD, co
 
 
 Sophus::SE3f Tracking::GrabImageMonocular(const cv::Mat &im, const double &timestamp, string filename)
-{
+{   
+    auto start = chrono::steady_clock::now();
     mImGray = im;
     if(mImGray.channels()==3)
     {
@@ -1609,7 +1609,22 @@ Sophus::SE3f Tracking::GrabImageMonocular(const cv::Mat &im, const double &times
 #endif
 
     lastID = mCurrentFrame.mnId;
+
+    auto end = chrono::steady_clock::now();
+    auto duration = chrono::duration_cast<chrono::milliseconds>(end - start);
+
+    auto start2 = chrono::steady_clock::now();
     Track();
+    auto end2 = chrono::steady_clock::now();
+    auto duration2 = chrono::duration_cast<chrono::milliseconds>(end2 - start2);
+    ofstream logfile("log.txt", ios::app);
+    if (logfile.is_open()) {
+        logfile << "\t\tSystem::TrackMonocular GrabImageMonocular.Frame " << duration.count() << " milliseconds" << endl;
+        logfile << "\t\tSystem::TrackMonocular GrabImageMonocular.Track " << duration2.count() << " milliseconds" << endl;
+        logfile.close();
+    } else {
+        cerr << "Failed to open log file." << endl;
+    }
 
     return mCurrentFrame.GetPose();
 }
@@ -1792,7 +1807,14 @@ void Tracking::ResetFrameIMU()
 
 
 void Tracking::Track()
-{
+{   cout << "TRACK" << endl;
+    // Declare all the durations
+    auto duration_TrackOnly = chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - chrono::steady_clock::now());
+    auto duration_TrackLocalization = chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - chrono::steady_clock::now());
+    auto duration_UpdateDrawer = chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - chrono::steady_clock::now());
+    auto duration_NewKF = chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - chrono::steady_clock::now());
+    auto duration_ResetLost = chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - chrono::steady_clock::now());
+    auto duration_Initialization = chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - chrono::steady_clock::now());
 
     if (bStepByStep)
     {
@@ -1808,13 +1830,18 @@ void Tracking::Track()
         mpSystem->ResetActiveMap();
         return;
     }
-
+    auto start = chrono::steady_clock::now();
     Map* pCurrentMap = mpAtlas->GetCurrentMap();
     if(!pCurrentMap)
     {
         cout << "ERROR: There is not an active map in the atlas" << endl;
     }
+    auto end = chrono::steady_clock::now();
+    auto duration_GetCurrentMap = chrono::duration_cast<chrono::milliseconds>(end - start);
+    // print the duration of the function
+    cout << "GetCurrentMap: " << duration_GetCurrentMap.count() << " milliseconds" << endl;
 
+    auto start2 = chrono::steady_clock::now();
     if(mState!=NO_IMAGES_YET)
     {
         if(mLastFrame.mTimeStamp>mCurrentFrame.mTimeStamp)
@@ -1825,39 +1852,43 @@ void Tracking::Track()
             CreateMapInAtlas();
             return;
         }
-        else if(mCurrentFrame.mTimeStamp>mLastFrame.mTimeStamp+1.0)
-        {
-            // cout << mCurrentFrame.mTimeStamp << ", " << mLastFrame.mTimeStamp << endl;
-            // cout << "id last: " << mLastFrame.mnId << "    id curr: " << mCurrentFrame.mnId << endl;
-            if(mpAtlas->isInertial())
-            {
+        // else if(mCurrentFrame.mTimeStamp>mLastFrame.mTimeStamp+1.0)
+        // {
+        //     // cout << mCurrentFrame.mTimeStamp << ", " << mLastFrame.mTimeStamp << endl;
+        //     // cout << "id last: " << mLastFrame.mnId << "    id curr: " << mCurrentFrame.mnId << endl;
+        //     if(mpAtlas->isInertial())
+        //     {
 
-                if(mpAtlas->isImuInitialized())
-                {
-                    cout << "Timestamp jump detected. State set to LOST. Reseting IMU integration..." << endl;
-                    if(!pCurrentMap->GetIniertialBA2())
-                    {
-                        mpSystem->ResetActiveMap();
-                    }
-                    else
-                    {
-                        CreateMapInAtlas();
-                    }
-                }
-                else
-                {
-                    cout << "Timestamp jump detected, before IMU initialization. Reseting..." << endl;
-                    mpSystem->ResetActiveMap();
-                }
-                return;
-            }
+        //         if(mpAtlas->isImuInitialized())
+        //         {
+        //             cout << "Timestamp jump detected. State set to LOST. Reseting IMU integration..." << endl;
+        //             if(!pCurrentMap->GetIniertialBA2())
+        //             {
+        //                 mpSystem->ResetActiveMap();
+        //             }
+        //             else
+        //             {
+        //                 CreateMapInAtlas();
+        //             }
+        //         }
+        //         else
+        //         {
+        //             cout << "Timestamp jump detected, before IMU initialization. Reseting..." << endl;
+        //             mpSystem->ResetActiveMap();
+        //         }
+        //         return;
+        //     }
 
-        }
+        // }
     }
+    auto end2 = chrono::steady_clock::now();
+    auto duration_CreateMapInAtlas = chrono::duration_cast<chrono::milliseconds>(end2 - start2);
+    // print the duration of the function
+    cout << "CheckTimestamp: " << duration_CreateMapInAtlas.count() << " milliseconds" << endl;
 
 
-    if ((mSensor == System::IMU_MONOCULAR || mSensor == System::IMU_STEREO || mSensor == System::IMU_RGBD) && mpLastKeyFrame)
-        mCurrentFrame.SetNewBias(mpLastKeyFrame->GetImuBias());
+    // if ((mSensor == System::IMU_MONOCULAR || mSensor == System::IMU_STEREO || mSensor == System::IMU_RGBD) && mpLastKeyFrame)
+    //     mCurrentFrame.SetNewBias(mpLastKeyFrame->GetImuBias());
 
     if(mState==NO_IMAGES_YET)
     {
@@ -1866,20 +1897,20 @@ void Tracking::Track()
 
     mLastProcessedState=mState;
 
-    if ((mSensor == System::IMU_MONOCULAR || mSensor == System::IMU_STEREO || mSensor == System::IMU_RGBD) && !mbCreatedMap)
-    {
-#ifdef REGISTER_TIMES
-        std::chrono::steady_clock::time_point time_StartPreIMU = std::chrono::steady_clock::now();
-#endif
-        PreintegrateIMU();
-#ifdef REGISTER_TIMES
-        std::chrono::steady_clock::time_point time_EndPreIMU = std::chrono::steady_clock::now();
+//     if ((mSensor == System::IMU_MONOCULAR || mSensor == System::IMU_STEREO || mSensor == System::IMU_RGBD) && !mbCreatedMap)
+//     {
+// #ifdef REGISTER_TIMES
+//         std::chrono::steady_clock::time_point time_StartPreIMU = std::chrono::steady_clock::now();
+// #endif
+//         PreintegrateIMU();
+// #ifdef REGISTER_TIMES
+//         std::chrono::steady_clock::time_point time_EndPreIMU = std::chrono::steady_clock::now();
 
-        double timePreImu = std::chrono::duration_cast<std::chrono::duration<double,std::milli> >(time_EndPreIMU - time_StartPreIMU).count();
-        vdIMUInteg_ms.push_back(timePreImu);
-#endif
+//         double timePreImu = std::chrono::duration_cast<std::chrono::duration<double,std::milli> >(time_EndPreIMU - time_StartPreIMU).count();
+//         vdIMUInteg_ms.push_back(timePreImu);
+// #endif
 
-    }
+//     }
     mbCreatedMap = false;
 
     // Get Map Mutex -> Map cannot be changed
@@ -1887,6 +1918,7 @@ void Tracking::Track()
 
     mbMapUpdated = false;
 
+    auto start3 = chrono::steady_clock::now();
     int nCurMapChangeIndex = pCurrentMap->GetMapChangeIndex();
     int nMapChangeIndex = pCurrentMap->GetLastMapChange();
     if(nCurMapChangeIndex>nMapChangeIndex)
@@ -1894,10 +1926,13 @@ void Tracking::Track()
         pCurrentMap->SetLastMapChange(nCurMapChangeIndex);
         mbMapUpdated = true;
     }
-
+    auto end3 = chrono::steady_clock::now();
+    auto duration_LastChange = chrono::duration_cast<chrono::milliseconds>(end3 - start3);
+    // print the duration of the function
+    cout << "GetLastMapChange: " << duration_LastChange.count() << " milliseconds" << endl;
 
     if(mState==NOT_INITIALIZED)
-    {
+    {   auto start4 = chrono::steady_clock::now();
         if(mSensor==System::STEREO || mSensor==System::RGBD || mSensor==System::IMU_STEREO || mSensor==System::IMU_RGBD)
         {
             StereoInitialization();
@@ -1919,6 +1954,10 @@ void Tracking::Track()
         {
             mnFirstFrameId = mCurrentFrame.mnId;
         }
+        auto end4 = chrono::steady_clock::now();
+        duration_Initialization = chrono::duration_cast<chrono::milliseconds>(end4 - start4);
+        // print the duration of the function
+        cout << "Initialization: " << duration_Initialization.count() << " milliseconds" << endl;
     }
     else
     {
@@ -1930,6 +1969,7 @@ void Tracking::Track()
 #endif
 
         // Initial camera pose estimation using motion model or relocalization (if tracking is lost)
+        auto start5 = chrono::steady_clock::now();
         if(!mbOnlyTracking)
         {
 
@@ -2031,10 +2071,14 @@ void Tracking::Track()
                     return;
                 }
             }
-
+            auto end5 = chrono::steady_clock::now();
+            duration_TrackOnly = chrono::duration_cast<chrono::milliseconds>(end5 - start5);
+            // print the duration of the function
+            cout << "TrackOnly: " << duration_TrackOnly.count() << " milliseconds" << endl;
         }
         else
         {
+            auto start6 = chrono::steady_clock::now();
             // Localization Mode: Local Mapping is deactivated (TODO Not available in inertial mode)
             if(mState==LOST)
             {
@@ -2103,7 +2147,12 @@ void Tracking::Track()
                     bOK = bOKReloc || bOKMM;
                 }
             }
+            auto end6 = chrono::steady_clock::now();
+            duration_TrackLocalization = chrono::duration_cast<chrono::milliseconds>(end6 - start6);
+            // print the duration of the function
+            cout << "TrackLocalization: " << duration_TrackLocalization.count() << " milliseconds" << endl;
         }
+
 
         if(!mCurrentFrame.mpReferenceKF)
             mCurrentFrame.mpReferenceKF = mpReferenceKF;
@@ -2143,18 +2192,18 @@ void Tracking::Track()
             mState = OK;
         else if (mState == OK)
         {
-            if (mSensor == System::IMU_MONOCULAR || mSensor == System::IMU_STEREO || mSensor == System::IMU_RGBD)
-            {
-                Verbose::PrintMess("Track lost for less than one second...", Verbose::VERBOSITY_NORMAL);
-                if(!pCurrentMap->isImuInitialized() || !pCurrentMap->GetIniertialBA2())
-                {
-                    cout << "IMU is not or recently initialized. Reseting active map..." << endl;
-                    mpSystem->ResetActiveMap();
-                }
+            // if (mSensor == System::IMU_MONOCULAR || mSensor == System::IMU_STEREO || mSensor == System::IMU_RGBD)
+            // {
+            //     Verbose::PrintMess("Track lost for less than one second...", Verbose::VERBOSITY_NORMAL);
+            //     if(!pCurrentMap->isImuInitialized() || !pCurrentMap->GetIniertialBA2())
+            //     {
+            //         cout << "IMU is not or recently initialized. Reseting active map..." << endl;
+            //         mpSystem->ResetActiveMap();
+            //     }
 
-                mState=RECENTLY_LOST;
-            }
-            else
+            //     mState=RECENTLY_LOST;
+            // }
+            // else
                 mState=RECENTLY_LOST; // visual to lost
 
             /*if(mCurrentFrame.mnId>mnLastRelocFrameId+mMaxFrames)
@@ -2163,18 +2212,18 @@ void Tracking::Track()
             //}
         }
 
-        // Save frame if recent relocalization, since they are used for IMU reset (as we are making copy, it shluld be once mCurrFrame is completely modified)
-        if((mCurrentFrame.mnId<(mnLastRelocFrameId+mnFramesToResetIMU)) && (mCurrentFrame.mnId > mnFramesToResetIMU) &&
-           (mSensor == System::IMU_MONOCULAR || mSensor == System::IMU_STEREO || mSensor == System::IMU_RGBD) && pCurrentMap->isImuInitialized())
-        {
-            // TODO check this situation
-            Verbose::PrintMess("Saving pointer to frame. imu needs reset...", Verbose::VERBOSITY_NORMAL);
-            Frame* pF = new Frame(mCurrentFrame);
-            pF->mpPrevFrame = new Frame(mLastFrame);
+        // // Save frame if recent relocalization, since they are used for IMU reset (as we are making copy, it shluld be once mCurrFrame is completely modified)
+        // if((mCurrentFrame.mnId<(mnLastRelocFrameId+mnFramesToResetIMU)) && (mCurrentFrame.mnId > mnFramesToResetIMU) &&
+        //    (mSensor == System::IMU_MONOCULAR || mSensor == System::IMU_STEREO || mSensor == System::IMU_RGBD) && pCurrentMap->isImuInitialized())
+        // {
+        //     // TODO check this situation
+        //     Verbose::PrintMess("Saving pointer to frame. imu needs reset...", Verbose::VERBOSITY_NORMAL);
+        //     Frame* pF = new Frame(mCurrentFrame);
+        //     pF->mpPrevFrame = new Frame(mLastFrame);
 
-            // Load preintegration
-            pF->mpImuPreintegratedFrame = new IMU::Preintegrated(mCurrentFrame.mpImuPreintegratedFrame);
-        }
+        //     // Load preintegration
+        //     pF->mpImuPreintegratedFrame = new IMU::Preintegrated(mCurrentFrame.mpImuPreintegratedFrame);
+        // }
 
         if(pCurrentMap->isImuInitialized())
         {
@@ -2196,12 +2245,18 @@ void Tracking::Track()
         double timeLMTrack = std::chrono::duration_cast<std::chrono::duration<double,std::milli> >(time_EndLMTrack - time_StartLMTrack).count();
         vdLMTrack_ms.push_back(timeLMTrack);
 #endif
-
+        auto start7 = chrono::steady_clock::now();
         // Update drawer
         mpFrameDrawer->Update(this);
         if(mCurrentFrame.isSet())
             mpMapDrawer->SetCurrentCameraPose(mCurrentFrame.GetPose());
 
+        auto end7 = chrono::steady_clock::now();
+        duration_UpdateDrawer = chrono::duration_cast<chrono::milliseconds>(end7 - start7);
+        // print the duration of the function
+        cout << "UpdateDrawer: " << duration_UpdateDrawer.count() << " milliseconds" << endl;
+
+        auto start8 = chrono::steady_clock::now();
         if(bOK || mState==RECENTLY_LOST)
         {
             // Update motion model
@@ -2266,8 +2321,13 @@ void Tracking::Track()
                     mCurrentFrame.mvpMapPoints[i]=static_cast<MapPoint*>(NULL);
             }
         }
+        auto end8 = chrono::steady_clock::now();
+        duration_NewKF = chrono::duration_cast<chrono::milliseconds>(end8 - start8);
+        // print the duration of the function
+        cout << "NewKF: " << duration_NewKF.count() << " milliseconds" << endl;
 
         // Reset if the camera get lost soon after initialization
+        auto start9 = chrono::steady_clock::now();
         if(mState==LOST)
         {
             if(pCurrentMap->KeyFramesInMap()<=10)
@@ -2292,11 +2352,15 @@ void Tracking::Track()
             mCurrentFrame.mpReferenceKF = mpReferenceKF;
 
         mLastFrame = Frame(mCurrentFrame);
+        auto end9 = chrono::steady_clock::now();
+        duration_ResetLost = chrono::duration_cast<chrono::milliseconds>(end9 - start9);
+        // print the duration of the function
+        cout << "ResetLost: " << duration_ResetLost.count() << " milliseconds" << endl;
     }
 
 
 
-
+    auto start10 = chrono::steady_clock::now();
     if(mState==OK || mState==RECENTLY_LOST)
     {
         // Store frame pose information to retrieve the complete camera trajectory afterwards.
@@ -2318,6 +2382,40 @@ void Tracking::Track()
         }
 
     }
+    auto end10 = chrono::steady_clock::now();
+    auto duration_StoreFrame = chrono::duration_cast<chrono::milliseconds>(end10 - start10);
+    // print the duration of the function
+    cout << "StoreFrame: " << duration_StoreFrame.count() << " milliseconds" << endl;
+
+    cout << "END TRACK" << endl;
+    // ofstream logfile("log.txt", ios::app);
+    // if (logfile.is_open()) {
+    //     logfile << "\t\t\tTracking::Track() durations:" << endl;
+    //     if (duration_GetCurrentMap.count() > 0)
+    //         logfile << "\t\t\t\tGetCurrentMap: " << duration_GetCurrentMap.count() << " ms" << endl;
+    //     if (duration_CreateMapInAtlas.count() > 0)
+    //         logfile << "\t\t\t\tCreateMapInAtlas: " << duration_CreateMapInAtlas.count() << " ms" << endl;
+    //     if (duration_LastChange.count() > 0)
+    //         logfile << "\t\t\t\tLastChange: " << duration_LastChange.count() << " ms" << endl;
+    //     if (duration_Initialization.count() > 0)
+    //         logfile << "\t\t\t\tInitialization: " << duration_Initialization.count() << " ms" << endl;
+    //     if (duration_TrackOnly.count() > 0)
+    //         logfile << "\t\t\t\tTrackOnly: " << duration_TrackOnly.count() << " ms" << endl;
+    //     if (duration_TrackLocalization.count() > 0)
+    //         logfile << "\t\t\t\tTrackLocalization: " << duration_TrackLocalization.count() << " ms" << endl;
+    //     if (duration_UpdateDrawer.count() > 0)
+    //         logfile << "\t\t\t\tUpdateDrawer: " << duration_UpdateDrawer.count() << " ms" << endl;
+    //     if (duration_NewKF.count() > 0)
+    //         logfile << "\t\t\t\tNewKF: " << duration_NewKF.count() << " ms" << endl;
+    //     if (duration_ResetLost.count() > 0)
+    //         logfile << "\t\t\t\tResetLost: " << duration_ResetLost.count() << " ms" << endl;
+    //     if (duration_StoreFrame.count() > 0)
+    //         logfile << "\t\t\t\tStoreFrame: " << duration_StoreFrame.count() << " ms" << endl;
+        
+    //     logfile.close();
+    // } else {
+    //     cerr << "Failed to open log file." << endl;
+    // }
 
 #ifdef REGISTER_LOOP
     if (Stop()) {
@@ -2446,7 +2544,8 @@ void Tracking::StereoInitialization()
 
 
 void Tracking::MonocularInitialization()
-{
+{   
+    cout << "MonocularInitialization: ready: " << mbReadyToInitializate << endl;
 
     if(!mbReadyToInitializate)
     {
@@ -2519,6 +2618,7 @@ void Tracking::MonocularInitialization()
             CreateInitialMapMonocular();
         }
     }
+    cout << "End MonocularInitialization" << endl;
 }
 
 
