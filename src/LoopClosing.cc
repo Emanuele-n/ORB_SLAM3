@@ -121,76 +121,76 @@ void LoopClosing::Run()
             {
                 if(mbMergeDetected)
                 {
-                    if ((mpTracker->mSensor==System::IMU_MONOCULAR || mpTracker->mSensor==System::IMU_STEREO || mpTracker->mSensor==System::IMU_RGBD) &&
-                        (!mpCurrentKF->GetMap()->isImuInitialized()))
+                    // if ((mpTracker->mSensor==System::IMU_MONOCULAR || mpTracker->mSensor==System::IMU_STEREO || mpTracker->mSensor==System::IMU_RGBD) &&
+                    //     (!mpCurrentKF->GetMap()->isImuInitialized()))
+                    // {
+                    //     cout << "IMU is not initilized, merge is aborted" << endl;
+                    // }
+                    // else
+                    // {
+                    Sophus::SE3d mTmw = mpMergeMatchedKF->GetPose().cast<double>();
+                    g2o::Sim3 gSmw2(mTmw.unit_quaternion(), mTmw.translation(), 1.0);
+                    Sophus::SE3d mTcw = mpCurrentKF->GetPose().cast<double>();
+                    g2o::Sim3 gScw1(mTcw.unit_quaternion(), mTcw.translation(), 1.0);
+                    g2o::Sim3 gSw2c = mg2oMergeSlw.inverse();
+                    g2o::Sim3 gSw1m = mg2oMergeSlw;
+
+                    mSold_new = (gSw2c * gScw1);
+
+
+                    if(mpCurrentKF->GetMap()->IsInertial() && mpMergeMatchedKF->GetMap()->IsInertial())
                     {
-                        cout << "IMU is not initilized, merge is aborted" << endl;
-                    }
-                    else
-                    {
-                        Sophus::SE3d mTmw = mpMergeMatchedKF->GetPose().cast<double>();
-                        g2o::Sim3 gSmw2(mTmw.unit_quaternion(), mTmw.translation(), 1.0);
-                        Sophus::SE3d mTcw = mpCurrentKF->GetPose().cast<double>();
-                        g2o::Sim3 gScw1(mTcw.unit_quaternion(), mTcw.translation(), 1.0);
-                        g2o::Sim3 gSw2c = mg2oMergeSlw.inverse();
-                        g2o::Sim3 gSw1m = mg2oMergeSlw;
-
-                        mSold_new = (gSw2c * gScw1);
-
-
-                        if(mpCurrentKF->GetMap()->IsInertial() && mpMergeMatchedKF->GetMap()->IsInertial())
-                        {
-                            cout << "Merge check transformation with IMU" << endl;
-                            if(mSold_new.scale()<0.90||mSold_new.scale()>1.1){
-                                mpMergeLastCurrentKF->SetErase();
-                                mpMergeMatchedKF->SetErase();
-                                mnMergeNumCoincidences = 0;
-                                mvpMergeMatchedMPs.clear();
-                                mvpMergeMPs.clear();
-                                mnMergeNumNotFound = 0;
-                                mbMergeDetected = false;
-                                Verbose::PrintMess("scale bad estimated. Abort merging", Verbose::VERBOSITY_NORMAL);
-                                continue;
-                            }
-                            // If inertial, force only yaw
-                            if ((mpTracker->mSensor==System::IMU_MONOCULAR || mpTracker->mSensor==System::IMU_STEREO || mpTracker->mSensor==System::IMU_RGBD) &&
-                                   mpCurrentKF->GetMap()->GetIniertialBA1())
-                            {
-                                Eigen::Vector3d phi = LogSO3(mSold_new.rotation().toRotationMatrix());
-                                phi(0)=0;
-                                phi(1)=0;
-                                mSold_new = g2o::Sim3(ExpSO3(phi),mSold_new.translation(),1.0);
-                            }
+                        cout << "Merge check transformation with IMU" << endl;
+                        if(mSold_new.scale()<0.90||mSold_new.scale()>1.1){
+                            mpMergeLastCurrentKF->SetErase();
+                            mpMergeMatchedKF->SetErase();
+                            mnMergeNumCoincidences = 0;
+                            mvpMergeMatchedMPs.clear();
+                            mvpMergeMPs.clear();
+                            mnMergeNumNotFound = 0;
+                            mbMergeDetected = false;
+                            Verbose::PrintMess("scale bad estimated. Abort merging", Verbose::VERBOSITY_NORMAL);
+                            continue;
                         }
-
-                        mg2oMergeSmw = gSmw2 * gSw2c * gScw1;
-
-                        mg2oMergeScw = mg2oMergeSlw;
-
-                        //mpTracker->SetStepByStep(true);
-
-                        Verbose::PrintMess("*Merge detected", Verbose::VERBOSITY_QUIET);
-
-#ifdef REGISTER_TIMES
-                        std::chrono::steady_clock::time_point time_StartMerge = std::chrono::steady_clock::now();
-
-                        nMerges += 1;
-#endif
-                        // TODO UNCOMMENT
-                        if (mpTracker->mSensor==System::IMU_MONOCULAR ||mpTracker->mSensor==System::IMU_STEREO || mpTracker->mSensor==System::IMU_RGBD)
-                            MergeLocal2();
-                        else
-                            MergeLocal();
-
-#ifdef REGISTER_TIMES
-                        std::chrono::steady_clock::time_point time_EndMerge = std::chrono::steady_clock::now();
-
-                        double timeMergeTotal = std::chrono::duration_cast<std::chrono::duration<double,std::milli> >(time_EndMerge - time_StartMerge).count();
-                        vdMergeTotal_ms.push_back(timeMergeTotal);
-#endif
-
-                        Verbose::PrintMess("Merge finished!", Verbose::VERBOSITY_QUIET);
+                        // // If inertial, force only yaw
+                        // if ((mpTracker->mSensor==System::IMU_MONOCULAR || mpTracker->mSensor==System::IMU_STEREO || mpTracker->mSensor==System::IMU_RGBD) &&
+                        //         mpCurrentKF->GetMap()->GetIniertialBA1())
+                        // {
+                        //     Eigen::Vector3d phi = LogSO3(mSold_new.rotation().toRotationMatrix());
+                        //     phi(0)=0;
+                        //     phi(1)=0;
+                        //     mSold_new = g2o::Sim3(ExpSO3(phi),mSold_new.translation(),1.0);
+                        // }
                     }
+
+                    mg2oMergeSmw = gSmw2 * gSw2c * gScw1;
+
+                    mg2oMergeScw = mg2oMergeSlw;
+
+                    //mpTracker->SetStepByStep(true);
+
+                    Verbose::PrintMess("*Merge detected", Verbose::VERBOSITY_QUIET);
+
+#ifdef REGISTER_TIMES
+                    std::chrono::steady_clock::time_point time_StartMerge = std::chrono::steady_clock::now();
+
+                    nMerges += 1;
+#endif
+                    // TODO UNCOMMENT
+                    // if (mpTracker->mSensor==System::IMU_MONOCULAR ||mpTracker->mSensor==System::IMU_STEREO || mpTracker->mSensor==System::IMU_RGBD)
+                    //     MergeLocal2();
+                    // else
+                    MergeLocal();
+
+#ifdef REGISTER_TIMES
+                    std::chrono::steady_clock::time_point time_EndMerge = std::chrono::steady_clock::now();
+
+                    double timeMergeTotal = std::chrono::duration_cast<std::chrono::duration<double,std::milli> >(time_EndMerge - time_StartMerge).count();
+                    vdMergeTotal_ms.push_back(timeMergeTotal);
+#endif
+
+                    Verbose::PrintMess("Merge finished!", Verbose::VERBOSITY_QUIET);
+                    // }
 
                     vdPR_CurrentTime.push_back(mpCurrentKF->mTimeStamp);
                     vdPR_MatchedTime.push_back(mpMergeMatchedKF->mTimeStamp);
@@ -241,15 +241,15 @@ void LoopClosing::Run()
                         {
                             if(mpCurrentKF->GetMap()->IsInertial())
                             {
-                                // If inertial, force only yaw
-                                if ((mpTracker->mSensor==System::IMU_MONOCULAR ||mpTracker->mSensor==System::IMU_STEREO || mpTracker->mSensor==System::IMU_RGBD) &&
-                                        mpCurrentKF->GetMap()->GetIniertialBA2())
-                                {
-                                    phi(0)=0;
-                                    phi(1)=0;
-                                    g2oSww_new = g2o::Sim3(ExpSO3(phi),g2oSww_new.translation(),1.0);
-                                    mg2oLoopScw = g2oTwc.inverse()*g2oSww_new;
-                                }
+                                // // If inertial, force only yaw
+                                // if ((mpTracker->mSensor==System::IMU_MONOCULAR ||mpTracker->mSensor==System::IMU_STEREO || mpTracker->mSensor==System::IMU_RGBD) &&
+                                //         mpCurrentKF->GetMap()->GetIniertialBA2())
+                                // {
+                                //     phi(0)=0;
+                                //     phi(1)=0;
+                                //     g2oSww_new = g2o::Sim3(ExpSO3(phi),g2oSww_new.translation(),1.0);
+                                //     mg2oLoopScw = g2oTwc.inverse()*g2oSww_new;
+                                // }
                             }
 
                         }
@@ -345,13 +345,13 @@ bool LoopClosing::NewDetectCommonRegions()
         return false;
     }
 
-    if(mpTracker->mSensor == System::STEREO && mpLastMap->GetAllKeyFrames().size() < 5) //12
-    {
-        // cout << "LoopClousure: Stereo KF inserted without check: " << mpCurrentKF->mnId << endl;
-        mpKeyFrameDB->add(mpCurrentKF);
-        mpCurrentKF->SetErase();
-        return false;
-    }
+    // if(mpTracker->mSensor == System::STEREO && mpLastMap->GetAllKeyFrames().size() < 5) //12
+    // {
+    //     // cout << "LoopClousure: Stereo KF inserted without check: " << mpCurrentKF->mnId << endl;
+    //     mpKeyFrameDB->add(mpCurrentKF);
+    //     mpCurrentKF->SetErase();
+    //     return false;
+    // }
 
     if(mpLastMap->GetAllKeyFrames().size() < 12)
     {
@@ -551,8 +551,8 @@ bool LoopClosing::DetectAndReffineSim3FromLastKF(KeyFrame* pCurrentKF, KeyFrame*
         Eigen::Matrix<double, 7, 7> mHessian7x7;
 
         bool bFixedScale = mbFixScale;       // TODO CHECK; Solo para el monocular inertial
-        if(mpTracker->mSensor==System::IMU_MONOCULAR && !pCurrentKF->GetMap()->GetIniertialBA2())
-            bFixedScale=false;
+        // if(mpTracker->mSensor==System::IMU_MONOCULAR && !pCurrentKF->GetMap()->GetIniertialBA2())
+        //     bFixedScale=false;
         int numOptMatches = Optimizer::OptimizeSim3(mpCurrentKF, pMatchedKF, vpMatchedMPs, gScm, 10, bFixedScale, mHessian7x7, true);
 
         //Verbose::PrintMess("Sim3 reffine: There are " + to_string(numOptMatches) + " matches after of the optimization ", Verbose::VERBOSITY_DEBUG);
@@ -692,8 +692,8 @@ bool LoopClosing::DetectCommonRegionsFromBoW(std::vector<KeyFrame*> &vpBowCand, 
         {
             // Geometric validation
             bool bFixedScale = mbFixScale;
-            if(mpTracker->mSensor==System::IMU_MONOCULAR && !mpCurrentKF->GetMap()->GetIniertialBA2())
-                bFixedScale=false;
+            // if(mpTracker->mSensor==System::IMU_MONOCULAR && !mpCurrentKF->GetMap()->GetIniertialBA2())
+            //     bFixedScale=false;
 
             Sim3Solver solver = Sim3Solver(mpCurrentKF, pMostBoWMatchesKF, vpMatchedPoints, bFixedScale, vpKeyFrameMatchedMP);
             solver.SetRansacParameters(0.99, nBoWInliers, 300); // at least 15 inliers
@@ -761,8 +761,8 @@ bool LoopClosing::DetectCommonRegionsFromBoW(std::vector<KeyFrame*> &vpBowCand, 
                     Eigen::Matrix<double, 7, 7> mHessian7x7;
 
                     bool bFixedScale = mbFixScale;
-                    if(mpTracker->mSensor==System::IMU_MONOCULAR && !mpCurrentKF->GetMap()->GetIniertialBA2())
-                        bFixedScale=false;
+                    // if(mpTracker->mSensor==System::IMU_MONOCULAR && !mpCurrentKF->GetMap()->GetIniertialBA2())
+                    //     bFixedScale=false;
 
                     int numOptMatches = Optimizer::OptimizeSim3(mpCurrentKF, pKFi, vpMatchedMP, gScm, 10, mbFixScale, mHessian7x7, true);
 
@@ -1163,8 +1163,8 @@ void LoopClosing::CorrectLoop()
     // Optimize graph
     bool bFixedScale = mbFixScale;
     // TODO CHECK; Solo para el monocular inertial
-    if(mpTracker->mSensor==System::IMU_MONOCULAR && !mpCurrentKF->GetMap()->GetIniertialBA2())
-        bFixedScale=false;
+    // if(mpTracker->mSensor==System::IMU_MONOCULAR && !mpCurrentKF->GetMap()->GetIniertialBA2())
+    //     bFixedScale=false;
 
 #ifdef REGISTER_TIMES
         std::chrono::steady_clock::time_point time_EndFusion = std::chrono::steady_clock::now();
@@ -1618,14 +1618,14 @@ void LoopClosing::MergeLocal()
     vpMergeConnectedKFs.clear();
     std::copy(spLocalWindowKFs.begin(), spLocalWindowKFs.end(), std::back_inserter(vpLocalCurrentWindowKFs));
     std::copy(spMergeConnectedKFs.begin(), spMergeConnectedKFs.end(), std::back_inserter(vpMergeConnectedKFs));
-    if (mpTracker->mSensor==System::IMU_MONOCULAR || mpTracker->mSensor==System::IMU_STEREO || mpTracker->mSensor==System::IMU_RGBD)
-    {
-        Optimizer::MergeInertialBA(mpCurrentKF,mpMergeMatchedKF,&bStop, pCurrentMap,vCorrectedSim3);
-    }
-    else
-    {
-        Optimizer::LocalBundleAdjustment(mpCurrentKF, vpLocalCurrentWindowKFs, vpMergeConnectedKFs,&bStop);
-    }
+    // if (mpTracker->mSensor==System::IMU_MONOCULAR || mpTracker->mSensor==System::IMU_STEREO || mpTracker->mSensor==System::IMU_RGBD)
+    // {
+    //     Optimizer::MergeInertialBA(mpCurrentKF,mpMergeMatchedKF,&bStop, pCurrentMap,vCorrectedSim3);
+    // }
+    // else
+    // {
+    Optimizer::LocalBundleAdjustment(mpCurrentKF, vpLocalCurrentWindowKFs, vpMergeConnectedKFs,&bStop);
+    // }
 
 #ifdef REGISTER_TIMES
     std::chrono::steady_clock::time_point time_EndWeldingBA = std::chrono::steady_clock::now();
@@ -1779,288 +1779,6 @@ void LoopClosing::MergeLocal()
 
 }
 
-
-void LoopClosing::MergeLocal2()
-{
-    //cout << "Merge detected!!!!" << endl;
-
-    int numTemporalKFs = 11; //TODO (set by parameter): Temporal KFs in the local window if the map is inertial.
-
-    //Relationship to rebuild the essential graph, it is used two times, first in the local window and later in the rest of the map
-    KeyFrame* pNewChild;
-    KeyFrame* pNewParent;
-
-    vector<KeyFrame*> vpLocalCurrentWindowKFs;
-    vector<KeyFrame*> vpMergeConnectedKFs;
-
-    KeyFrameAndPose CorrectedSim3, NonCorrectedSim3;
-    // NonCorrectedSim3[mpCurrentKF]=mg2oLoopScw;
-
-    // Flag that is true only when we stopped a running BA, in this case we need relaunch at the end of the merge
-    bool bRelaunchBA = false;
-
-    //cout << "Check Full Bundle Adjustment" << endl;
-    // If a Global Bundle Adjustment is running, abort it
-    if(isRunningGBA())
-    {
-        unique_lock<mutex> lock(mMutexGBA);
-        mbStopGBA = true;
-
-        mnFullBAIdx++;
-
-        if(mpThreadGBA)
-        {
-            mpThreadGBA->detach();
-            delete mpThreadGBA;
-        }
-        bRelaunchBA = true;
-    }
-
-
-    //cout << "Request Stop Local Mapping" << endl;
-    mpLocalMapper->RequestStop();
-    // Wait until Local Mapping has effectively stopped
-    while(!mpLocalMapper->isStopped())
-    {
-        usleep(1000);
-    }
-    //cout << "Local Map stopped" << endl;
-
-    Map* pCurrentMap = mpCurrentKF->GetMap();
-    Map* pMergeMap = mpMergeMatchedKF->GetMap();
-
-    {
-        float s_on = mSold_new.scale();
-        Sophus::SE3f T_on(mSold_new.rotation().cast<float>(), mSold_new.translation().cast<float>());
-
-        unique_lock<mutex> lock(mpAtlas->GetCurrentMap()->mMutexMapUpdate);
-
-        //cout << "KFs before empty: " << mpAtlas->GetCurrentMap()->KeyFramesInMap() << endl;
-        mpLocalMapper->EmptyQueue();
-        //cout << "KFs after empty: " << mpAtlas->GetCurrentMap()->KeyFramesInMap() << endl;
-
-        std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();
-        //cout << "updating active map to merge reference" << endl;
-        //cout << "curr merge KF id: " << mpCurrentKF->mnId << endl;
-        //cout << "curr tracking KF id: " << mpTracker->GetLastKeyFrame()->mnId << endl;
-        bool bScaleVel=false;
-        if(s_on!=1)
-            bScaleVel=true;
-        mpAtlas->GetCurrentMap()->ApplyScaledRotation(T_on,s_on,bScaleVel);
-        mpTracker->UpdateFrameIMU(s_on,mpCurrentKF->GetImuBias(),mpTracker->GetLastKeyFrame());
-
-        std::chrono::steady_clock::time_point t3 = std::chrono::steady_clock::now();
-    }
-
-    const int numKFnew=pCurrentMap->KeyFramesInMap();
-
-    if((mpTracker->mSensor==System::IMU_MONOCULAR || mpTracker->mSensor==System::IMU_STEREO || mpTracker->mSensor==System::IMU_RGBD)
-       && !pCurrentMap->GetIniertialBA2()){
-        // Map is not completly initialized
-        Eigen::Vector3d bg, ba;
-        bg << 0., 0., 0.;
-        ba << 0., 0., 0.;
-        Optimizer::InertialOptimization(pCurrentMap,bg,ba);
-        IMU::Bias b (ba[0],ba[1],ba[2],bg[0],bg[1],bg[2]);
-        unique_lock<mutex> lock(mpAtlas->GetCurrentMap()->mMutexMapUpdate);
-        mpTracker->UpdateFrameIMU(1.0f,b,mpTracker->GetLastKeyFrame());
-
-        // Set map initialized
-        pCurrentMap->SetIniertialBA2();
-        pCurrentMap->SetIniertialBA1();
-        pCurrentMap->SetImuInitialized();
-
-    }
-
-
-    //cout << "MergeMap init ID: " << pMergeMap->GetInitKFid() << "       CurrMap init ID: " << pCurrentMap->GetInitKFid() << endl;
-
-    // Load KFs and MPs from merge map
-    //cout << "updating current map" << endl;
-    {
-        // Get Merge Map Mutex (This section stops tracking!!)
-        unique_lock<mutex> currentLock(pCurrentMap->mMutexMapUpdate); // We update the current map with the Merge information
-        unique_lock<mutex> mergeLock(pMergeMap->mMutexMapUpdate); // We remove the Kfs and MPs in the merged area from the old map
-
-
-        vector<KeyFrame*> vpMergeMapKFs = pMergeMap->GetAllKeyFrames();
-        vector<MapPoint*> vpMergeMapMPs = pMergeMap->GetAllMapPoints();
-
-
-        for(KeyFrame* pKFi : vpMergeMapKFs)
-        {
-            if(!pKFi || pKFi->isBad() || pKFi->GetMap() != pMergeMap)
-            {
-                continue;
-            }
-
-            // Make sure connections are updated
-            pKFi->UpdateMap(pCurrentMap);
-            pCurrentMap->AddKeyFrame(pKFi);
-            pMergeMap->EraseKeyFrame(pKFi);
-        }
-
-        for(MapPoint* pMPi : vpMergeMapMPs)
-        {
-            if(!pMPi || pMPi->isBad() || pMPi->GetMap() != pMergeMap)
-                continue;
-
-            pMPi->UpdateMap(pCurrentMap);
-            pCurrentMap->AddMapPoint(pMPi);
-            pMergeMap->EraseMapPoint(pMPi);
-        }
-
-        // Save non corrected poses (already merged maps)
-        vector<KeyFrame*> vpKFs = pCurrentMap->GetAllKeyFrames();
-        for(KeyFrame* pKFi : vpKFs)
-        {
-            Sophus::SE3d Tiw = (pKFi->GetPose()).cast<double>();
-            g2o::Sim3 g2oSiw(Tiw.unit_quaternion(),Tiw.translation(),1.0);
-            NonCorrectedSim3[pKFi]=g2oSiw;
-        }
-    }
-
-    //cout << "MergeMap init ID: " << pMergeMap->GetInitKFid() << "       CurrMap init ID: " << pCurrentMap->GetInitKFid() << endl;
-
-    //cout << "end updating current map" << endl;
-
-    // Critical zone
-    //bool good = pCurrentMap->CheckEssentialGraph();
-    /*if(!good)
-        cout << "BAD ESSENTIAL GRAPH!!" << endl;*/
-
-    //cout << "Update essential graph" << endl;
-    // mpCurrentKF->UpdateConnections(); // to put at false mbFirstConnection
-    pMergeMap->GetOriginKF()->SetFirstConnection(false);
-    pNewChild = mpMergeMatchedKF->GetParent(); // Old parent, it will be the new child of this KF
-    pNewParent = mpMergeMatchedKF; // Old child, now it will be the parent of its own parent(we need eliminate this KF from children list in its old parent)
-    mpMergeMatchedKF->ChangeParent(mpCurrentKF);
-    while(pNewChild)
-    {
-        pNewChild->EraseChild(pNewParent); // We remove the relation between the old parent and the new for avoid loop
-        KeyFrame * pOldParent = pNewChild->GetParent();
-        pNewChild->ChangeParent(pNewParent);
-        pNewParent = pNewChild;
-        pNewChild = pOldParent;
-
-    }
-
-
-    //cout << "MergeMap init ID: " << pMergeMap->GetInitKFid() << "       CurrMap init ID: " << pCurrentMap->GetInitKFid() << endl;
-
-    //cout << "end update essential graph" << endl;
-
-    /*good = pCurrentMap->CheckEssentialGraph();
-    if(!good)
-        cout << "BAD ESSENTIAL GRAPH 1!!" << endl;*/
-
-    //cout << "Update relationship between KFs" << endl;
-    vector<MapPoint*> vpCheckFuseMapPoint; // MapPoint vector from current map to allow to fuse duplicated points with the old map (merge)
-    vector<KeyFrame*> vpCurrentConnectedKFs;
-
-    mvpMergeConnectedKFs.push_back(mpMergeMatchedKF);
-    vector<KeyFrame*> aux = mpMergeMatchedKF->GetVectorCovisibleKeyFrames();
-    mvpMergeConnectedKFs.insert(mvpMergeConnectedKFs.end(), aux.begin(), aux.end());
-    if (mvpMergeConnectedKFs.size()>6)
-        mvpMergeConnectedKFs.erase(mvpMergeConnectedKFs.begin()+6,mvpMergeConnectedKFs.end());
-    /*mvpMergeConnectedKFs = mpMergeMatchedKF->GetVectorCovisibleKeyFrames();
-    mvpMergeConnectedKFs.push_back(mpMergeMatchedKF);*/
-
-    mpCurrentKF->UpdateConnections();
-    vpCurrentConnectedKFs.push_back(mpCurrentKF);
-    /*vpCurrentConnectedKFs = mpCurrentKF->GetVectorCovisibleKeyFrames();
-    vpCurrentConnectedKFs.push_back(mpCurrentKF);*/
-    aux = mpCurrentKF->GetVectorCovisibleKeyFrames();
-    vpCurrentConnectedKFs.insert(vpCurrentConnectedKFs.end(), aux.begin(), aux.end());
-    if (vpCurrentConnectedKFs.size()>6)
-        vpCurrentConnectedKFs.erase(vpCurrentConnectedKFs.begin()+6,vpCurrentConnectedKFs.end());
-
-    set<MapPoint*> spMapPointMerge;
-    for(KeyFrame* pKFi : mvpMergeConnectedKFs)
-    {
-        set<MapPoint*> vpMPs = pKFi->GetMapPoints();
-        spMapPointMerge.insert(vpMPs.begin(),vpMPs.end());
-        if(spMapPointMerge.size()>1000)
-            break;
-    }
-
-    /*cout << "vpCurrentConnectedKFs.size() " << vpCurrentConnectedKFs.size() << endl;
-    cout << "mvpMergeConnectedKFs.size() " << mvpMergeConnectedKFs.size() << endl;
-    cout << "spMapPointMerge.size() " << spMapPointMerge.size() << endl;*/
-
-
-    vpCheckFuseMapPoint.reserve(spMapPointMerge.size());
-    std::copy(spMapPointMerge.begin(), spMapPointMerge.end(), std::back_inserter(vpCheckFuseMapPoint));
-    //cout << "Finished to update relationship between KFs" << endl;
-
-    //cout << "MergeMap init ID: " << pMergeMap->GetInitKFid() << "       CurrMap init ID: " << pCurrentMap->GetInitKFid() << endl;
-
-    /*good = pCurrentMap->CheckEssentialGraph();
-    if(!good)
-        cout << "BAD ESSENTIAL GRAPH 2!!" << endl;*/
-
-    //cout << "start SearchAndFuse" << endl;
-    SearchAndFuse(vpCurrentConnectedKFs, vpCheckFuseMapPoint);
-    //cout << "end SearchAndFuse" << endl;
-
-    //cout << "MergeMap init ID: " << pMergeMap->GetInitKFid() << "       CurrMap init ID: " << pCurrentMap->GetInitKFid() << endl;
-
-    /*good = pCurrentMap->CheckEssentialGraph();
-    if(!good)
-        cout << "BAD ESSENTIAL GRAPH 3!!" << endl;
-
-    cout << "Init to update connections" << endl;*/
-
-
-    for(KeyFrame* pKFi : vpCurrentConnectedKFs)
-    {
-        if(!pKFi || pKFi->isBad())
-            continue;
-
-        pKFi->UpdateConnections();
-    }
-    for(KeyFrame* pKFi : mvpMergeConnectedKFs)
-    {
-        if(!pKFi || pKFi->isBad())
-            continue;
-
-        pKFi->UpdateConnections();
-    }
-    //cout << "end update connections" << endl;
-
-    //cout << "MergeMap init ID: " << pMergeMap->GetInitKFid() << "       CurrMap init ID: " << pCurrentMap->GetInitKFid() << endl;
-
-    /*good = pCurrentMap->CheckEssentialGraph();
-    if(!good)
-        cout << "BAD ESSENTIAL GRAPH 4!!" << endl;*/
-
-    // TODO Check: If new map is too small, we suppose that not informaiton can be propagated from new to old map
-    if (numKFnew<10){
-        mpLocalMapper->Release();
-        return;
-    }
-
-    /*good = pCurrentMap->CheckEssentialGraph();
-    if(!good)
-        cout << "BAD ESSENTIAL GRAPH 5!!" << endl;*/
-
-    // Perform BA
-    bool bStopFlag=false;
-    KeyFrame* pCurrKF = mpTracker->GetLastKeyFrame();
-    //cout << "start MergeInertialBA" << endl;
-    Optimizer::MergeInertialBA(pCurrKF, mpMergeMatchedKF, &bStopFlag, pCurrentMap,CorrectedSim3);
-    //cout << "end MergeInertialBA" << endl;
-
-    /*good = pCurrentMap->CheckEssentialGraph();
-    if(!good)
-        cout << "BAD ESSENTIAL GRAPH 6!!" << endl;*/
-
-    // Release Local Mapping.
-    mpLocalMapper->Release();
-
-
-    return;
-}
 
 void LoopClosing::CheckObservations(set<KeyFrame*> &spKFsMap1, set<KeyFrame*> &spKFsMap2)
 {
