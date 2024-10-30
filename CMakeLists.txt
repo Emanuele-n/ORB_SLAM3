@@ -43,7 +43,6 @@ MESSAGE(${OpenCV_VERSION})
 
 find_package(Eigen3 3.1.0 REQUIRED)
 find_package(Pangolin REQUIRED)
-find_package(realsense2)
 
 include_directories(
 ${PROJECT_SOURCE_DIR}

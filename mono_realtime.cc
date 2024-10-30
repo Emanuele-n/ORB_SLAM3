@@ -100,7 +100,7 @@ int main(int argc, char **argv)
     cout << "Start processing camera input..." << endl;
 
     // Desired frame rate (frames per second)
-    double desiredFPS = 1.0;
+    double desiredFPS = 10.0;
     auto desiredFrameDuration = chrono::milliseconds(int(1000 / desiredFPS));
 
     Mat frame, resized_frame;
@@ -117,7 +117,7 @@ int main(int argc, char **argv)
                 break;
             }
             // Resize the frame manually
-            // resize(frame, resized_frame, Size(640, 480), 0, 0, INTER_LINEAR);
+            resize(frame, resized_frame, Size(640, 360), 0, 0, INTER_LINEAR);
             
             double tframe = chrono::duration_cast<chrono::duration<double>>(chrono::steady_clock::now().time_since_epoch()).count();
 
@@ -125,7 +125,7 @@ int main(int argc, char **argv)
             // SLAM.TrackMonocular(frame, tframe);
 
             auto start = chrono::steady_clock::now();
-            Sophus::SE3f Tcw = SLAM.TrackMonocular(frame, tframe);
+            Sophus::SE3f Tcw = SLAM.TrackMonocular(resized_frame, tframe);
             auto end = chrono::steady_clock::now();
             auto duration = chrono::duration_cast<chrono::milliseconds>(end - start);
             ofstream logfile("log.txt", ios::app);
