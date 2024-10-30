@@ -126,34 +126,34 @@ void LocalMapping::Run()
                 if(mpAtlas->KeyFramesInMap()>2)
                 {
 
-                    if(mbInertial && mpCurrentKeyFrame->GetMap()->isImuInitialized())
-                    {
-                        float dist = (mpCurrentKeyFrame->mPrevKF->GetCameraCenter() - mpCurrentKeyFrame->GetCameraCenter()).norm() +
-                                (mpCurrentKeyFrame->mPrevKF->mPrevKF->GetCameraCenter() - mpCurrentKeyFrame->mPrevKF->GetCameraCenter()).norm();
+                    // if(mbInertial && mpCurrentKeyFrame->GetMap()->isImuInitialized())
+                    // {
+                    //     float dist = (mpCurrentKeyFrame->mPrevKF->GetCameraCenter() - mpCurrentKeyFrame->GetCameraCenter()).norm() +
+                    //             (mpCurrentKeyFrame->mPrevKF->mPrevKF->GetCameraCenter() - mpCurrentKeyFrame->mPrevKF->GetCameraCenter()).norm();
 
-                        if(dist>0.05)
-                            mTinit += mpCurrentKeyFrame->mTimeStamp - mpCurrentKeyFrame->mPrevKF->mTimeStamp;
-                        if(!mpCurrentKeyFrame->GetMap()->GetIniertialBA2())
-                        {
-                            if((mTinit<10.f) && (dist<0.02))
-                            {
-                                cout << "Not enough motion for initializing. Reseting..." << endl;
-                                unique_lock<mutex> lock(mMutexReset);
-                                mbResetRequestedActiveMap = true;
-                                mpMapToReset = mpCurrentKeyFrame->GetMap();
-                                mbBadImu = true;
-                            }
-                        }
+                    //     if(dist>0.05)
+                    //         mTinit += mpCurrentKeyFrame->mTimeStamp - mpCurrentKeyFrame->mPrevKF->mTimeStamp;
+                    //     if(!mpCurrentKeyFrame->GetMap()->GetIniertialBA2())
+                    //     {
+                    //         if((mTinit<10.f) && (dist<0.02))
+                    //         {
+                    //             cout << "Not enough motion for initializing. Reseting..." << endl;
+                    //             unique_lock<mutex> lock(mMutexReset);
+                    //             mbResetRequestedActiveMap = true;
+                    //             mpMapToReset = mpCurrentKeyFrame->GetMap();
+                    //             mbBadImu = true;
+                    //         }
+                    //     }
 
-                        bool bLarge = ((mpTracker->GetMatchesInliers()>75)&&mbMonocular)||((mpTracker->GetMatchesInliers()>100)&&!mbMonocular);
-                        Optimizer::LocalInertialBA(mpCurrentKeyFrame, &mbAbortBA, mpCurrentKeyFrame->GetMap(),num_FixedKF_BA,num_OptKF_BA,num_MPs_BA,num_edges_BA, bLarge, !mpCurrentKeyFrame->GetMap()->GetIniertialBA2());
-                        b_doneLBA = true;
-                    }
-                    else
-                    {
-                        Optimizer::LocalBundleAdjustment(mpCurrentKeyFrame,&mbAbortBA, mpCurrentKeyFrame->GetMap(),num_FixedKF_BA,num_OptKF_BA,num_MPs_BA,num_edges_BA);
-                        b_doneLBA = true;
-                    }
+                    //     bool bLarge = ((mpTracker->GetMatchesInliers()>75)&&mbMonocular)||((mpTracker->GetMatchesInliers()>100)&&!mbMonocular);
+                    //     Optimizer::LocalInertialBA(mpCurrentKeyFrame, &mbAbortBA, mpCurrentKeyFrame->GetMap(),num_FixedKF_BA,num_OptKF_BA,num_MPs_BA,num_edges_BA, bLarge, !mpCurrentKeyFrame->GetMap()->GetIniertialBA2());
+                    //     b_doneLBA = true;
+                    // }
+                    // else
+                    // {
+                    Optimizer::LocalBundleAdjustment(mpCurrentKeyFrame,&mbAbortBA, mpCurrentKeyFrame->GetMap(),num_FixedKF_BA,num_OptKF_BA,num_MPs_BA,num_edges_BA);
+                    b_doneLBA = true;
+                    // }
 
                 }
 #ifdef REGISTER_TIMES
@@ -342,18 +342,18 @@ void LocalMapping::CreateNewMapPoints()
         nn=30;
     vector<KeyFrame*> vpNeighKFs = mpCurrentKeyFrame->GetBestCovisibilityKeyFrames(nn);
 
-    if (mbInertial)
-    {
-        KeyFrame* pKF = mpCurrentKeyFrame;
-        int count=0;
-        while((vpNeighKFs.size()<=nn)&&(pKF->mPrevKF)&&(count++<nn))
-        {
-            vector<KeyFrame*>::iterator it = std::find(vpNeighKFs.begin(), vpNeighKFs.end(), pKF->mPrevKF);
-            if(it==vpNeighKFs.end())
-                vpNeighKFs.push_back(pKF->mPrevKF);
-            pKF = pKF->mPrevKF;
-        }
-    }
+    // if (mbInertial)
+    // {
+    //     KeyFrame* pKF = mpCurrentKeyFrame;
+    //     int count=0;
+    //     while((vpNeighKFs.size()<=nn)&&(pKF->mPrevKF)&&(count++<nn))
+    //     {
+    //         vector<KeyFrame*>::iterator it = std::find(vpNeighKFs.begin(), vpNeighKFs.end(), pKF->mPrevKF);
+    //         if(it==vpNeighKFs.end())
+    //             vpNeighKFs.push_back(pKF->mPrevKF);
+    //         pKF = pKF->mPrevKF;
+    //     }
+    // }
 
     float th = 0.6f;
 
@@ -694,21 +694,21 @@ void LocalMapping::SearchInNeighbors()
     }
 
     // Extend to temporal neighbors
-    if(mbInertial)
-    {
-        KeyFrame* pKFi = mpCurrentKeyFrame->mPrevKF;
-        while(vpTargetKFs.size()<20 && pKFi)
-        {
-            if(pKFi->isBad() || pKFi->mnFuseTargetForKF==mpCurrentKeyFrame->mnId)
-            {
-                pKFi = pKFi->mPrevKF;
-                continue;
-            }
-            vpTargetKFs.push_back(pKFi);
-            pKFi->mnFuseTargetForKF=mpCurrentKeyFrame->mnId;
-            pKFi = pKFi->mPrevKF;
-        }
-    }
+    // if(mbInertial)
+    // {
+    //     KeyFrame* pKFi = mpCurrentKeyFrame->mPrevKF;
+    //     while(vpTargetKFs.size()<20 && pKFi)
+    //     {
+    //         if(pKFi->isBad() || pKFi->mnFuseTargetForKF==mpCurrentKeyFrame->mnId)
+    //         {
+    //             pKFi = pKFi->mPrevKF;
+    //             continue;
+    //         }
+    //         vpTargetKFs.push_back(pKFi);
+    //         pKFi->mnFuseTargetForKF=mpCurrentKeyFrame->mnId;
+    //         pKFi = pKFi->mPrevKF;
+    //     }
+    // }
 
     // Search matches by projection from current KF in target KFs
     ORBmatcher matcher;
@@ -870,17 +870,17 @@ void LocalMapping::KeyFrameCulling()
 
     // Compoute last KF from optimizable window:
     unsigned int last_ID;
-    if (mbInertial)
-    {
-        int count = 0;
-        KeyFrame* aux_KF = mpCurrentKeyFrame;
-        while(count<Nd && aux_KF->mPrevKF)
-        {
-            aux_KF = aux_KF->mPrevKF;
-            count++;
-        }
-        last_ID = aux_KF->mnId;
-    }
+    // if (mbInertial)
+    // {
+    //     int count = 0;
+    //     KeyFrame* aux_KF = mpCurrentKeyFrame;
+    //     while(count<Nd && aux_KF->mPrevKF)
+    //     {
+    //         aux_KF = aux_KF->mPrevKF;
+    //         count++;
+    //     }
+    //     last_ID = aux_KF->mnId;
+    // }
 
 
 
@@ -957,42 +957,42 @@ void LocalMapping::KeyFrameCulling()
 
         if(nRedundantObservations>redundant_th*nMPs)
         {
-            if (mbInertial)
-            {
-                if (mpAtlas->KeyFramesInMap()<=Nd)
-                    continue;
+            // if (mbInertial)
+            // {
+            //     if (mpAtlas->KeyFramesInMap()<=Nd)
+            //         continue;
 
-                if(pKF->mnId>(mpCurrentKeyFrame->mnId-2))
-                    continue;
+            //     if(pKF->mnId>(mpCurrentKeyFrame->mnId-2))
+            //         continue;
 
-                if(pKF->mPrevKF && pKF->mNextKF)
-                {
-                    const float t = pKF->mNextKF->mTimeStamp-pKF->mPrevKF->mTimeStamp;
+            //     if(pKF->mPrevKF && pKF->mNextKF)
+            //     {
+            //         const float t = pKF->mNextKF->mTimeStamp-pKF->mPrevKF->mTimeStamp;
 
-                    if((bInitImu && (pKF->mnId<last_ID) && t<3.) || (t<0.5))
-                    {
-                        pKF->mNextKF->mpImuPreintegrated->MergePrevious(pKF->mpImuPreintegrated);
-                        pKF->mNextKF->mPrevKF = pKF->mPrevKF;
-                        pKF->mPrevKF->mNextKF = pKF->mNextKF;
-                        pKF->mNextKF = NULL;
-                        pKF->mPrevKF = NULL;
-                        pKF->SetBadFlag();
-                    }
-                    else if(!mpCurrentKeyFrame->GetMap()->GetIniertialBA2() && ((pKF->GetImuPosition()-pKF->mPrevKF->GetImuPosition()).norm()<0.02) && (t<3))
-                    {
-                        pKF->mNextKF->mpImuPreintegrated->MergePrevious(pKF->mpImuPreintegrated);
-                        pKF->mNextKF->mPrevKF = pKF->mPrevKF;
-                        pKF->mPrevKF->mNextKF = pKF->mNextKF;
-                        pKF->mNextKF = NULL;
-                        pKF->mPrevKF = NULL;
-                        pKF->SetBadFlag();
-                    }
-                }
-            }
-            else
-            {
-                pKF->SetBadFlag();
-            }
+            //         if((bInitImu && (pKF->mnId<last_ID) && t<3.) || (t<0.5))
+            //         {
+            //             pKF->mNextKF->mpImuPreintegrated->MergePrevious(pKF->mpImuPreintegrated);
+            //             pKF->mNextKF->mPrevKF = pKF->mPrevKF;
+            //             pKF->mPrevKF->mNextKF = pKF->mNextKF;
+            //             pKF->mNextKF = NULL;
+            //             pKF->mPrevKF = NULL;
+            //             pKF->SetBadFlag();
+            //         }
+            //         else if(!mpCurrentKeyFrame->GetMap()->GetIniertialBA2() && ((pKF->GetImuPosition()-pKF->mPrevKF->GetImuPosition()).norm()<0.02) && (t<3))
+            //         {
+            //             pKF->mNextKF->mpImuPreintegrated->MergePrevious(pKF->mpImuPreintegrated);
+            //             pKF->mNextKF->mPrevKF = pKF->mPrevKF;
+            //             pKF->mPrevKF->mNextKF = pKF->mNextKF;
+            //             pKF->mNextKF = NULL;
+            //             pKF->mPrevKF = NULL;
+            //             pKF->SetBadFlag();
+            //         }
+            //     }
+            // }
+            // else
+            // {
+            pKF->SetBadFlag();
+            // }
         }
         if((count > 20 && mbAbortBA) || count>100)
         {

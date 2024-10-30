@@ -17,5 +17,43 @@ Tcw = SLAM.TrackMonocular(frame, tframe);
         // Main tracking function.
         Track()
 
-    
+            // Get current map or create a new one if it doesn't exist.
+            Map* pCurrentMap = mpAtlas->GetCurrentMap();
 
+            // Get and set map change
+            int nCurMapChangeIndex = pCurrentMap->GetMapChangeIndex();
+            int nMapChangeIndex = pCurrentMap->GetLastMapChange();
+            pCurrentMap->SetLastMapChange(nCurMapChangeIndex);
+    
+            // If tracking state mState is NOT_INITIALIZED, initialize 
+            MonocularInitialization();
+
+            // else (if initialized) get the initial camera pose estimation using motion model or relocalization
+            // if  tracking and local mapping (mbOnlyTracking == false)
+            //  if mState == ok either track with reference key frame or with motion model
+            bOK = TrackReferenceKeyFrame(); / bOK = TrackWithMotionModel();
+
+            //  if mState == RECENTLY_LOST do relocalisation
+            bOK = Relocalization();
+
+            //  if mState == LOST do 
+            // based on the number of key frames in the map either reset the map or create map in atlas
+            mpSystem->ResetActiveMap(); / CreateMapInAtlas();
+
+            // if only tracking (mbOnlyTracking == true)
+            // In case of performing only localization, mbVO is true when there are no matches to
+            // points in the map. Still tracking will continue if there are enough matches with temporal points.
+            // In that case we are doing visual odometry. The system will try to do relocalization to recover
+            // "zero-drift" localization to the map.
+            // if mbVO == false, based on mbVelocity (In last frame we tracked enough MapPoints in the map)
+            bOK = TrackWithMotionModel(); / bOK = TrackReferenceKeyFrame();
+
+            // if mbVO == true, it means in last frame we tracked mainly "visual odometry" points.
+            // We compute two camera poses, one from motion model and one doing relocalization.
+            // If relocalization is sucessfull we choose that solution, otherwise we retain
+            // the "visual odometry" solution.
+            bOKMM = TrackWithMotionModel();
+            bOKReloc = Relocalization();
+
+            // If we have an initial estimation of the camera pose and matching. Track the local map.
+            bOK = TrackLocalMap();

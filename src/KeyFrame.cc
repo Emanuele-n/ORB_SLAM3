@@ -145,24 +145,6 @@ Eigen::Vector3f KeyFrame::GetCameraCenter(){
     return mTwc.translation();
 }
 
-Eigen::Vector3f KeyFrame::GetImuPosition()
-{
-    unique_lock<mutex> lock(mMutexPose);
-    return mOwb;
-}
-
-Eigen::Matrix3f KeyFrame::GetImuRotation()
-{
-    unique_lock<mutex> lock(mMutexPose);
-    return (mTwc * mImuCalib.mTcb).rotationMatrix();
-}
-
-Sophus::SE3f KeyFrame::GetImuPose()
-{
-    unique_lock<mutex> lock(mMutexPose);
-    return mTwc * mImuCalib.mTcb;
-}
-
 Eigen::Matrix3f KeyFrame::GetRotation(){
     unique_lock<mutex> lock(mMutexPose);
     return mRcw;

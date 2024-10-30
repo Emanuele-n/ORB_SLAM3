@@ -48,9 +48,8 @@ public:
 
     // Draw last processed frame.
     cv::Mat DrawFrame(float imageScale=1.f);
-    cv::Mat DrawRightFrame(float imageScale=1.f);
+    cv::Mat GetRawImage();
 
-    bool both;
 
 protected:
 

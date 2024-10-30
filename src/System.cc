@@ -531,10 +531,7 @@ void System::SaveTrajectoryEuRoC(const string &filename)
     // Transform all keyframes so that the first keyframe is at the origin.
     // After a loop closure the first keyframe might not be at the origin.
     Sophus::SE3f Twb; // Can be word to cam0 or world to b depending on IMU or not.
-    if (mSensor==IMU_MONOCULAR || mSensor==IMU_STEREO || mSensor==IMU_RGBD)
-        Twb = vpKFs[0]->GetImuPose();
-    else
-        Twb = vpKFs[0]->GetPoseInverse();
+    Twb = vpKFs[0]->GetPoseInverse();
 
     ofstream f;
     f.open(filename.c_str());
@@ -636,10 +633,7 @@ void System::SaveTrajectoryEuRoC(const string &filename, Map* pMap)
     // Transform all keyframes so that the first keyframe is at the origin.
     // After a loop closure the first keyframe might not be at the origin.
     Sophus::SE3f Twb; // Can be word to cam0 or world to b dependingo on IMU or not.
-    if (mSensor==IMU_MONOCULAR || mSensor==IMU_STEREO || mSensor==IMU_RGBD)
-        Twb = vpKFs[0]->GetImuPose();
-    else
-        Twb = vpKFs[0]->GetPoseInverse();
+    Twb = vpKFs[0]->GetPoseInverse();
 
     ofstream f;
     f.open(filename.c_str());
@@ -763,21 +757,11 @@ void System::SaveKeyFrameTrajectoryEuRoC(const string &filename)
 
         if(!pKF || pKF->isBad())
             continue;
-        if (mSensor == IMU_MONOCULAR || mSensor == IMU_STEREO || mSensor==IMU_RGBD)
-        {
-            Sophus::SE3f Twb = pKF->GetImuPose();
-            Eigen::Quaternionf q = Twb.unit_quaternion();
-            Eigen::Vector3f twb = Twb.translation();
-            f << setprecision(6) << 1e9*pKF->mTimeStamp  << " " <<  setprecision(9) << twb(0) << " " << twb(1) << " " << twb(2) << " " << q.x() << " " << q.y() << " " << q.z() << " " << q.w() << endl;
 
-        }
-        else
-        {
-            Sophus::SE3f Twc = pKF->GetPoseInverse();
-            Eigen::Quaternionf q = Twc.unit_quaternion();
-            Eigen::Vector3f t = Twc.translation();
-            f << setprecision(6) << 1e9*pKF->mTimeStamp << " " <<  setprecision(9) << t(0) << " " << t(1) << " " << t(2) << " " << q.x() << " " << q.y() << " " << q.z() << " " << q.w() << endl;
-        }
+        Sophus::SE3f Twc = pKF->GetPoseInverse();
+        Eigen::Quaternionf q = Twc.unit_quaternion();
+        Eigen::Vector3f t = Twc.translation();
+        f << setprecision(6) << 1e9*pKF->mTimeStamp << " " <<  setprecision(9) << t(0) << " " << t(1) << " " << t(2) << " " << q.x() << " " << q.y() << " " << q.z() << " " << q.w() << endl;
     }
     f.close();
 }
@@ -801,21 +785,11 @@ void System::SaveKeyFrameTrajectoryEuRoC(const string &filename, Map* pMap)
 
         if(!pKF || pKF->isBad())
             continue;
-        if (mSensor == IMU_MONOCULAR || mSensor == IMU_STEREO || mSensor==IMU_RGBD)
-        {
-            Sophus::SE3f Twb = pKF->GetImuPose();
-            Eigen::Quaternionf q = Twb.unit_quaternion();
-            Eigen::Vector3f twb = Twb.translation();
-            f << setprecision(6) << 1e9*pKF->mTimeStamp  << " " <<  setprecision(9) << twb(0) << " " << twb(1) << " " << twb(2) << " " << q.x() << " " << q.y() << " " << q.z() << " " << q.w() << endl;
 
-        }
-        else
-        {
-            Sophus::SE3f Twc = pKF->GetPoseInverse();
-            Eigen::Quaternionf q = Twc.unit_quaternion();
-            Eigen::Vector3f t = Twc.translation();
-            f << setprecision(6) << 1e9*pKF->mTimeStamp << " " <<  setprecision(9) << t(0) << " " << t(1) << " " << t(2) << " " << q.x() << " " << q.y() << " " << q.z() << " " << q.w() << endl;
-        }
+        Sophus::SE3f Twc = pKF->GetPoseInverse();
+        Eigen::Quaternionf q = Twc.unit_quaternion();
+        Eigen::Vector3f t = Twc.translation();
+        f << setprecision(6) << 1e9*pKF->mTimeStamp << " " <<  setprecision(9) << t(0) << " " << t(1) << " " << t(2) << " " << q.x() << " " << q.y() << " " << q.z() << " " << q.w() << endl;
     }
     f.close();
 }

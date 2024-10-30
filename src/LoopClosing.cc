@@ -345,14 +345,6 @@ bool LoopClosing::NewDetectCommonRegions()
         return false;
     }
 
-    // if(mpTracker->mSensor == System::STEREO && mpLastMap->GetAllKeyFrames().size() < 5) //12
-    // {
-    //     // cout << "LoopClousure: Stereo KF inserted without check: " << mpCurrentKF->mnId << endl;
-    //     mpKeyFrameDB->add(mpCurrentKF);
-    //     mpCurrentKF->SetErase();
-    //     return false;
-    // }
-
     if(mpLastMap->GetAllKeyFrames().size() < 12)
     {
         // cout << "LoopClousure: Stereo KF inserted without check, map is small: " << mpCurrentKF->mnId << endl;

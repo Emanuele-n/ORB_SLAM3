@@ -26,7 +26,7 @@ namespace ORB_SLAM3
 {
 
 Viewer::Viewer(System* pSystem, FrameDrawer *pFrameDrawer, MapDrawer *pMapDrawer, Tracking *pTracking, const string &strSettingPath, Settings* settings):
-    both(false), mpSystem(pSystem), mpFrameDrawer(pFrameDrawer),mpMapDrawer(pMapDrawer), mpTracker(pTracking),
+    mpSystem(pSystem), mpFrameDrawer(pFrameDrawer),mpMapDrawer(pMapDrawer), mpTracker(pTracking),
     mbFinishRequested(false), mbFinished(true), mbStopped(true), mbStopRequested(false)
 {
     if(settings){
@@ -317,25 +317,43 @@ void Viewer::Run()
 
         pangolin::FinishFrame();
 
-        cv::Mat toShow;
-        cv::Mat im = mpFrameDrawer->DrawFrame(trackedImageScale);
+        // EMA: DrawFrame is very slow with the videoscope, I comment it out for now
+        // // Image with info
+        // cv::Mat toShow;
+        // cv::Mat im = mpFrameDrawer->DrawFrame(trackedImageScale);
+        // toShow = im;
 
-        if(both){
-            cv::Mat imRight = mpFrameDrawer->DrawRightFrame(trackedImageScale);
-            cv::hconcat(im,imRight,toShow);
-        }
-        else{
-            toShow = im;
-        }
+        // if(mImageViewerScale != 1.f)
+        // {
+        //     int width = toShow.cols * mImageViewerScale;
+        //     int height = toShow.rows * mImageViewerScale;
+        //     cv::resize(toShow, toShow, cv::Size(width, height));
+        // }
 
+        // cv::imshow("ORB-SLAM3: Current Frame",toShow);
+        // cv::waitKey(mT);
+
+        // Raw image
+        cv::Mat im = mpFrameDrawer->GetRawImage();
+
+        // Ensure the image is not empty
+        if(im.empty())
+            continue;
+
+        // Convert to color if the image is grayscale
+        if(im.channels() < 3)
+            cv::cvtColor(im, im, cv::COLOR_GRAY2BGR);
+
+        // Resize the image if necessary
         if(mImageViewerScale != 1.f)
         {
-            int width = toShow.cols * mImageViewerScale;
-            int height = toShow.rows * mImageViewerScale;
-            cv::resize(toShow, toShow, cv::Size(width, height));
+            int width = im.cols * mImageViewerScale;
+            int height = im.rows * mImageViewerScale;
+            cv::resize(im, im, cv::Size(width, height));
         }
 
-        cv::imshow("ORB-SLAM3: Current Frame",toShow);
+        // Display the raw image
+        cv::imshow("ORB-SLAM3: Current Frame", im);
         cv::waitKey(mT);
 
         if(menuReset)

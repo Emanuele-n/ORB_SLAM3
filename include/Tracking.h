@@ -34,7 +34,6 @@
 #include "ORBextractor.h"
 #include "MapDrawer.h"
 #include "System.h"
-#include "ImuTypes.h"
 #include "Settings.h"
 
 #include "GeometricCamera.h"
@@ -66,14 +65,14 @@ public:
     // Parse the config file
     bool ParseCamParamFile(cv::FileStorage &fSettings);
     bool ParseORBParamFile(cv::FileStorage &fSettings);
-    bool ParseIMUParamFile(cv::FileStorage &fSettings);
+    // bool ParseIMUParamFile(cv::FileStorage &fSettings);
 
     // Preprocess the input and call Track(). Extract features and performs stereo matching.
-    Sophus::SE3f GrabImageStereo(const cv::Mat &imRectLeft,const cv::Mat &imRectRight, const double &timestamp, string filename);
-    Sophus::SE3f GrabImageRGBD(const cv::Mat &imRGB,const cv::Mat &imD, const double &timestamp, string filename);
+    // Sophus::SE3f GrabImageStereo(const cv::Mat &imRectLeft,const cv::Mat &imRectRight, const double &timestamp, string filename);
+    // Sophus::SE3f GrabImageRGBD(const cv::Mat &imRGB,const cv::Mat &imD, const double &timestamp, string filename);
     Sophus::SE3f GrabImageMonocular(const cv::Mat &im, const double &timestamp, string filename);
 
-    void GrabImuData(const IMU::Point &imuMeasurement);
+    // void GrabImuData(const IMU::Point &imuMeasurement);
 
     void SetLocalMapper(LocalMapping* pLocalMapper);
     void SetLoopClosing(LoopClosing* pLoopClosing);
@@ -88,7 +87,7 @@ public:
     // Use this function if you have deactivated local mapping and you only want to localize the camera.
     void InformOnlyTracking(const bool &flag);
 
-    void UpdateFrameIMU(const float s, const IMU::Bias &b, KeyFrame* pCurrentKeyFrame);
+    // void UpdateFrameIMU(const float s, const IMU::Bias &b, KeyFrame* pCurrentKeyFrame);
     KeyFrame* GetLastKeyFrame()
     {
         return mpLastKeyFrame;
@@ -168,7 +167,7 @@ public:
     bool mbInitWith3KFs;
     double t0; // time-stamp of first read frame
     double t0vis; // time-stamp of first inserted keyframe
-    double t0IMU; // time-stamp of IMU initialization
+    // double t0IMU; // time-stamp of IMU initialization
     bool mFastInit = false;
 
 
@@ -198,7 +197,7 @@ protected:
     void Track();
 
     // Map initialization for stereo and RGB-D
-    void StereoInitialization();
+    // void StereoInitialization();
 
     // Map initialization for monocular
     void MonocularInitialization();
@@ -209,7 +208,7 @@ protected:
     bool TrackReferenceKeyFrame();
     void UpdateLastFrame();
     bool TrackWithMotionModel();
-    bool PredictStateIMU();
+    // bool PredictStateIMU();
 
     bool Relocalization();
 
@@ -224,25 +223,25 @@ protected:
     void CreateNewKeyFrame();
 
     // Perform preintegration from last frame
-    void PreintegrateIMU();
+    // void PreintegrateIMU();
 
     // Reset IMU biases and compute frame velocity
-    void ResetFrameIMU();
+    // void ResetFrameIMU();
 
     bool mbMapUpdated;
 
     // Imu preintegration from last frame
-    IMU::Preintegrated *mpImuPreintegratedFromLastKF;
+    // IMU::Preintegrated *mpImuPreintegratedFromLastKF;
 
     // Queue of IMU measurements between frames
     std::list<IMU::Point> mlQueueImuData;
 
     // Vector of IMU measurements from previous to current frame (to be filled by PreintegrateIMU)
-    std::vector<IMU::Point> mvImuFromLastFrame;
+    // std::vector<IMU::Point> mvImuFromLastFrame;
     std::mutex mMutexImuQueue;
 
     // Imu calibration parameters
-    IMU::Calib *mpImuCalib;
+    // IMU::Calib *mpImuCalib;
 
     // Last Bias Estimation (at keyframe creation)
     IMU::Bias mLastBias;
@@ -293,15 +292,15 @@ protected:
     float mbf;
     float mImageScale;
 
-    float mImuFreq;
-    double mImuPer;
+    // float mImuFreq;
+    // double mImuPer;
     bool mInsertKFsLost;
 
     //New KeyFrame rules (according to fps)
     int mMinFrames;
     int mMaxFrames;
 
-    int mnFirstImuFrameId;
+    // int mnFirstImuFrameId;
     int mnFramesToResetIMU;
 
     // Threshold close/far points
@@ -344,7 +343,7 @@ protected:
     ofstream f_track_stats;
 
     ofstream f_track_times;
-    double mTime_PreIntIMU;
+    // double mTime_PreIntIMU;
     double mTime_PosePred;
     double mTime_LocalMapTrack;
     double mTime_NewKF_Dec;
