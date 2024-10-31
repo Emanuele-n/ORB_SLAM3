@@ -132,3 +132,7 @@ add_executable(mono_realtime
         ./mono_realtime.cc)
 target_link_libraries(mono_realtime ${PROJECT_NAME})
 
+add_executable(mono_video
+        ./mono_video.cc)
+target_link_libraries(mono_video ${PROJECT_NAME})
+
