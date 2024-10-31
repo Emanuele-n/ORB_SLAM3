@@ -178,8 +178,6 @@ public:
     std::vector<cv::KeyPoint> GetTrackedKeyPointsUn();
 
     // For debugging
-    double GetTimeFromIMUInit();
-    bool isLost();
     bool isFinished();
 
     void ChangeDataset();

@@ -287,18 +287,6 @@ void Atlas::SetInertialSensor()
     mpCurrentMap->SetInertialSensor();
 }
 
-void Atlas::SetImuInitialized()
-{
-    unique_lock<mutex> lock(mMutexAtlas);
-    mpCurrentMap->SetImuInitialized();
-}
-
-bool Atlas::isImuInitialized()
-{
-    unique_lock<mutex> lock(mMutexAtlas);
-    return mpCurrentMap->isImuInitialized();
-}
-
 void Atlas::PreSave()
 {
     if(mpCurrentMap){

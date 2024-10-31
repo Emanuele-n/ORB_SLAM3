@@ -181,7 +181,6 @@ void Viewer::Run()
     pangolin::Var<bool> menuShowPoints("menu.Show Points",true,true);
     pangolin::Var<bool> menuShowKeyFrames("menu.Show KeyFrames",true,true);
     pangolin::Var<bool> menuShowGraph("menu.Show Graph",false,true);
-    pangolin::Var<bool> menuShowInertialGraph("menu.Show Inertial Graph",true,true);
     pangolin::Var<bool> menuLocalizationMode("menu.Localization Mode",false,true);
     pangolin::Var<bool> menuReset("menu.Reset",false,false);
     pangolin::Var<bool> menuStop("menu.Stop",false,false);
@@ -268,15 +267,6 @@ void Viewer::Run()
             s_cam.Follow(Twc);
         }
 
-        if(menuTopView && mpMapDrawer->mpAtlas->isImuInitialized())
-        {
-            menuTopView = false;
-            bCameraView = false;
-            s_cam.SetProjectionMatrix(pangolin::ProjectionMatrix(1024,768,3000,3000,512,389,0.1,10000));
-            s_cam.SetModelViewMatrix(pangolin::ModelViewLookAt(0,0.01,50, 0,0,0,0.0,0.0, 1.0));
-            s_cam.Follow(Ow);
-        }
-
         if(menuLocalizationMode && !bLocalizationMode)
         {
             mpSystem->ActivateLocalizationMode();
@@ -310,56 +300,55 @@ void Viewer::Run()
         d_cam.Activate(s_cam);
         glClearColor(1.0f,1.0f,1.0f,1.0f);
         mpMapDrawer->DrawCurrentCamera(Twc);
-        if(menuShowKeyFrames || menuShowGraph || menuShowInertialGraph || menuShowOptLba)
-            mpMapDrawer->DrawKeyFrames(menuShowKeyFrames,menuShowGraph, menuShowInertialGraph, menuShowOptLba);
+        if(menuShowKeyFrames || menuShowGraph || menuShowOptLba)
+            mpMapDrawer->DrawKeyFrames(menuShowKeyFrames,menuShowGraph, menuShowOptLba);
         if(menuShowPoints)
             mpMapDrawer->DrawMapPoints();
 
         pangolin::FinishFrame();
 
         // EMA: DrawFrame is very slow with the videoscope, I comment it out for now
-        // // Image with info
-        // cv::Mat toShow;
-        // cv::Mat im = mpFrameDrawer->DrawFrame(trackedImageScale);
-        // toShow = im;
+        // Image with info
+        cv::Mat toShow;
+        cv::Mat im = mpFrameDrawer->DrawFrame(trackedImageScale);
+        toShow = im;
 
-        // if(mImageViewerScale != 1.f)
-        // {
-        //     int width = toShow.cols * mImageViewerScale;
-        //     int height = toShow.rows * mImageViewerScale;
-        //     cv::resize(toShow, toShow, cv::Size(width, height));
-        // }
-
-        // cv::imshow("ORB-SLAM3: Current Frame",toShow);
-        // cv::waitKey(mT);
-
-        // Raw image
-        cv::Mat im = mpFrameDrawer->GetRawImage();
-
-        // Ensure the image is not empty
-        if(im.empty())
-            continue;
-
-        // Convert to color if the image is grayscale
-        if(im.channels() < 3)
-            cv::cvtColor(im, im, cv::COLOR_GRAY2BGR);
-
-        // Resize the image if necessary
         if(mImageViewerScale != 1.f)
         {
-            int width = im.cols * mImageViewerScale;
-            int height = im.rows * mImageViewerScale;
-            cv::resize(im, im, cv::Size(width, height));
+            int width = toShow.cols * mImageViewerScale;
+            int height = toShow.rows * mImageViewerScale;
+            cv::resize(toShow, toShow, cv::Size(width, height));
         }
 
-        // Display the raw image
-        cv::imshow("ORB-SLAM3: Current Frame", im);
+        cv::imshow("ORB-SLAM3: Current Frame",toShow);
         cv::waitKey(mT);
+
+        // // Raw image
+        // cv::Mat im = mpFrameDrawer->GetRawImage();
+
+        // // Ensure the image is not empty
+        // if(im.empty())
+        //     continue;
+
+        // // Convert to color if the image is grayscale
+        // if(im.channels() < 3)
+        //     cv::cvtColor(im, im, cv::COLOR_GRAY2BGR);
+
+        // // Resize the image if necessary
+        // if(mImageViewerScale != 1.f)
+        // {
+        //     int width = im.cols * mImageViewerScale;
+        //     int height = im.rows * mImageViewerScale;
+        //     cv::resize(im, im, cv::Size(width, height));
+        // }
+
+        // // Display the raw image
+        // cv::imshow("ORB-SLAM3: Current Frame", im);
+        // cv::waitKey(mT);
 
         if(menuReset)
         {
             menuShowGraph = true;
-            menuShowInertialGraph = true;
             menuShowKeyFrames = true;
             menuShowPoints = true;
             menuLocalizationMode = false;

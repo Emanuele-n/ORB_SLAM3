@@ -121,13 +121,6 @@ void LoopClosing::Run()
             {
                 if(mbMergeDetected)
                 {
-                    // if ((mpTracker->mSensor==System::IMU_MONOCULAR || mpTracker->mSensor==System::IMU_STEREO || mpTracker->mSensor==System::IMU_RGBD) &&
-                    //     (!mpCurrentKF->GetMap()->isImuInitialized()))
-                    // {
-                    //     cout << "IMU is not initilized, merge is aborted" << endl;
-                    // }
-                    // else
-                    // {
                     Sophus::SE3d mTmw = mpMergeMatchedKF->GetPose().cast<double>();
                     g2o::Sim3 gSmw2(mTmw.unit_quaternion(), mTmw.translation(), 1.0);
                     Sophus::SE3d mTcw = mpCurrentKF->GetPose().cast<double>();
@@ -684,8 +677,6 @@ bool LoopClosing::DetectCommonRegionsFromBoW(std::vector<KeyFrame*> &vpBowCand, 
         {
             // Geometric validation
             bool bFixedScale = mbFixScale;
-            // if(mpTracker->mSensor==System::IMU_MONOCULAR && !mpCurrentKF->GetMap()->GetIniertialBA2())
-            //     bFixedScale=false;
 
             Sim3Solver solver = Sim3Solver(mpCurrentKF, pMostBoWMatchesKF, vpMatchedPoints, bFixedScale, vpKeyFrameMatchedMP);
             solver.SetRansacParameters(0.99, nBoWInliers, 300); // at least 15 inliers
@@ -753,8 +744,6 @@ bool LoopClosing::DetectCommonRegionsFromBoW(std::vector<KeyFrame*> &vpBowCand, 
                     Eigen::Matrix<double, 7, 7> mHessian7x7;
 
                     bool bFixedScale = mbFixScale;
-                    // if(mpTracker->mSensor==System::IMU_MONOCULAR && !mpCurrentKF->GetMap()->GetIniertialBA2())
-                    //     bFixedScale=false;
 
                     int numOptMatches = Optimizer::OptimizeSim3(mpCurrentKF, pKFi, vpMatchedMP, gScm, 10, mbFixScale, mHessian7x7, true);
 
@@ -1032,8 +1021,6 @@ void LoopClosing::CorrectLoop()
         // Get Map Mutex
         unique_lock<mutex> lock(pLoopMap->mMutexMapUpdate);
 
-        const bool bImuInit = pLoopMap->isImuInitialized();
-
         for(vector<KeyFrame*>::iterator vit=mvpCurrentConnectedKFs.begin(), vend=mvpCurrentConnectedKFs.end(); vit!=vend; vit++)
         {
             KeyFrame* pKFi = *vit;
@@ -1089,13 +1076,6 @@ void LoopClosing::CorrectLoop()
                 pMPi->mnCorrectedByKF = mpCurrentKF->mnId;
                 pMPi->mnCorrectedReference = pKFi->mnId;
                 pMPi->UpdateNormalAndDepth();
-            }
-
-            // Correct velocity according to orientation correction
-            if(bImuInit)
-            {
-                Eigen::Quaternionf Rcor = (g2oCorrectedSiw.rotation().inverse()*g2oSiw.rotation()).cast<float>();
-                pKFi->SetVelocity(Rcor*pKFi->GetVelocity());
             }
 
             // Make sure connections are updated
@@ -1154,9 +1134,6 @@ void LoopClosing::CorrectLoop()
 
     // Optimize graph
     bool bFixedScale = mbFixScale;
-    // TODO CHECK; Solo para el monocular inertial
-    // if(mpTracker->mSensor==System::IMU_MONOCULAR && !mpCurrentKF->GetMap()->GetIniertialBA2())
-    //     bFixedScale=false;
 
 #ifdef REGISTER_TIMES
         std::chrono::steady_clock::time_point time_EndFusion = std::chrono::steady_clock::now();
@@ -1164,16 +1141,7 @@ void LoopClosing::CorrectLoop()
         double timeFusion = std::chrono::duration_cast<std::chrono::duration<double,std::milli> >(time_EndFusion - time_StartFusion).count();
         vdLoopFusion_ms.push_back(timeFusion);
 #endif
-    //cout << "Optimize essential graph" << endl;
-    if(pLoopMap->IsInertial() && pLoopMap->isImuInitialized())
-    {
-        Optimizer::OptimizeEssentialGraph4DoF(pLoopMap, mpLoopMatchedKF, mpCurrentKF, NonCorrectedSim3, CorrectedSim3, LoopConnections);
-    }
-    else
-    {
-        //cout << "Loop -> Scale correction: " << mg2oLoopScw.scale() << endl;
-        Optimizer::OptimizeEssentialGraph(pLoopMap, mpLoopMatchedKF, mpCurrentKF, NonCorrectedSim3, CorrectedSim3, LoopConnections, bFixedScale);
-    }
+    Optimizer::OptimizeEssentialGraph(pLoopMap, mpLoopMatchedKF, mpCurrentKF, NonCorrectedSim3, CorrectedSim3, LoopConnections, bFixedScale);
 #ifdef REGISTER_TIMES
     std::chrono::steady_clock::time_point time_EndOpt = std::chrono::steady_clock::now();
 
@@ -1188,7 +1156,7 @@ void LoopClosing::CorrectLoop()
     mpCurrentKF->AddLoopEdge(mpLoopMatchedKF);
 
     // Launch a new thread to perform Global Bundle Adjustment (Only if few keyframes, if not it would take too much time)
-    if(!pLoopMap->isImuInitialized() || (pLoopMap->KeyFramesInMap()<200 && mpAtlas->CountMaps()==1))
+    if(pLoopMap->KeyFramesInMap()<200 && mpAtlas->CountMaps()==1)
     {
         mbRunningGBA = true;
         mbFinishedGBA = false;
@@ -1446,14 +1414,6 @@ void LoopClosing::MergeLocal()
         Sophus::SE3d correctedTiw(g2oCorrectedSiw.rotation(), g2oCorrectedSiw.translation() / s);
 
         pKFi->mTcwMerge = correctedTiw.cast<float>();
-
-        if(pCurrentMap->isImuInitialized())
-        {
-            Eigen::Quaternionf Rcor = (g2oCorrectedSiw.rotation().inverse() * vNonCorrectedSim3[pKFi].rotation()).cast<float>();
-            pKFi->mVwbMerge = Rcor * pKFi->GetVelocity();
-        }
-
-        //TODO DEBUG to know which are the KFs that had been moved to the other map
     }
 
     int numPointsWithCorrection = 0;
@@ -1520,11 +1480,6 @@ void LoopClosing::MergeLocal()
             pKFi->mnMergeCorrectedForKF = mpCurrentKF->mnId;
             pMergeMap->AddKeyFrame(pKFi);
             pCurrentMap->EraseKeyFrame(pKFi);
-
-            if(pCurrentMap->isImuInitialized())
-            {
-                pKFi->SetVelocity(pKFi->mVwbMerge);
-            }
         }
 
         for(MapPoint* pMPi : spLocalWindowMPs)
@@ -1610,14 +1565,8 @@ void LoopClosing::MergeLocal()
     vpMergeConnectedKFs.clear();
     std::copy(spLocalWindowKFs.begin(), spLocalWindowKFs.end(), std::back_inserter(vpLocalCurrentWindowKFs));
     std::copy(spMergeConnectedKFs.begin(), spMergeConnectedKFs.end(), std::back_inserter(vpMergeConnectedKFs));
-    // if (mpTracker->mSensor==System::IMU_MONOCULAR || mpTracker->mSensor==System::IMU_STEREO || mpTracker->mSensor==System::IMU_RGBD)
-    // {
-    //     Optimizer::MergeInertialBA(mpCurrentKF,mpMergeMatchedKF,&bStop, pCurrentMap,vCorrectedSim3);
-    // }
-    // else
-    // {
+
     Optimizer::LocalBundleAdjustment(mpCurrentKF, vpLocalCurrentWindowKFs, vpMergeConnectedKFs,&bStop);
-    // }
 
 #ifdef REGISTER_TIMES
     std::chrono::steady_clock::time_point time_EndWeldingBA = std::chrono::steady_clock::now();
@@ -1670,12 +1619,6 @@ void LoopClosing::MergeLocal()
                 pKFi->mTwcBefMerge = pKFi->GetPoseInverse();
 
                 pKFi->SetPose(correctedTiw.cast<float>());
-
-                if(pCurrentMap->isImuInitialized())
-                {
-                    Eigen::Quaternionf Rcor = (g2oCorrectedSiw.rotation().inverse() * vNonCorrectedSim3[pKFi].rotation()).cast<float>();
-                    pKFi->SetVelocity(Rcor * pKFi->GetVelocity()); // TODO: should add here scale s
-                }
 
             }
             for(MapPoint* pMPi : vpCurrentMapMPs)
@@ -1752,7 +1695,7 @@ void LoopClosing::MergeLocal()
 
     mpLocalMapper->Release();
 
-    if(bRelaunchBA && (!pCurrentMap->isImuInitialized() || (pCurrentMap->KeyFramesInMap()<200 && mpAtlas->CountMaps()==1)))
+    if(bRelaunchBA && (pCurrentMap->KeyFramesInMap()<200 && mpAtlas->CountMaps()==1))
     {
         // Launch a new thread to perform Global Bundle Adjustment
         mbRunningGBA = true;
@@ -1987,13 +1930,7 @@ void LoopClosing::RunGlobalBundleAdjustment(Map* pActiveMap, unsigned long nLoop
     vnGBAKFs.push_back(pActiveMap->GetAllKeyFrames().size());
     vnGBAMPs.push_back(pActiveMap->GetAllMapPoints().size());
 #endif
-
-    const bool bImuInit = pActiveMap->isImuInitialized();
-
-    if(!bImuInit)
-        Optimizer::GlobalBundleAdjustemnt(pActiveMap,10,&mbStopGBA,nLoopKF,false);
-    else
-        Optimizer::FullInertialBA(pActiveMap,7,false,nLoopKF,&mbStopGBA);
+    Optimizer::GlobalBundleAdjustemnt(pActiveMap,10,&mbStopGBA,nLoopKF,false);
 
 #ifdef REGISTER_TIMES
     std::chrono::steady_clock::time_point time_EndGBA = std::chrono::steady_clock::now();
@@ -2017,9 +1954,6 @@ void LoopClosing::RunGlobalBundleAdjustment(Map* pActiveMap, unsigned long nLoop
     {
         unique_lock<mutex> lock(mMutexGBA);
         if(idx!=mnFullBAIdx)
-            return;
-
-        if(!bImuInit && pActiveMap->isImuInitialized())
             return;
 
         if(!mbStopGBA)

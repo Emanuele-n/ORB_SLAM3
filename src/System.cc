@@ -928,34 +928,6 @@ vector<cv::KeyPoint> System::GetTrackedKeyPointsUn()
     return mTrackedKeyPointsUn;
 }
 
-double System::GetTimeFromIMUInit()
-{
-    double aux = mpLocalMapper->GetCurrKFTime()-mpLocalMapper->mFirstTs;
-    if ((aux>0.) && mpAtlas->isImuInitialized())
-        return mpLocalMapper->GetCurrKFTime()-mpLocalMapper->mFirstTs;
-    else
-        return 0.f;
-}
-
-bool System::isLost()
-{
-    if (!mpAtlas->isImuInitialized())
-        return false;
-    else
-    {
-        if ((mpTracker->mState==Tracking::LOST)) //||(mpTracker->mState==Tracking::RECENTLY_LOST))
-            return true;
-        else
-            return false;
-    }
-}
-
-
-bool System::isFinished()
-{
-    return (GetTimeFromIMUInit()>0.1);
-}
-
 void System::ChangeDataset()
 {
     if(mpAtlas->GetCurrentMap()->KeyFramesInMap() < 12)

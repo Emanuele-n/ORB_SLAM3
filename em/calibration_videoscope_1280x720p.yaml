@@ -2,7 +2,7 @@
 Camera.RGB: 1
 Camera.ThDepth: 40.0
 Camera.bf: 40.0
-Camera.fps: 10
+Camera.fps: 5
 Camera.height: 360
 Camera.type: PinHole
 Camera.width: 640

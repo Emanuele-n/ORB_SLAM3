@@ -64,7 +64,7 @@ int main(int argc, char **argv)
 {
     if(argc < 3)
     {
-        cerr << endl << "Usage: ./mono_live path_to_vocabulary path_to_settings [path_to_video]" << endl;
+        cerr << endl << "Usage: ./mono_realtime path_to_vocabulary path_to_settings" << endl;
         return 1;
     }
 
@@ -79,13 +79,10 @@ int main(int argc, char **argv)
 
     // Initialize video source either from camera or from video file
     VideoCapture cap;
-    if (argc == 4) {
-        cap.open(argv[3]); // open the video file
-    } else {
-        cap.open("rtsp://:@192.168.1.1:8554/session0.mpg", cv::CAP_FFMPEG);
-        cap.set(cv::CAP_PROP_BUFFERSIZE, 3); // Set buffer size to reduce delay
-        cap.set(cv::CAP_PROP_FOURCC, cv::VideoWriter::fourcc('H', '2', '6', '4')); 
-    }
+    cap.open("rtsp://:@192.168.1.1:8554/session0.mpg", cv::CAP_FFMPEG);
+    cap.set(cv::CAP_PROP_BUFFERSIZE, 3); // Set buffer size to reduce delay
+    cap.set(cv::CAP_PROP_FOURCC, cv::VideoWriter::fourcc('H', '2', '6', '4')); 
+    
 
     if(!cap.isOpened())
     {
@@ -100,7 +97,7 @@ int main(int argc, char **argv)
     cout << "Start processing camera input..." << endl;
 
     // Desired frame rate (frames per second)
-    double desiredFPS = 10.0;
+    double desiredFPS = 5.0;
     auto desiredFrameDuration = chrono::milliseconds(int(1000 / desiredFPS));
 
     Mat frame, resized_frame;
@@ -128,13 +125,7 @@ int main(int argc, char **argv)
             Sophus::SE3f Tcw = SLAM.TrackMonocular(resized_frame, tframe);
             auto end = chrono::steady_clock::now();
             auto duration = chrono::duration_cast<chrono::milliseconds>(end - start);
-            ofstream logfile("log.txt", ios::app);
-            if (logfile.is_open()) {
-                logfile << "mono_realtime.SLAM.TrackMonocular: " << duration.count() << " milliseconds" << endl;
-                logfile.close();
-            } else {
-                cerr << "Failed to open log file." << endl;
-            }
+            // cout << "TrackMonocular: " << duration.count() << " milliseconds" << endl;
             // std::cout << "Camera pose: " << Tcw.matrix() << std::endl;
 
             // Send the camera pose to the server

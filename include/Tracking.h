@@ -208,8 +208,6 @@ protected:
     bool TrackReferenceKeyFrame();
     void UpdateLastFrame();
     bool TrackWithMotionModel();
-    // bool PredictStateIMU();
-
     bool Relocalization();
 
     void UpdateLocalMap();

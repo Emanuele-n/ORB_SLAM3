@@ -38,9 +38,15 @@ cv::Mat FrameDrawer::GetRawImage()
 {   
     auto start = std::chrono::high_resolution_clock::now();
     unique_lock<mutex> lock(mMutex);
-    return mIm.clone();
+    int state=mState;
+    cv::Mat imClone = mIm.clone();
+    cv::Mat imWithInfo;
+    DrawTextInfo(imClone, state, imWithInfo);
     auto end = std::chrono::high_resolution_clock::now();
-    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    // cout << "GetRawImage: " << duration.count() << " milliseconds" << endl;
+    return mIm.clone();
+
 }
 
 
@@ -208,11 +214,14 @@ cv::Mat FrameDrawer::DrawFrame(float imageScale)
     
     cv::Mat imWithInfo;
     DrawTextInfo(im,state, imWithInfo);
+    auto end = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    // cout << "DrawFrame: " << duration.count() << " milliseconds" << endl;
     return imWithInfo;
 }
 
 void FrameDrawer::DrawTextInfo(cv::Mat &im, int nState, cv::Mat &imText)
-{
+{   
     stringstream s;
     if(nState==Tracking::NO_IMAGES_YET)
         s << " WAITING FOR IMAGES";
@@ -310,8 +319,8 @@ void FrameDrawer::Update(Tracking *pTracker)
     }
     mState=static_cast<int>(pTracker->mLastProcessedState);
     auto end = std::chrono::high_resolution_clock::now();
-    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-    std::cout << "Update FrameDrawer: " << duration.count() << std::endl;
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    // std::cout << "Update FrameDrawer: " << duration.count() << " milliseconds" << std::endl;
 }
 
 } //namespace ORB_SLAM

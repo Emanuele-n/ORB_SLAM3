@@ -142,7 +142,6 @@ protected:
     System *mpSystem;
 
     bool mbMonocular;
-    bool mbInertial;
 
     void ResetIfRequested();
     bool mbResetRequested;

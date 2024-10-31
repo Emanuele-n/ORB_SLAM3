@@ -31,7 +31,7 @@ namespace ORB_SLAM3
 {
 
 LocalMapping::LocalMapping(System* pSys, Atlas *pAtlas, const float bMonocular, bool bInertial, const string &_strSeqName):
-    mpSystem(pSys), mbMonocular(bMonocular), mbInertial(bInertial), mbResetRequested(false), mbResetRequestedActiveMap(false), mbFinishRequested(false), mbFinished(true), mpAtlas(pAtlas), bInitializing(false),
+    mpSystem(pSys), mbMonocular(bMonocular), mbResetRequested(false), mbResetRequestedActiveMap(false), mbFinishRequested(false), mbFinished(true), mpAtlas(pAtlas), bInitializing(false),
     mbAbortBA(false), mbStopped(false), mbStopRequested(false), mbNotStop(false), mbAcceptKeyFrames(true),
     mIdxInit(0), mScale(1.0), mInitSect(0), mbNotBA1(true), mbNotBA2(true), mIdxIteration(0), infoInertial(Eigen::MatrixXd::Zero(9,9))
 {
@@ -125,36 +125,8 @@ void LocalMapping::Run()
             {
                 if(mpAtlas->KeyFramesInMap()>2)
                 {
-
-                    // if(mbInertial && mpCurrentKeyFrame->GetMap()->isImuInitialized())
-                    // {
-                    //     float dist = (mpCurrentKeyFrame->mPrevKF->GetCameraCenter() - mpCurrentKeyFrame->GetCameraCenter()).norm() +
-                    //             (mpCurrentKeyFrame->mPrevKF->mPrevKF->GetCameraCenter() - mpCurrentKeyFrame->mPrevKF->GetCameraCenter()).norm();
-
-                    //     if(dist>0.05)
-                    //         mTinit += mpCurrentKeyFrame->mTimeStamp - mpCurrentKeyFrame->mPrevKF->mTimeStamp;
-                    //     if(!mpCurrentKeyFrame->GetMap()->GetIniertialBA2())
-                    //     {
-                    //         if((mTinit<10.f) && (dist<0.02))
-                    //         {
-                    //             cout << "Not enough motion for initializing. Reseting..." << endl;
-                    //             unique_lock<mutex> lock(mMutexReset);
-                    //             mbResetRequestedActiveMap = true;
-                    //             mpMapToReset = mpCurrentKeyFrame->GetMap();
-                    //             mbBadImu = true;
-                    //         }
-                    //     }
-
-                    //     bool bLarge = ((mpTracker->GetMatchesInliers()>75)&&mbMonocular)||((mpTracker->GetMatchesInliers()>100)&&!mbMonocular);
-                    //     Optimizer::LocalInertialBA(mpCurrentKeyFrame, &mbAbortBA, mpCurrentKeyFrame->GetMap(),num_FixedKF_BA,num_OptKF_BA,num_MPs_BA,num_edges_BA, bLarge, !mpCurrentKeyFrame->GetMap()->GetIniertialBA2());
-                    //     b_doneLBA = true;
-                    // }
-                    // else
-                    // {
                     Optimizer::LocalBundleAdjustment(mpCurrentKeyFrame,&mbAbortBA, mpCurrentKeyFrame->GetMap(),num_FixedKF_BA,num_OptKF_BA,num_MPs_BA,num_edges_BA);
                     b_doneLBA = true;
-                    // }
-
                 }
 #ifdef REGISTER_TIMES
                 std::chrono::steady_clock::time_point time_EndLBA = std::chrono::steady_clock::now();
@@ -341,20 +313,6 @@ void LocalMapping::CreateNewMapPoints()
     if(mbMonocular)
         nn=30;
     vector<KeyFrame*> vpNeighKFs = mpCurrentKeyFrame->GetBestCovisibilityKeyFrames(nn);
-
-    // if (mbInertial)
-    // {
-    //     KeyFrame* pKF = mpCurrentKeyFrame;
-    //     int count=0;
-    //     while((vpNeighKFs.size()<=nn)&&(pKF->mPrevKF)&&(count++<nn))
-    //     {
-    //         vector<KeyFrame*>::iterator it = std::find(vpNeighKFs.begin(), vpNeighKFs.end(), pKF->mPrevKF);
-    //         if(it==vpNeighKFs.end())
-    //             vpNeighKFs.push_back(pKF->mPrevKF);
-    //         pKF = pKF->mPrevKF;
-    //     }
-    // }
-
     float th = 0.6f;
 
     ORBmatcher matcher(th,false);
@@ -409,7 +367,7 @@ void LocalMapping::CreateNewMapPoints()
 
         // Search matches that fullfil epipolar constraint
         vector<pair<size_t,size_t> > vMatchedIndices;
-        bool bCoarse = mbInertial && mpTracker->mState==Tracking::RECENTLY_LOST && mpCurrentKeyFrame->GetMap()->GetIniertialBA2();
+        bool bCoarse = false && mpTracker->mState==Tracking::RECENTLY_LOST && mpCurrentKeyFrame->GetMap()->GetIniertialBA2();
 
         matcher.SearchForTriangulation(mpCurrentKeyFrame,pKF2,vMatchedIndices,false,bCoarse);
 
@@ -528,7 +486,7 @@ void LocalMapping::CreateNewMapPoints()
             bool goodProj = false;
             bool bPointStereo = false;
             if(cosParallaxRays<cosParallaxStereo && cosParallaxRays>0 && (bStereo1 || bStereo2 ||
-                                                                          (cosParallaxRays<0.9996 && mbInertial) || (cosParallaxRays<0.9998 && !mbInertial)))
+                                                                          (cosParallaxRays<0.9996 && false) || (cosParallaxRays<0.9998 && true)))
             {
                 goodProj = GeometricTools::Triangulate(xn1, xn2, eigTcw1, eigTcw2, x3D);
                 if(!goodProj)
@@ -693,23 +651,6 @@ void LocalMapping::SearchInNeighbors()
             break;
     }
 
-    // Extend to temporal neighbors
-    // if(mbInertial)
-    // {
-    //     KeyFrame* pKFi = mpCurrentKeyFrame->mPrevKF;
-    //     while(vpTargetKFs.size()<20 && pKFi)
-    //     {
-    //         if(pKFi->isBad() || pKFi->mnFuseTargetForKF==mpCurrentKeyFrame->mnId)
-    //         {
-    //             pKFi = pKFi->mPrevKF;
-    //             continue;
-    //         }
-    //         vpTargetKFs.push_back(pKFi);
-    //         pKFi->mnFuseTargetForKF=mpCurrentKeyFrame->mnId;
-    //         pKFi = pKFi->mPrevKF;
-    //     }
-    // }
-
     // Search matches by projection from current KF in target KFs
     ORBmatcher matcher;
     vector<MapPoint*> vpMapPointMatches = mpCurrentKeyFrame->GetMapPointMatches();
@@ -858,31 +799,12 @@ void LocalMapping::KeyFrameCulling()
     vector<KeyFrame*> vpLocalKeyFrames = mpCurrentKeyFrame->GetVectorCovisibleKeyFrames();
 
     float redundant_th;
-    if(!mbInertial)
-        redundant_th = 0.9;
-    else if (mbMonocular)
-        redundant_th = 0.9;
-    else
-        redundant_th = 0.5;
+    redundant_th = 0.9;
 
-    const bool bInitImu = mpAtlas->isImuInitialized();
     int count=0;
 
     // Compoute last KF from optimizable window:
     unsigned int last_ID;
-    // if (mbInertial)
-    // {
-    //     int count = 0;
-    //     KeyFrame* aux_KF = mpCurrentKeyFrame;
-    //     while(count<Nd && aux_KF->mPrevKF)
-    //     {
-    //         aux_KF = aux_KF->mPrevKF;
-    //         count++;
-    //     }
-    //     last_ID = aux_KF->mnId;
-    // }
-
-
 
     for(vector<KeyFrame*>::iterator vit=vpLocalKeyFrames.begin(), vend=vpLocalKeyFrames.end(); vit!=vend; vit++)
     {
@@ -957,42 +879,7 @@ void LocalMapping::KeyFrameCulling()
 
         if(nRedundantObservations>redundant_th*nMPs)
         {
-            // if (mbInertial)
-            // {
-            //     if (mpAtlas->KeyFramesInMap()<=Nd)
-            //         continue;
-
-            //     if(pKF->mnId>(mpCurrentKeyFrame->mnId-2))
-            //         continue;
-
-            //     if(pKF->mPrevKF && pKF->mNextKF)
-            //     {
-            //         const float t = pKF->mNextKF->mTimeStamp-pKF->mPrevKF->mTimeStamp;
-
-            //         if((bInitImu && (pKF->mnId<last_ID) && t<3.) || (t<0.5))
-            //         {
-            //             pKF->mNextKF->mpImuPreintegrated->MergePrevious(pKF->mpImuPreintegrated);
-            //             pKF->mNextKF->mPrevKF = pKF->mPrevKF;
-            //             pKF->mPrevKF->mNextKF = pKF->mNextKF;
-            //             pKF->mNextKF = NULL;
-            //             pKF->mPrevKF = NULL;
-            //             pKF->SetBadFlag();
-            //         }
-            //         else if(!mpCurrentKeyFrame->GetMap()->GetIniertialBA2() && ((pKF->GetImuPosition()-pKF->mPrevKF->GetImuPosition()).norm()<0.02) && (t<3))
-            //         {
-            //             pKF->mNextKF->mpImuPreintegrated->MergePrevious(pKF->mpImuPreintegrated);
-            //             pKF->mNextKF->mPrevKF = pKF->mPrevKF;
-            //             pKF->mPrevKF->mNextKF = pKF->mNextKF;
-            //             pKF->mNextKF = NULL;
-            //             pKF->mPrevKF = NULL;
-            //             pKF->SetBadFlag();
-            //         }
-            //     }
-            // }
-            // else
-            // {
             pKF->SetBadFlag();
-            // }
         }
         if((count > 20 && mbAbortBA) || count>100)
         {

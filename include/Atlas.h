@@ -120,8 +120,6 @@ public:
 
     bool isInertial();
     void SetInertialSensor();
-    void SetImuInitialized();
-    bool isImuInitialized();
 
     // Function for garantee the correction of serialization of this object
     void PreSave();

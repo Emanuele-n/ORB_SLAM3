@@ -48,6 +48,7 @@ include_directories(
 ${PROJECT_SOURCE_DIR}
 ${PROJECT_SOURCE_DIR}/include
 ${PROJECT_SOURCE_DIR}/include/CameraModels
+${PROJECT_SOURCE_DIR}/include/External
 ${PROJECT_SOURCE_DIR}/Thirdparty/Sophus
 ${EIGEN3_INCLUDE_DIR}
 ${Pangolin_INCLUDE_DIRS}
@@ -60,8 +61,6 @@ src/System.cc
 src/Tracking.cc
 src/LocalMapping.cc
 src/LoopClosing.cc
-src/ORBextractor.cc
-src/ORBmatcher.cc
 src/FrameDrawer.cc
 src/Converter.cc
 src/MapPoint.cc
@@ -79,7 +78,6 @@ src/G2oTypes.cc
 src/CameraModels/Pinhole.cpp
 src/CameraModels/KannalaBrandt8.cpp
 src/OptimizableTypes.cpp
-src/MLPnPsolver.cpp
 src/GeometricTools.cc
 src/TwoViewReconstruction.cc
 src/Config.cc
@@ -88,8 +86,6 @@ include/System.h
 include/Tracking.h
 include/LocalMapping.h
 include/LoopClosing.h
-include/ORBextractor.h
-include/ORBmatcher.h
 include/FrameDrawer.h
 include/Converter.h
 include/MapPoint.h
@@ -108,12 +104,21 @@ include/CameraModels/GeometricCamera.h
 include/CameraModels/Pinhole.h
 include/CameraModels/KannalaBrandt8.h
 include/OptimizableTypes.h
-include/MLPnPsolver.h
 include/GeometricTools.h
 include/TwoViewReconstruction.h
 include/SerializationUtils.h
 include/Config.h
-include/Settings.h)
+include/Settings.h
+
+# External
+include/External/ORBextractor.h
+include/External/ORBmatcher.h
+include/External/MLPnPsolver.h
+src/External/ORBextractor.cc
+src/External/ORBmatcher.cc
+src/External/MLPnPsolver.cpp
+
+)
 
 add_subdirectory(Thirdparty/g2o)
 

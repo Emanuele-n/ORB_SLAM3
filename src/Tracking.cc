@@ -1067,14 +1067,7 @@ Sophus::SE3f Tracking::GrabImageMonocular(const cv::Mat &im, const double &times
     Track();
     auto end2 = chrono::steady_clock::now();
     auto duration2 = chrono::duration_cast<chrono::milliseconds>(end2 - start2);
-    ofstream logfile("log.txt", ios::app);
-    if (logfile.is_open()) {
-        logfile << "\tSystem::TrackMonocular GrabImageMonocular.Frame " << duration.count() << " milliseconds" << endl;
-        logfile << "\tSystem::TrackMonocular GrabImageMonocular.Track " << duration2.count() << " milliseconds" << endl;
-        logfile.close();
-    } else {
-        cerr << "Failed to open log file." << endl;
-    }
+    // cout << "Tracking: " << duration2.count() << " milliseconds" << endl;
 
     return mCurrentFrame.GetPose();
 }
@@ -1082,7 +1075,7 @@ Sophus::SE3f Tracking::GrabImageMonocular(const cv::Mat &im, const double &times
 void Tracking::Track()
 {   
     // cout << "TRACK" << endl;
-    bool printDuration = true;
+    bool printDuration = false;
     // Declare all the durations
     auto duration_TrackOnly = chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - chrono::steady_clock::now());
     auto duration_TrackLocalization = chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - chrono::steady_clock::now());
@@ -1157,7 +1150,7 @@ void Tracking::Track()
         auto end4 = chrono::steady_clock::now();
         duration_Initialization = chrono::duration_cast<chrono::milliseconds>(end4 - start4);
         // print the duration of the function
-        if (printDuration) cout << "Initialization: " << duration_Initialization.count() << " milliseconds" << endl;
+        if (printDuration) cout << "\tInitialization: " << duration_Initialization.count() << " milliseconds" << endl;
     }
     else
     {
@@ -1181,7 +1174,7 @@ void Tracking::Track()
                 // Local Mapping might have changed some MapPoints tracked in last frame
                 CheckReplacedInLastFrame();
 
-                if((!mbVelocity && !pCurrentMap->isImuInitialized()) || mCurrentFrame.mnId<mnLastRelocFrameId+2)
+                if((!mbVelocity) || mCurrentFrame.mnId<mnLastRelocFrameId+2)
                 {
                     Verbose::PrintMess("TRACK: Track with respect to the reference KF ", Verbose::VERBOSITY_DEBUG);
                     bOK = TrackReferenceKeyFrame();
@@ -1251,7 +1244,7 @@ void Tracking::Track()
             auto end5 = chrono::steady_clock::now();
             duration_TrackOnly = chrono::duration_cast<chrono::milliseconds>(end5 - start5);
             // print the duration of the function
-            if (printDuration) cout << "Not TrackOnly: " << duration_TrackOnly.count() << " milliseconds" << endl;
+            if (printDuration) cout << "\tNot TrackOnly: " << duration_TrackOnly.count() << " milliseconds" << endl;
         }
         else
         {
@@ -1325,7 +1318,7 @@ void Tracking::Track()
             auto end6 = chrono::steady_clock::now();
             duration_TrackLocalization = chrono::duration_cast<chrono::milliseconds>(end6 - start6);
             // print the duration of the function
-            if (printDuration) cout << "TrackLocalization: " << duration_TrackLocalization.count() << " milliseconds" << endl;
+            if (printDuration) cout << "\tTrackLocalization: " << duration_TrackLocalization.count() << " milliseconds" << endl;
         }
 
 
@@ -1370,12 +1363,12 @@ void Tracking::Track()
         double timeLMTrack = std::chrono::duration_cast<std::chrono::duration<double,std::milli> >(time_EndLMTrack - time_StartLMTrack).count();
         vdLMTrack_ms.push_back(timeLMTrack);
 #endif
-        auto start7 = chrono::steady_clock::now();
+
         // Update drawer
+        mpFrameDrawer->Update(this);
         if(mCurrentFrame.isSet())
             mpMapDrawer->SetCurrentCameraPose(mCurrentFrame.GetPose());
 
-        auto start8 = chrono::steady_clock::now();
         if(bOK || mState==RECENTLY_LOST)
         {
             // Update motion model
@@ -1437,10 +1430,6 @@ void Tracking::Track()
                     mCurrentFrame.mvpMapPoints[i]=static_cast<MapPoint*>(NULL);
             }
         }
-        auto end8 = chrono::steady_clock::now();
-        duration_NewKF = chrono::duration_cast<chrono::milliseconds>(end8 - start8);
-        // print the duration of the function
-        if (printDuration) cout << "NewKF: " << duration_NewKF.count() << " milliseconds" << endl;
 
         // Reset if the camera get lost soon after initialization
         auto start9 = chrono::steady_clock::now();
@@ -1463,7 +1452,7 @@ void Tracking::Track()
         auto end9 = chrono::steady_clock::now();
         duration_ResetLost = chrono::duration_cast<chrono::milliseconds>(end9 - start9);
         // print the duration of the function
-        if (printDuration) cout << "ResetLost: " << duration_ResetLost.count() << " milliseconds" << endl;
+        if (printDuration) cout << "\tResetLost: " << duration_ResetLost.count() << " milliseconds" << endl;
     }
 
 
@@ -1493,7 +1482,7 @@ void Tracking::Track()
     auto end10 = chrono::steady_clock::now();
     auto duration_StoreFrame = chrono::duration_cast<chrono::milliseconds>(end10 - start10);
     // print the duration of the function
-    if (printDuration) cout << "StoreFrame: " << duration_StoreFrame.count() << " milliseconds" << endl;
+    if (printDuration) cout << "\tStoreFrame: " << duration_StoreFrame.count() << " milliseconds" << endl;
 
 #ifdef REGISTER_LOOP
     if (Stop()) {
@@ -1506,7 +1495,7 @@ void Tracking::Track()
     }
 #endif
 
-    // cout << "END TRACK" << endl;
+    // cout << "END TRACK, state: " << mState << endl;
 }
 
 void Tracking::MonocularInitialization()
@@ -1922,16 +1911,7 @@ bool Tracking::TrackWithMotionModel()
     // Create "visual odometry" points if in Localization Mode
     UpdateLastFrame();
 
-    // if (mpAtlas->isImuInitialized() && (mCurrentFrame.mnId>mnLastRelocFrameId+mnFramesToResetIMU))
-    // {
-    //     // Predict state with IMU if it is initialized and it doesnt need reset
-    //     PredictStateIMU();
-    //     return true;
-    // }
-    // else
-    // {
-        mCurrentFrame.SetPose(mVelocity * mLastFrame.GetPose());
-    // }
+    mCurrentFrame.SetPose(mVelocity * mLastFrame.GetPose());
 
     fill(mCurrentFrame.mvpMapPoints.begin(),mCurrentFrame.mvpMapPoints.end(),static_cast<MapPoint*>(NULL));
 
@@ -2027,30 +2007,7 @@ bool Tracking::TrackLocalMap()
         }
 
     int inliers;
-    if (!mpAtlas->isImuInitialized())
-        Optimizer::PoseOptimization(&mCurrentFrame);
-    else
-    {
-        if(mCurrentFrame.mnId<=mnLastRelocFrameId+mnFramesToResetIMU)
-        {
-            Verbose::PrintMess("TLM: PoseOptimization ", Verbose::VERBOSITY_DEBUG);
-            Optimizer::PoseOptimization(&mCurrentFrame);
-        }
-        else
-        {
-            // if(!mbMapUpdated && mState == OK) //  && (mnMatchesInliers>30))
-            if(!mbMapUpdated) //  && (mnMatchesInliers>30))
-            {
-                Verbose::PrintMess("TLM: PoseInertialOptimizationLastFrame ", Verbose::VERBOSITY_DEBUG);
-                inliers = Optimizer::PoseInertialOptimizationLastFrame(&mCurrentFrame); // , !mpLastKeyFrame->GetMap()->GetIniertialBA1());
-            }
-            else
-            {
-                Verbose::PrintMess("TLM: PoseInertialOptimizationLastKeyFrame ", Verbose::VERBOSITY_DEBUG);
-                inliers = Optimizer::PoseInertialOptimizationLastKeyFrame(&mCurrentFrame); // , !mpLastKeyFrame->GetMap()->GetIniertialBA1());
-            }
-        }
-    }
+    Optimizer::PoseOptimization(&mCurrentFrame);
 
     aux1 = 0, aux2 = 0;
     for(int i=0; i<mCurrentFrame.N; i++)
@@ -2093,45 +2050,14 @@ bool Tracking::TrackLocalMap()
     if((mnMatchesInliers>10)&&(mState==RECENTLY_LOST))
         return true;
 
-
-    // if (mSensor == System::IMU_MONOCULAR)
-    // {
-    //     if((mnMatchesInliers<15 && mpAtlas->isImuInitialized())||(mnMatchesInliers<50 && !mpAtlas->isImuInitialized()))
-    //     {
-    //         return false;
-    //     }
-    //     else
-    //         return true;
-    // }
-    // else if (mSensor == System::IMU_STEREO || mSensor == System::IMU_RGBD)
-    // {
-    //     if(mnMatchesInliers<15)
-    //     {
-    //         return false;
-    //     }
-    //     else
-    //         return true;
-    // }
-    // else
-    // {
     if(mnMatchesInliers<30)
         return false;
     else
         return true;
-    // }
 }
 
 bool Tracking::NeedNewKeyFrame()
 {
-    // if((mSensor == System::IMU_MONOCULAR || mSensor == System::IMU_STEREO || mSensor == System::IMU_RGBD) && !mpAtlas->GetCurrentMap()->isImuInitialized())
-    // {
-    //     if (mSensor == System::IMU_MONOCULAR && (mCurrentFrame.mTimeStamp-mpLastKeyFrame->mTimeStamp)>=0.25)
-    //         return true;
-    //     else if ((mSensor == System::IMU_STEREO || mSensor == System::IMU_RGBD) && (mCurrentFrame.mTimeStamp-mpLastKeyFrame->mTimeStamp)>=0.25)
-    //         return true;
-    //     else
-    //         return false;
-    // }
 
     if(mbOnlyTracking)
         return false;
@@ -2275,16 +2201,13 @@ bool Tracking::NeedNewKeyFrame()
 
 void Tracking::CreateNewKeyFrame()
 {
-    if(mpLocalMapper->IsInitializing() && !mpAtlas->isImuInitialized())
+    if(mpLocalMapper->IsInitializing())
         return;
 
     if(!mpLocalMapper->SetNotStop(true))
         return;
 
     KeyFrame* pKF = new KeyFrame(mCurrentFrame,mpAtlas->GetCurrentMap(),mpKeyFrameDB);
-
-    if(mpAtlas->isImuInitialized()) //  || mpLocalMapper->IsInitializing())
-        pKF->bImu = true;
 
     pKF->SetNewBias(mCurrentFrame.mImuBias);
     mpReferenceKF = pKF;
@@ -2449,19 +2372,6 @@ void Tracking::SearchLocalPoints()
     {
         ORBmatcher matcher(0.8);
         int th = 1;
-        // if(mSensor==System::RGBD || mSensor==System::IMU_RGBD)
-        //     th=3;
-        if(mpAtlas->isImuInitialized())
-        {
-            if(mpAtlas->GetCurrentMap()->GetIniertialBA2())
-                th=2;
-            else
-                th=6;
-        }
-        // else if(!mpAtlas->isImuInitialized() && (mSensor==System::IMU_MONOCULAR || mSensor==System::IMU_STEREO || mSensor == System::IMU_RGBD))
-        // {
-        //     th=10;
-        // }
 
         // If the camera has been relocalised recently, perform a coarser search
         if(mCurrentFrame.mnId<mnLastRelocFrameId+2)
@@ -2518,7 +2428,7 @@ void Tracking::UpdateLocalKeyFrames()
 {
     // Each map point vote for the keyframes in which it has been observed
     map<KeyFrame*,int> keyframeCounter;
-    if(!mpAtlas->isImuInitialized() || (mCurrentFrame.mnId<mnLastRelocFrameId+2))
+    if(mCurrentFrame.mnId<mnLastRelocFrameId+2)
     {
         for(int i=0; i<mCurrentFrame.N; i++)
         {

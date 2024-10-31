@@ -61,7 +61,6 @@ class Map
         ar & mnBackupKFinitialID;
         ar & mnBackupKFlowerID;
 
-        ar & mbImuInitialized;
         ar & mbIsInertial;
         ar & mbIMU_BA1;
         ar & mbIMU_BA2;
@@ -111,9 +110,6 @@ public:
     void IncreaseChangeIndex();
     int GetLastMapChange();
     void SetLastMapChange(int currentChangeId);
-
-    void SetImuInitialized();
-    bool isImuInitialized();
 
     void ApplyScaledRotation(const Sophus::SE3f &T, const float s, const bool bScaledVel=false);
 
@@ -173,8 +169,6 @@ protected:
     unsigned long int mnBackupKFlowerID;
 
     std::vector<MapPoint*> mvpReferenceMapPoints;
-
-    bool mbImuInitialized;
 
     int mnMapChange;
     int mnMapChangeNotified;

@@ -186,7 +186,7 @@ class KeyFrame
         ar & mImuCalib;
         ar & mBackupPrevKFId;
         ar & mBackupNextKFId;
-        ar & bImu;
+        // ar & bImu;
         ar & boost::serialization::make_array(mVw.data(), mVw.size());
         ar & boost::serialization::make_array(mOwb.data(), mOwb.size());
         ar & mbHasVelocity;

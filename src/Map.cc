@@ -26,7 +26,7 @@ namespace ORB_SLAM3
 
 long unsigned int Map::nNextId=0;
 
-Map::Map():mnMaxKFid(0),mnBigChangeIdx(0), mbImuInitialized(false), mnMapChange(0), mpFirstRegionKF(static_cast<KeyFrame*>(NULL)),
+Map::Map():mnMaxKFid(0),mnBigChangeIdx(0), mnMapChange(0), mpFirstRegionKF(static_cast<KeyFrame*>(NULL)),
 mbFail(false), mIsInUse(false), mHasTumbnail(false), mbBad(false), mnMapChangeNotified(0), mbIsInertial(false), mbIMU_BA1(false), mbIMU_BA2(false)
 {
     mnId=nNextId++;
@@ -34,7 +34,7 @@ mbFail(false), mIsInUse(false), mHasTumbnail(false), mbBad(false), mnMapChangeNo
 }
 
 Map::Map(int initKFid):mnInitKFid(initKFid), mnMaxKFid(initKFid),/*mnLastLoopKFid(initKFid),*/ mnBigChangeIdx(0), mIsInUse(false),
-                       mHasTumbnail(false), mbBad(false), mbImuInitialized(false), mpFirstRegionKF(static_cast<KeyFrame*>(NULL)),
+                       mHasTumbnail(false), mbBad(false), mpFirstRegionKF(static_cast<KeyFrame*>(NULL)),
                        mnMapChange(0), mbFail(false), mnMapChangeNotified(0), mbIsInertial(false), mbIMU_BA1(false), mbIMU_BA2(false)
 {
     mnId=nNextId++;
@@ -81,18 +81,6 @@ void Map::AddMapPoint(MapPoint *pMP)
 {
     unique_lock<mutex> lock(mMutexMap);
     mspMapPoints.insert(pMP);
-}
-
-void Map::SetImuInitialized()
-{
-    unique_lock<mutex> lock(mMutexMap);
-    mbImuInitialized = true;
-}
-
-bool Map::isImuInitialized()
-{
-    unique_lock<mutex> lock(mMutexMap);
-    return mbImuInitialized;
 }
 
 void Map::EraseMapPoint(MapPoint *pMP)
@@ -226,7 +214,6 @@ void Map::clear()
     mspMapPoints.clear();
     mspKeyFrames.clear();
     mnMaxKFid = mnInitKFid;
-    mbImuInitialized = false;
     mvpReferenceMapPoints.clear();
     mvpKeyFrameOrigins.clear();
     mbIMU_BA1 = false;
