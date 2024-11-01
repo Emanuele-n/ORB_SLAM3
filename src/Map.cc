@@ -27,7 +27,7 @@ namespace ORB_SLAM3
 long unsigned int Map::nNextId=0;
 
 Map::Map():mnMaxKFid(0),mnBigChangeIdx(0), mnMapChange(0), mpFirstRegionKF(static_cast<KeyFrame*>(NULL)),
-mbFail(false), mIsInUse(false), mHasTumbnail(false), mbBad(false), mnMapChangeNotified(0), mbIsInertial(false), mbIMU_BA1(false), mbIMU_BA2(false)
+mbFail(false), mIsInUse(false), mHasTumbnail(false), mbBad(false), mnMapChangeNotified(0)
 {
     mnId=nNextId++;
     mThumbnail = static_cast<GLubyte*>(NULL);
@@ -35,7 +35,7 @@ mbFail(false), mIsInUse(false), mHasTumbnail(false), mbBad(false), mnMapChangeNo
 
 Map::Map(int initKFid):mnInitKFid(initKFid), mnMaxKFid(initKFid),/*mnLastLoopKFid(initKFid),*/ mnBigChangeIdx(0), mIsInUse(false),
                        mHasTumbnail(false), mbBad(false), mpFirstRegionKF(static_cast<KeyFrame*>(NULL)),
-                       mnMapChange(0), mbFail(false), mnMapChangeNotified(0), mbIsInertial(false), mbIMU_BA1(false), mbIMU_BA2(false)
+                       mnMapChange(0), mbFail(false), mnMapChangeNotified(0)
 {
     mnId=nNextId++;
     mThumbnail = static_cast<GLubyte*>(NULL);
@@ -216,8 +216,6 @@ void Map::clear()
     mnMaxKFid = mnInitKFid;
     mvpReferenceMapPoints.clear();
     mvpKeyFrameOrigins.clear();
-    mbIMU_BA1 = false;
-    mbIMU_BA2 = false;
 }
 
 bool Map::IsInUse()
@@ -233,76 +231,6 @@ void Map::SetBad()
 bool Map::IsBad()
 {
     return mbBad;
-}
-
-
-void Map::ApplyScaledRotation(const Sophus::SE3f &T, const float s, const bool bScaledVel)
-{
-    unique_lock<mutex> lock(mMutexMap);
-
-    // Body position (IMU) of first keyframe is fixed to (0,0,0)
-    Sophus::SE3f Tyw = T;
-    Eigen::Matrix3f Ryw = Tyw.rotationMatrix();
-    Eigen::Vector3f tyw = Tyw.translation();
-
-    for(set<KeyFrame*>::iterator sit=mspKeyFrames.begin(); sit!=mspKeyFrames.end(); sit++)
-    {
-        KeyFrame* pKF = *sit;
-        Sophus::SE3f Twc = pKF->GetPoseInverse();
-        Twc.translation() *= s;
-        Sophus::SE3f Tyc = Tyw*Twc;
-        Sophus::SE3f Tcy = Tyc.inverse();
-        pKF->SetPose(Tcy);
-        Eigen::Vector3f Vw = pKF->GetVelocity();
-        if(!bScaledVel)
-            pKF->SetVelocity(Ryw*Vw);
-        else
-            pKF->SetVelocity(Ryw*Vw*s);
-
-    }
-    for(set<MapPoint*>::iterator sit=mspMapPoints.begin(); sit!=mspMapPoints.end(); sit++)
-    {
-        MapPoint* pMP = *sit;
-        pMP->SetWorldPos(s * Ryw * pMP->GetWorldPos() + tyw);
-        pMP->UpdateNormalAndDepth();
-    }
-    mnMapChange++;
-}
-
-void Map::SetInertialSensor()
-{
-    unique_lock<mutex> lock(mMutexMap);
-    mbIsInertial = true;
-}
-
-bool Map::IsInertial()
-{
-    unique_lock<mutex> lock(mMutexMap);
-    return mbIsInertial;
-}
-
-void Map::SetIniertialBA1()
-{
-    unique_lock<mutex> lock(mMutexMap);
-    mbIMU_BA1 = true;
-}
-
-void Map::SetIniertialBA2()
-{
-    unique_lock<mutex> lock(mMutexMap);
-    mbIMU_BA2 = true;
-}
-
-bool Map::GetIniertialBA1()
-{
-    unique_lock<mutex> lock(mMutexMap);
-    return mbIMU_BA1;
-}
-
-bool Map::GetIniertialBA2()
-{
-    unique_lock<mutex> lock(mMutexMap);
-    return mbIMU_BA2;
 }
 
 void Map::ChangeId(long unsigned int nId)

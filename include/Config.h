@@ -43,11 +43,6 @@ class ORBExtractorConfig
 
 };
 
-class IMUConfig
-{
-
-};
-
 class ConfigParser
 {
 public:
@@ -58,7 +53,6 @@ private:
     ViewerConfig mViewerConfig;
     CameraConfig mCameraConfig;
     ORBExtractorConfig mORBConfig;
-    IMUConfig mIMUConfig;
 
 };
 

@@ -118,9 +118,6 @@ public:
     void SetMapBad(Map* pMap);
     void RemoveBadMaps();
 
-    bool isInertial();
-    void SetInertialSensor();
-
     // Function for garantee the correction of serialization of this object
     void PreSave();
     void PostLoad();

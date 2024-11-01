@@ -1102,8 +1102,6 @@ void Tracking::Track()
         if(mLastFrame.mTimeStamp>mCurrentFrame.mTimeStamp)
         {
             cerr << "ERROR: Frame with a timestamp older than previous frame detected!" << endl;
-            unique_lock<mutex> lock(mMutexImuQueue);
-            mlQueueImuData.clear();
             CreateMapInAtlas();
             return;
         }
@@ -1516,17 +1514,6 @@ void Tracking::MonocularInitialization()
 
             fill(mvIniMatches.begin(),mvIniMatches.end(),-1);
 
-            // if (mSensor == System::IMU_MONOCULAR)
-            // {
-            //     if(mpImuPreintegratedFromLastKF)
-            //     {
-            //         delete mpImuPreintegratedFromLastKF;
-            //     }
-            //     mpImuPreintegratedFromLastKF = new IMU::Preintegrated(IMU::Bias(),*mpImuCalib);
-            //     mCurrentFrame.mpImuPreintegrated = mpImuPreintegratedFromLastKF;
-
-            // }
-
             mbReadyToInitializate = true;
 
             return;
@@ -1581,10 +1568,6 @@ void Tracking::CreateInitialMapMonocular()
     // Create KeyFrames
     KeyFrame* pKFini = new KeyFrame(mInitialFrame,mpAtlas->GetCurrentMap(),mpKeyFrameDB);
     KeyFrame* pKFcur = new KeyFrame(mCurrentFrame,mpAtlas->GetCurrentMap(),mpKeyFrameDB);
-
-    // if(mSensor == System::IMU_MONOCULAR)
-    //     pKFini->mpImuPreintegrated = (IMU::Preintegrated*)(NULL);
-
 
     pKFini->ComputeBoW();
     pKFcur->ComputeBoW();
@@ -1663,16 +1646,6 @@ void Tracking::CreateInitialMapMonocular()
         }
     }
 
-    // if (mSensor == System::IMU_MONOCULAR)
-    // {
-    //     pKFcur->mPrevKF = pKFini;
-    //     pKFini->mNextKF = pKFcur;
-    //     pKFcur->mpImuPreintegrated = mpImuPreintegratedFromLastKF;
-
-    //     mpImuPreintegratedFromLastKF = new IMU::Preintegrated(pKFcur->mpImuPreintegrated->GetUpdatedBias(),pKFcur->mImuCalib);
-    // }
-
-
     mpLocalMapper->InsertKeyFrame(pKFini);
     mpLocalMapper->InsertKeyFrame(pKFcur);
     mpLocalMapper->mFirstTs=pKFcur->mTimeStamp;
@@ -1715,8 +1688,6 @@ void Tracking::CreateMapInAtlas()
 {
     mnLastInitFrameId = mCurrentFrame.mnId;
     mpAtlas->CreateNewMap();
-    // if (mSensor==System::IMU_STEREO || mSensor == System::IMU_MONOCULAR || mSensor == System::IMU_RGBD)
-    //     mpAtlas->SetInertialSensor();
     mbSetInit=false;
 
     mnInitialFrameId = mCurrentFrame.mnId+1;
@@ -1731,12 +1702,6 @@ void Tracking::CreateMapInAtlas()
     {
         mbReadyToInitializate = false;
     }
-
-    // if((mSensor == System::IMU_MONOCULAR || mSensor == System::IMU_STEREO || mSensor == System::IMU_RGBD) && mpImuPreintegratedFromLastKF)
-    // {
-    //     delete mpImuPreintegratedFromLastKF;
-    //     mpImuPreintegratedFromLastKF = new IMU::Preintegrated(IMU::Bias(),*mpImuCalib);
-    // }
 
     if(mpLastKeyFrame)
         mpLastKeyFrame = static_cast<KeyFrame*>(NULL);
@@ -2209,7 +2174,6 @@ void Tracking::CreateNewKeyFrame()
 
     KeyFrame* pKF = new KeyFrame(mCurrentFrame,mpAtlas->GetCurrentMap(),mpKeyFrameDB);
 
-    pKF->SetNewBias(mCurrentFrame.mImuBias);
     mpReferenceKF = pKF;
     mCurrentFrame.mpReferenceKF = pKF;
 
@@ -2220,100 +2184,6 @@ void Tracking::CreateNewKeyFrame()
     }
     else
         Verbose::PrintMess("No last KF in KF creation!!", Verbose::VERBOSITY_NORMAL);
-
-    // Reset preintegration from last KF (Create new object)
-    // if (mSensor == System::IMU_MONOCULAR || mSensor == System::IMU_STEREO || mSensor == System::IMU_RGBD)
-    // {
-    //     mpImuPreintegratedFromLastKF = new IMU::Preintegrated(pKF->GetImuBias(),pKF->mImuCalib);
-    // }
-    //
-    // if(mSensor!=System::MONOCULAR && mSensor != System::IMU_MONOCULAR) // TODO check if incluide imu_stereo
-    // {
-    //     mCurrentFrame.UpdatePoseMatrices();
-    //     // cout << "create new MPs" << endl;
-    //     // We sort points by the measured depth by the stereo/RGBD sensor.
-    //     // We create all those MapPoints whose depth < mThDepth.
-    //     // If there are less than 100 close points we create the 100 closest.
-    //     int maxPoint = 100;
-    //     if(mSensor == System::IMU_STEREO || mSensor == System::IMU_RGBD)
-    //         maxPoint = 100;
-
-    //     vector<pair<float,int> > vDepthIdx;
-    //     int N = (mCurrentFrame.Nleft != -1) ? mCurrentFrame.Nleft : mCurrentFrame.N;
-    //     vDepthIdx.reserve(mCurrentFrame.N);
-    //     for(int i=0; i<N; i++)
-    //     {
-    //         float z = mCurrentFrame.mvDepth[i];
-    //         if(z>0)
-    //         {
-    //             vDepthIdx.push_back(make_pair(z,i));
-    //         }
-    //     }
-
-    //     if(!vDepthIdx.empty())
-    //     {
-    //         sort(vDepthIdx.begin(),vDepthIdx.end());
-
-    //         int nPoints = 0;
-    //         for(size_t j=0; j<vDepthIdx.size();j++)
-    //         {
-    //             int i = vDepthIdx[j].second;
-
-    //             bool bCreateNew = false;
-
-    //             MapPoint* pMP = mCurrentFrame.mvpMapPoints[i];
-    //             if(!pMP)
-    //                 bCreateNew = true;
-    //             else if(pMP->Observations()<1)
-    //             {
-    //                 bCreateNew = true;
-    //                 mCurrentFrame.mvpMapPoints[i] = static_cast<MapPoint*>(NULL);
-    //             }
-
-    //             if(bCreateNew)
-    //             {
-    //                 Eigen::Vector3f x3D;
-
-    //                 if(mCurrentFrame.Nleft == -1){
-    //                     mCurrentFrame.UnprojectStereo(i, x3D);
-    //                 }
-    //                 else{
-    //                     x3D = mCurrentFrame.UnprojectStereoFishEye(i);
-    //                 }
-
-    //                 MapPoint* pNewMP = new MapPoint(x3D,pKF,mpAtlas->GetCurrentMap());
-    //                 pNewMP->AddObservation(pKF,i);
-
-    //                 //Check if it is a stereo observation in order to not
-    //                 //duplicate mappoints
-    //                 if(mCurrentFrame.Nleft != -1 && mCurrentFrame.mvLeftToRightMatch[i] >= 0){
-    //                     mCurrentFrame.mvpMapPoints[mCurrentFrame.Nleft + mCurrentFrame.mvLeftToRightMatch[i]]=pNewMP;
-    //                     pNewMP->AddObservation(pKF,mCurrentFrame.Nleft + mCurrentFrame.mvLeftToRightMatch[i]);
-    //                     pKF->AddMapPoint(pNewMP,mCurrentFrame.Nleft + mCurrentFrame.mvLeftToRightMatch[i]);
-    //                 }
-
-    //                 pKF->AddMapPoint(pNewMP,i);
-    //                 pNewMP->ComputeDistinctiveDescriptors();
-    //                 pNewMP->UpdateNormalAndDepth();
-    //                 mpAtlas->AddMapPoint(pNewMP);
-
-    //                 mCurrentFrame.mvpMapPoints[i]=pNewMP;
-    //                 nPoints++;
-    //             }
-    //             else
-    //             {
-    //                 nPoints++;
-    //             }
-
-    //             if(vDepthIdx[j].first>mThDepth && nPoints>maxPoint)
-    //             {
-    //                 break;
-    //             }
-    //         }
-    //         //Verbose::PrintMess("new mps for stereo KF: " + to_string(nPoints), Verbose::VERBOSITY_NORMAL);
-    //     }
-    // }
-
 
     mpLocalMapper->InsertKeyFrame(pKF);
 
@@ -2551,24 +2421,6 @@ void Tracking::UpdateLocalKeyFrames()
         }
     }
 
-    // Add 10 last temporal KFs (mainly for IMU)
-    // if((mSensor == System::IMU_MONOCULAR || mSensor == System::IMU_STEREO || mSensor == System::IMU_RGBD) &&mvpLocalKeyFrames.size()<80)
-    // {
-    //     KeyFrame* tempKeyFrame = mCurrentFrame.mpLastKeyFrame;
-
-    //     const int Nd = 20;
-    //     for(int i=0; i<Nd; i++){
-    //         if (!tempKeyFrame)
-    //             break;
-    //         if(tempKeyFrame->mnTrackReferenceForFrame!=mCurrentFrame.mnId)
-    //         {
-    //             mvpLocalKeyFrames.push_back(tempKeyFrame);
-    //             tempKeyFrame->mnTrackReferenceForFrame=mCurrentFrame.mnId;
-    //             tempKeyFrame=tempKeyFrame->mPrevKF;
-    //         }
-    //     }
-    // }
-
     if(pKFmax)
     {
         mpReferenceKF = pKFmax;
@@ -2779,8 +2631,6 @@ void Tracking::Reset(bool bLocMap)
     // Clear Map (this erase MapPoints and KeyFrames)
     mpAtlas->clearAtlas();
     mpAtlas->CreateNewMap();
-    // if (mSensor==System::IMU_STEREO || mSensor == System::IMU_MONOCULAR || mSensor == System::IMU_RGBD)
-    //     mpAtlas->SetInertialSensor();
     mnInitialFrameId = 0;
 
     KeyFrame::nNextId = 0;

@@ -80,8 +80,6 @@ public:
     double GetCurrKFTime();
     KeyFrame* GetCurrKF();
 
-    std::mutex mMutexImuInit;
-
     Eigen::MatrixXd mcovInertial;
     Eigen::Matrix3d mRwg;
     Eigen::Vector3d mbg;
@@ -100,10 +98,6 @@ public:
     int mInitFr;
     int mIdxIteration;
     string strSequence;
-
-    bool mbNotBA1;
-    bool mbNotBA2;
-    bool mbBadImu;
 
     bool mbWriteStats;
 
@@ -178,16 +172,11 @@ protected:
     bool mbAcceptKeyFrames;
     std::mutex mMutexAccept;
 
-    void InitializeIMU(float priorG = 1e2, float priorA = 1e6, bool bFirst = false);
-    void ScaleRefinement();
-
     bool bInitializing;
 
     Eigen::MatrixXd infoInertial;
     int mNumLM;
     int mNumKFCulling;
-
-    float mTinit;
 
     int countRefinement;
 

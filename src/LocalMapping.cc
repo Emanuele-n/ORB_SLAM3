@@ -33,13 +33,9 @@ namespace ORB_SLAM3
 LocalMapping::LocalMapping(System* pSys, Atlas *pAtlas, const float bMonocular, bool bInertial, const string &_strSeqName):
     mpSystem(pSys), mbMonocular(bMonocular), mbResetRequested(false), mbResetRequestedActiveMap(false), mbFinishRequested(false), mbFinished(true), mpAtlas(pAtlas), bInitializing(false),
     mbAbortBA(false), mbStopped(false), mbStopRequested(false), mbNotStop(false), mbAcceptKeyFrames(true),
-    mIdxInit(0), mScale(1.0), mInitSect(0), mbNotBA1(true), mbNotBA2(true), mIdxIteration(0), infoInertial(Eigen::MatrixXd::Zero(9,9))
+    mIdxInit(0), mScale(1.0), mInitSect(0), mIdxIteration(0), infoInertial(Eigen::MatrixXd::Zero(9,9))
 {
     mnMatchesInliers = 0;
-
-    mbBadImu = false;
-
-    mTinit = 0.f;
 
     mNumLM = 0;
     mNumKFCulling=0;
@@ -71,7 +67,7 @@ void LocalMapping::Run()
         SetAcceptKeyFrames(false);
 
         // Check if there are keyframes in the queue
-        if(CheckNewKeyFrames() && !mbBadImu)
+        if(CheckNewKeyFrames())
         {
 #ifdef REGISTER_TIMES
             double timeLBA_ms = 0;
@@ -176,7 +172,7 @@ void LocalMapping::Run()
             vdLMTotal_ms.push_back(timeLocalMap);
 #endif
         }
-        else if(Stop() && !mbBadImu)
+        else if(Stop())
         {
             // Safe area to stop
             while(isStopped() && !CheckFinish())
@@ -367,9 +363,8 @@ void LocalMapping::CreateNewMapPoints()
 
         // Search matches that fullfil epipolar constraint
         vector<pair<size_t,size_t> > vMatchedIndices;
-        bool bCoarse = false && mpTracker->mState==Tracking::RECENTLY_LOST && mpCurrentKeyFrame->GetMap()->GetIniertialBA2();
 
-        matcher.SearchForTriangulation(mpCurrentKeyFrame,pKF2,vMatchedIndices,false,bCoarse);
+        matcher.SearchForTriangulation(mpCurrentKeyFrame,pKF2,vMatchedIndices,false,false);
 
         Sophus::SE3<float> sophTcw2 = pKF2->GetPose();
         Eigen::Matrix<float,3,4> eigTcw2 = sophTcw2.matrix3x4();
@@ -946,12 +941,6 @@ void LocalMapping::ResetIfRequested()
             mbResetRequested = false;
             mbResetRequestedActiveMap = false;
 
-            // Inertial parameters
-            mTinit = 0.f;
-            mbNotBA2 = true;
-            mbNotBA1 = true;
-            mbBadImu=false;
-
             mIdxInit=0;
 
             cout << "LM: End reseting Local Mapping..." << endl;
@@ -962,12 +951,6 @@ void LocalMapping::ResetIfRequested()
             cout << "LM: Reseting current map in Local Mapping..." << endl;
             mlNewKeyFrames.clear();
             mlpRecentAddedMapPoints.clear();
-
-            // Inertial parameters
-            mTinit = 0.f;
-            mbNotBA2 = true;
-            mbNotBA1 = true;
-            mbBadImu=false;
 
             mbResetRequested = false;
             mbResetRequestedActiveMap = false;
@@ -1004,78 +987,6 @@ bool LocalMapping::isFinished()
     unique_lock<mutex> lock(mMutexFinish);
     return mbFinished;
 }
-
-
-void LocalMapping::ScaleRefinement()
-{
-    // Minimum number of keyframes to compute a solution
-    // Minimum time (seconds) between first and last keyframe to compute a solution. Make the difference between monocular and stereo
-    // unique_lock<mutex> lock0(mMutexImuInit);
-    if (mbResetRequested)
-        return;
-
-    // Retrieve all keyframes in temporal order
-    list<KeyFrame*> lpKF;
-    KeyFrame* pKF = mpCurrentKeyFrame;
-    while(pKF->mPrevKF)
-    {
-        lpKF.push_front(pKF);
-        pKF = pKF->mPrevKF;
-    }
-    lpKF.push_front(pKF);
-    vector<KeyFrame*> vpKF(lpKF.begin(),lpKF.end());
-
-    while(CheckNewKeyFrames())
-    {
-        ProcessNewKeyFrame();
-        vpKF.push_back(mpCurrentKeyFrame);
-        lpKF.push_back(mpCurrentKeyFrame);
-    }
-
-    const int N = vpKF.size();
-
-    mRwg = Eigen::Matrix3d::Identity();
-    mScale=1.0;
-
-    std::chrono::steady_clock::time_point t0 = std::chrono::steady_clock::now();
-    Optimizer::InertialOptimization(mpAtlas->GetCurrentMap(), mRwg, mScale);
-    std::chrono::steady_clock::time_point t1 = std::chrono::steady_clock::now();
-
-    if (mScale<1e-1) // 1e-1
-    {
-        cout << "scale too small" << endl;
-        bInitializing=false;
-        return;
-    }
-    
-    Sophus::SO3d so3wg(mRwg);
-    // Before this line we are not changing the map
-    unique_lock<mutex> lock(mpAtlas->GetCurrentMap()->mMutexMapUpdate);
-    std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();
-    if ((fabs(mScale-1.f)>0.002)||!mbMonocular)
-    {
-        Sophus::SE3f Tgw(mRwg.cast<float>().transpose(),Eigen::Vector3f::Zero());
-        mpAtlas->GetCurrentMap()->ApplyScaledRotation(Tgw,mScale,true);
-        // mpTracker->UpdateFrameIMU(mScale,mpCurrentKeyFrame->GetImuBias(),mpCurrentKeyFrame);
-    }
-    std::chrono::steady_clock::time_point t3 = std::chrono::steady_clock::now();
-
-    for(list<KeyFrame*>::iterator lit = mlNewKeyFrames.begin(), lend=mlNewKeyFrames.end(); lit!=lend; lit++)
-    {
-        (*lit)->SetBadFlag();
-        delete *lit;
-    }
-    mlNewKeyFrames.clear();
-
-    double t_inertial_only = std::chrono::duration_cast<std::chrono::duration<double> >(t1 - t0).count();
-
-    // To perform pose-inertial opt w.r.t. last keyframe
-    mpCurrentKeyFrame->GetMap()->IncreaseChangeIndex();
-
-    return;
-}
-
-
 
 bool LocalMapping::IsInitializing()
 {

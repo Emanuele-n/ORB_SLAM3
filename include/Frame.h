@@ -46,7 +46,6 @@ namespace ORB_SLAM3
 
 class MapPoint;
 class KeyFrame;
-class ConstraintPoseImu;
 class GeometricCamera;
 class ORBextractor;
 
@@ -59,7 +58,7 @@ public:
     Frame(const Frame &frame);
 
     // Constructor for Monocular cameras.
-    Frame(const cv::Mat &imGray, const double &timeStamp, ORBextractor* extractor,ORBVocabulary* voc, GeometricCamera* pCamera, cv::Mat &distCoef, const float &bf, const float &thDepth, Frame* pPrevF = static_cast<Frame*>(NULL), const IMU::Calib &ImuCalib = IMU::Calib());
+    Frame(const cv::Mat &imGray, const double &timeStamp, ORBextractor* extractor,ORBVocabulary* voc, GeometricCamera* pCamera, cv::Mat &distCoef, const float &bf, const float &thDepth, Frame* pPrevF = static_cast<Frame*>(NULL));
 
     // Destructor
     // ~Frame();
@@ -73,20 +72,10 @@ public:
     // Set the camera pose. (Imu pose is not modified!)
     void SetPose(const Sophus::SE3<float> &Tcw);
 
-    // Set IMU velocity
-    void SetVelocity(Eigen::Vector3f Vw);
-
-    Eigen::Vector3f GetVelocity() const;
-
-    // Set IMU pose and velocity (implicitly changes camera pose)
-    void SetImuPoseVelocity(const Eigen::Matrix3f &Rwb, const Eigen::Vector3f &twb, const Eigen::Vector3f &Vwb);
-
     Sophus::SE3f GetRelativePoseTrl();
     Sophus::SE3f GetRelativePoseTlr();
     Eigen::Matrix3f GetRelativePoseTlr_rotation();
     Eigen::Vector3f GetRelativePoseTlr_translation();
-
-    void SetNewBias(const IMU::Bias &b);
 
     // Check if a MapPoint is in the frustum of the camera
     // and fill variables of the MapPoint to be used by the tracking
@@ -110,11 +99,6 @@ public:
 
     // Backprojects a keypoint (if stereo/depth info available) into 3D world coordinates.
     bool UnprojectStereo(const int &i, Eigen::Vector3f &x3D);
-
-    ConstraintPoseImu* mpcpi;
-
-    bool imuIsPreintegrated();
-    void setIntegrated();
 
     bool isSet() const;
 
@@ -148,11 +132,6 @@ public:
         return mbHasPose;
     }
 
-    inline bool HasVelocity() const {
-        return mbHasVelocity;
-    }
-
-
 
 private:
     //Sophus/Eigen migration
@@ -170,11 +149,6 @@ private:
     Sophus::SE3<float> mTlr, mTrl;
     Eigen::Matrix<float,3,3> mRlr;
     Eigen::Vector3f mtlr;
-
-
-    // IMU linear velocity
-    Eigen::Vector3f mVw;
-    bool mbHasVelocity;
 
 public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
@@ -241,21 +215,11 @@ public:
     static float mfGridElementHeightInv;
     std::vector<std::size_t> mGrid[FRAME_GRID_COLS][FRAME_GRID_ROWS];
 
-    IMU::Bias mPredBias;
-
-    // IMU bias
-    IMU::Bias mImuBias;
-
-    // Imu calibration
-    IMU::Calib mImuCalib;
-
     // Imu preintegration from last keyframe
-    IMU::Preintegrated* mpImuPreintegrated;
     KeyFrame* mpLastKeyFrame;
 
     // Pointer to previous frame
     Frame* mpPrevFrame;
-    IMU::Preintegrated* mpImuPreintegratedFrame;
 
     // Current and Next Frame id.
     static long unsigned int nNextId;
@@ -307,10 +271,6 @@ private:
     void AssignFeaturesToGrid();
 
     bool mbIsSet;
-
-    bool mbImuPreintegrated;
-
-    std::mutex *mpMutexImu;
 
 public:
     GeometricCamera* mpCamera, *mpCamera2;

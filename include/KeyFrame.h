@@ -65,46 +65,6 @@ class KeyFrame
         ar & const_cast<float&>(mfGridElementWidthInv);
         ar & const_cast<float&>(mfGridElementHeightInv);
 
-        // Variables of tracking
-        //ar & mnTrackReferenceForFrame;
-        //ar & mnFuseTargetForKF;
-        // Variables of local mapping
-        //ar & mnBALocalForKF;
-        //ar & mnBAFixedForKF;
-        //ar & mnNumberOfOpt;
-        // Variables used by KeyFrameDatabase
-        //ar & mnLoopQuery;
-        //ar & mnLoopWords;
-        //ar & mLoopScore;
-        //ar & mnRelocQuery;
-        //ar & mnRelocWords;
-        //ar & mRelocScore;
-        //ar & mnMergeQuery;
-        //ar & mnMergeWords;
-        //ar & mMergeScore;
-        //ar & mnPlaceRecognitionQuery;
-        //ar & mnPlaceRecognitionWords;
-        //ar & mPlaceRecognitionScore;
-        //ar & mbCurrentPlaceRecognition;
-        // Variables of loop closing
-        //serializeMatrix(ar,mTcwGBA,version);
-        //serializeMatrix(ar,mTcwBefGBA,version);
-        //serializeMatrix(ar,mVwbGBA,version);
-        //serializeMatrix(ar,mVwbBefGBA,version);
-        //ar & mBiasGBA;
-        //ar & mnBAGlobalForKF;
-        // Variables of Merging
-        //serializeMatrix(ar,mTcwMerge,version);
-        //serializeMatrix(ar,mTcwBefMerge,version);
-        //serializeMatrix(ar,mTwcBefMerge,version);
-        //serializeMatrix(ar,mVwbMerge,version);
-        //serializeMatrix(ar,mVwbBefMerge,version);
-        //ar & mBiasMerge;
-        //ar & mnMergeCorrectedForKF;
-        //ar & mnMergeForKF;
-        //ar & mfScaleMerge;
-        //ar & mnBALocalForMerge;
-
         // Scale
         ar & mfScale;
         // Calibration parameters
@@ -179,17 +139,6 @@ class KeyFrame
         serializeSophusSE3<Archive>(ar, mTlr, version);
         serializeVectorKeyPoints<Archive>(ar, mvKeysRight, version);
         ar & mGridRight;
-
-        // Inertial variables
-        ar & mImuBias;
-        ar & mBackupImuPreintegrated;
-        ar & mImuCalib;
-        ar & mBackupPrevKFId;
-        ar & mBackupNextKFId;
-        // ar & bImu;
-        ar & boost::serialization::make_array(mVw.data(), mVw.size());
-        ar & boost::serialization::make_array(mOwb.data(), mOwb.size());
-        ar & mbHasVelocity;
     }
 
 public:
@@ -199,7 +148,6 @@ public:
 
     // Pose functions
     void SetPose(const Sophus::SE3f &Tcw);
-    void SetVelocity(const Eigen::Vector3f &Vw_);
 
     Sophus::SE3f GetPose();
 
@@ -208,8 +156,6 @@ public:
 
     Eigen::Matrix3f GetRotation();
     Eigen::Vector3f GetTranslation();
-    Eigen::Vector3f GetVelocity();
-    bool isVelocitySet();
 
     // Bag of Words Representation
     void ComputeBoW();
@@ -283,13 +229,6 @@ public:
     Map* GetMap();
     void UpdateMap(Map* pMap);
 
-    void SetNewBias(const IMU::Bias &b);
-    Eigen::Vector3f GetGyroBias();
-
-    Eigen::Vector3f GetAccBias();
-
-    IMU::Bias GetImuBias();
-
     bool ProjectPointDistort(MapPoint* pMP, cv::Point2f &kp, float &u, float &v);
     bool ProjectPointUnDistort(MapPoint* pMP, cv::Point2f &kp, float &u, float &v);
 
@@ -299,8 +238,6 @@ public:
 
     void SetORBVocabulary(ORBVocabulary* pORBVoc);
     void SetKeyFrameDatabase(KeyFrameDatabase* pKFDB);
-
-    bool bImu;
 
     // The following variables are accesed from only 1 thread or never change (no mutex needed).
 public:
@@ -406,9 +343,6 @@ public:
     KeyFrame* mPrevKF;
     KeyFrame* mNextKF;
 
-    IMU::Preintegrated* mpImuPreintegrated;
-    IMU::Calib mImuCalib;
-
     unsigned int mnOriginMapId;
 
     string mNameFile;
@@ -429,18 +363,9 @@ protected:
     Sophus::SE3<float> mTwc;
     Eigen::Matrix3f mRwc;
 
-    // IMU position
-    Eigen::Vector3f mOwb;
-    // Velocity (Only used for inertial SLAM)
-    Eigen::Vector3f mVw;
-    bool mbHasVelocity;
-
     //Transformation matrix between cameras in stereo fisheye
     Sophus::SE3<float> mTlr;
     Sophus::SE3<float> mTrl;
-
-    // Imu bias
-    IMU::Bias mImuBias;
 
     // MapPoints associated to keypoints
     std::vector<MapPoint*> mvpMapPoints;
@@ -480,11 +405,6 @@ protected:
     float mHalfBaseline; // Only for visualization
 
     Map* mpMap;
-
-    // Backup variables for inertial
-    long long int mBackupPrevKFId;
-    long long int mBackupNextKFId;
-    IMU::Preintegrated mBackupImuPreintegrated;
 
     // Backup for Cameras
     unsigned int mnBackupIdCamera, mnBackupIdCamera2;

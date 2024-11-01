@@ -345,41 +345,6 @@ void EdgeStereoOnlyPose::linearizeOplus()
     _jacobianOplusXi = proj_jac * Rcb * SE3deriv;
 }
 
-VertexVelocity::VertexVelocity(KeyFrame* pKF)
-{
-    setEstimate(pKF->GetVelocity().cast<double>());
-}
-
-VertexVelocity::VertexVelocity(Frame* pF)
-{
-    setEstimate(pF->GetVelocity().cast<double>());
-}
-
-VertexGyroBias::VertexGyroBias(KeyFrame *pKF)
-{
-    setEstimate(pKF->GetGyroBias().cast<double>());
-}
-
-VertexGyroBias::VertexGyroBias(Frame *pF)
-{
-    Eigen::Vector3d bg;
-    bg << pF->mImuBias.bwx, pF->mImuBias.bwy,pF->mImuBias.bwz;
-    setEstimate(bg);
-}
-
-VertexAccBias::VertexAccBias(KeyFrame *pKF)
-{
-    setEstimate(pKF->GetAccBias().cast<double>());
-}
-
-VertexAccBias::VertexAccBias(Frame *pF)
-{
-    Eigen::Vector3d ba;
-    ba << pF->mImuBias.bax, pF->mImuBias.bay,pF->mImuBias.baz;
-    setEstimate(ba);
-}
-
-
 
 EdgeInertial::EdgeInertial(IMU::Preintegrated *pInt):JRg(pInt->JRg.cast<double>()),
     JVg(pInt->JVg.cast<double>()), JPg(pInt->JPg.cast<double>()), JVa(pInt->JVa.cast<double>()),

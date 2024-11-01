@@ -68,11 +68,7 @@ public:
     // bool ParseIMUParamFile(cv::FileStorage &fSettings);
 
     // Preprocess the input and call Track(). Extract features and performs stereo matching.
-    // Sophus::SE3f GrabImageStereo(const cv::Mat &imRectLeft,const cv::Mat &imRectRight, const double &timestamp, string filename);
-    // Sophus::SE3f GrabImageRGBD(const cv::Mat &imRGB,const cv::Mat &imD, const double &timestamp, string filename);
     Sophus::SE3f GrabImageMonocular(const cv::Mat &im, const double &timestamp, string filename);
-
-    // void GrabImuData(const IMU::Point &imuMeasurement);
 
     void SetLocalMapper(LocalMapping* pLocalMapper);
     void SetLoopClosing(LoopClosing* pLoopClosing);
@@ -228,19 +224,6 @@ protected:
 
     bool mbMapUpdated;
 
-    // Imu preintegration from last frame
-    // IMU::Preintegrated *mpImuPreintegratedFromLastKF;
-
-    // Queue of IMU measurements between frames
-    std::list<IMU::Point> mlQueueImuData;
-
-    // Vector of IMU measurements from previous to current frame (to be filled by PreintegrateIMU)
-    // std::vector<IMU::Point> mvImuFromLastFrame;
-    std::mutex mMutexImuQueue;
-
-    // Imu calibration parameters
-    // IMU::Calib *mpImuCalib;
-
     // Last Bias Estimation (at keyframe creation)
     IMU::Bias mLastBias;
 
@@ -290,8 +273,6 @@ protected:
     float mbf;
     float mImageScale;
 
-    // float mImuFreq;
-    // double mImuPer;
     bool mInsertKFsLost;
 
     //New KeyFrame rules (according to fps)

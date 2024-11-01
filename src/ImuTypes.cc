@@ -260,19 +260,6 @@ void Preintegrated::MergePrevious(Preintegrated* pPrev)
 
 }
 
-void Preintegrated::SetNewBias(const Bias &bu_)
-{
-    std::unique_lock<std::mutex> lock(mMutex);
-    bu = bu_;
-
-    db(0) = bu_.bwx-b.bwx;
-    db(1) = bu_.bwy-b.bwy;
-    db(2) = bu_.bwz-b.bwz;
-    db(3) = bu_.bax-b.bax;
-    db(4) = bu_.bay-b.bay;
-    db(5) = bu_.baz-b.baz;
-}
-
 IMU::Bias Preintegrated::GetDeltaBias(const Bias &b_)
 {
     std::unique_lock<std::mutex> lock(mMutex);
