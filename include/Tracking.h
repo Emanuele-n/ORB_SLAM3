@@ -83,7 +83,6 @@ public:
     // Use this function if you have deactivated local mapping and you only want to localize the camera.
     void InformOnlyTracking(const bool &flag);
 
-    // void UpdateFrameIMU(const float s, const IMU::Bias &b, KeyFrame* pCurrentKeyFrame);
     KeyFrame* GetLastKeyFrame()
     {
         return mpLastKeyFrame;
@@ -224,9 +223,6 @@ protected:
 
     bool mbMapUpdated;
 
-    // Last Bias Estimation (at keyframe creation)
-    IMU::Bias mLastBias;
-
     // In case of performing only localization, this flag is true when there are no matches to
     // points in the map. Still tracking will continue if there are enough matches with temporal points.
     // In that case we are doing visual odometry. The system will try to do relocalization to recover
@@ -278,9 +274,6 @@ protected:
     //New KeyFrame rules (according to fps)
     int mMinFrames;
     int mMaxFrames;
-
-    // int mnFirstImuFrameId;
-    int mnFramesToResetIMU;
 
     // Threshold close/far points
     // Points seen as close by the stereo/RGBD sensor are considered reliable

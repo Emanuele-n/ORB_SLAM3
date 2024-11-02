@@ -66,19 +66,7 @@ Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer,
             std::cout << "*Error with the ORB parameters in the config file*" << std::endl;
         }
 
-        bool b_parse_imu = true;
-        if(sensor==System::IMU_MONOCULAR || sensor==System::IMU_STEREO || sensor==System::IMU_RGBD)
-        {
-            // b_parse_imu = ParseIMUParamFile(fSettings);
-            // if(!b_parse_imu)
-            // {
-            //     std::cout << "*Error with the IMU parameters in the config file*" << std::endl;
-            // }
-
-            mnFramesToResetIMU = mMaxFrames;
-        }
-
-        if(!b_parse_cam || !b_parse_orb || !b_parse_imu)
+        if(!b_parse_cam || !b_parse_orb)
         {
             std::cerr << "**ERROR in the config file, the format is not correct**" << std::endl;
             try
@@ -245,13 +233,7 @@ void Tracking::TrackStats2File()
             stereo_match = vdStereoMatch_ms[i];
         }
 
-        double imu_preint = 0.0;
-        if(!vdIMUInteg_ms.empty())
-        {
-            imu_preint = vdIMUInteg_ms[i];
-        }
-
-        f << stereo_rect << "," << resize_image << "," << vdORBExtract_ms[i] << "," << stereo_match << "," << imu_preint << ","
+        f << stereo_rect << "," << resize_image << "," << vdORBExtract_ms[i] << "," << stereo_match << "," << ","
           << vdPosePred_ms[i] <<  "," << vdLMTrack_ms[i] << "," << vdNewKF_ms[i] << "," << vdTrackTotal_ms[i] << endl;
     }
 
@@ -1247,7 +1229,7 @@ void Tracking::Track()
         else
         {
             auto start6 = chrono::steady_clock::now();
-            // Localization Mode: Local Mapping is deactivated (TODO Not available in inertial mode)
+            // Localization Mode: Local Mapping is deactivated
             if(mState==LOST)
             {
                 bOK = Relocalization();

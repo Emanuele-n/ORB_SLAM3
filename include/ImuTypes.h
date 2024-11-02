@@ -125,20 +125,6 @@ public:
     bool mbIsSet;
 };
 
-//Integration of 1 gyro measurement
-class IntegratedRotation
-{
-public:
-    IntegratedRotation(){}
-    IntegratedRotation(const Eigen::Vector3f &angVel, const Bias &imuBias, const float &time);
-
-public:
-    float deltaT; //integration time
-    Eigen::Matrix3f deltaR;
-    Eigen::Matrix3f rightJ; // right jacobian
-    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-};
-
 //Preintegration of Imu Measurements
 class Preintegrated
 {
@@ -176,9 +162,6 @@ public:
     ~Preintegrated() {}
     void CopyFrom(Preintegrated* pImuPre);
     void Initialize(const Bias &b_);
-    void IntegrateNewMeasurement(const Eigen::Vector3f &acceleration, const Eigen::Vector3f &angVel, const float &dt);
-    void Reintegrate();
-    void MergePrevious(Preintegrated* pPrev);
     IMU::Bias GetDeltaBias(const Bias &b_);
 
     Eigen::Matrix3f GetDeltaRotation(const Bias &b_);

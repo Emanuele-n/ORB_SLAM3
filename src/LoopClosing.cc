@@ -143,10 +143,6 @@ void LoopClosing::Run()
 
                     nMerges += 1;
 #endif
-                    // TODO UNCOMMENT
-                    // if (mpTracker->mSensor==System::IMU_MONOCULAR ||mpTracker->mSensor==System::IMU_STEREO || mpTracker->mSensor==System::IMU_RGBD)
-                    //     MergeLocal2();
-                    // else
                     MergeLocal();
 
 #ifdef REGISTER_TIMES
@@ -471,7 +467,7 @@ bool LoopClosing::DetectAndReffineSim3FromLastKF(KeyFrame* pCurrentKF, KeyFrame*
         g2o::Sim3 gScm = gScw * gSwm;
         Eigen::Matrix<double, 7, 7> mHessian7x7;
 
-        bool bFixedScale = mbFixScale;       // TODO CHECK; Solo para el monocular inertial
+        bool bFixedScale = mbFixScale;  
         int numOptMatches = Optimizer::OptimizeSim3(mpCurrentKF, pMatchedKF, vpMatchedMPs, gScm, 10, bFixedScale, mHessian7x7, true);
 
         //Verbose::PrintMess("Sim3 reffine: There are " + to_string(numOptMatches) + " matches after of the optimization ", Verbose::VERBOSITY_DEBUG);

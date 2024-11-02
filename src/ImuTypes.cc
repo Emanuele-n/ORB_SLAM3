@@ -81,29 +81,6 @@ Eigen::Matrix3f InverseRightJacobianSO3(const Eigen::Vector3f &v)
     return InverseRightJacobianSO3(v(0),v(1),v(2));
 }
 
-IntegratedRotation::IntegratedRotation(const Eigen::Vector3f &angVel, const Bias &imuBias, const float &time) {
-    const float x = (angVel(0)-imuBias.bwx)*time;
-    const float y = (angVel(1)-imuBias.bwy)*time;
-    const float z = (angVel(2)-imuBias.bwz)*time;
-
-    const float d2 = x*x+y*y+z*z;
-    const float d = sqrt(d2);
-
-    Eigen::Vector3f v;
-    v << x, y, z;
-    Eigen::Matrix3f W = Sophus::SO3f::hat(v);
-    if(d<eps)
-    {
-        deltaR = Eigen::Matrix3f::Identity() + W;
-        rightJ = Eigen::Matrix3f::Identity();
-    }
-    else
-    {
-        deltaR = Eigen::Matrix3f::Identity() + W*sin(d)/d + W*W*(1.0f-cos(d))/d2;
-        rightJ = Eigen::Matrix3f::Identity() - W*(1.0f-cos(d))/d2 + W*W*(d-sin(d))/(d2*d);
-    }
-}
-
 Preintegrated::Preintegrated(const Bias &b_, const Calib &calib)
 {
     Nga = calib.Cov;
@@ -165,100 +142,6 @@ void Preintegrated::Initialize(const Bias &b_)
     mvMeasurements.clear();
 }
 
-void Preintegrated::Reintegrate()
-{
-    std::unique_lock<std::mutex> lock(mMutex);
-    const std::vector<integrable> aux = mvMeasurements;
-    Initialize(bu);
-    for(size_t i=0;i<aux.size();i++)
-        IntegrateNewMeasurement(aux[i].a,aux[i].w,aux[i].t);
-}
-
-void Preintegrated::IntegrateNewMeasurement(const Eigen::Vector3f &acceleration, const Eigen::Vector3f &angVel, const float &dt)
-{
-    mvMeasurements.push_back(integrable(acceleration,angVel,dt));
-
-    // Position is updated firstly, as it depends on previously computed velocity and rotation.
-    // Velocity is updated secondly, as it depends on previously computed rotation.
-    // Rotation is the last to be updated.
-
-    //Matrices to compute covariance
-    Eigen::Matrix<float,9,9> A;
-    A.setIdentity();
-    Eigen::Matrix<float,9,6> B;
-    B.setZero();
-
-    Eigen::Vector3f acc, accW;
-    acc << acceleration(0)-b.bax, acceleration(1)-b.bay, acceleration(2)-b.baz;
-    accW << angVel(0)-b.bwx, angVel(1)-b.bwy, angVel(2)-b.bwz;
-
-    avgA = (dT*avgA + dR*acc*dt)/(dT+dt);
-    avgW = (dT*avgW + accW*dt)/(dT+dt);
-
-    // Update delta position dP and velocity dV (rely on no-updated delta rotation)
-    dP = dP + dV*dt + 0.5f*dR*acc*dt*dt;
-    dV = dV + dR*acc*dt;
-
-    // Compute velocity and position parts of matrices A and B (rely on non-updated delta rotation)
-    Eigen::Matrix<float,3,3> Wacc = Sophus::SO3f::hat(acc);
-
-    A.block<3,3>(3,0) = -dR*dt*Wacc;
-    A.block<3,3>(6,0) = -0.5f*dR*dt*dt*Wacc;
-    A.block<3,3>(6,3) = Eigen::DiagonalMatrix<float,3>(dt, dt, dt);
-    B.block<3,3>(3,3) = dR*dt;
-    B.block<3,3>(6,3) = 0.5f*dR*dt*dt;
-
-
-    // Update position and velocity jacobians wrt bias correction
-    JPa = JPa + JVa*dt -0.5f*dR*dt*dt;
-    JPg = JPg + JVg*dt -0.5f*dR*dt*dt*Wacc*JRg;
-    JVa = JVa - dR*dt;
-    JVg = JVg - dR*dt*Wacc*JRg;
-
-    // Update delta rotation
-    IntegratedRotation dRi(angVel,b,dt);
-    dR = NormalizeRotation(dR*dRi.deltaR);
-
-    // Compute rotation parts of matrices A and B
-    A.block<3,3>(0,0) = dRi.deltaR.transpose();
-    B.block<3,3>(0,0) = dRi.rightJ*dt;
-
-    // Update covariance
-    C.block<9,9>(0,0) = A * C.block<9,9>(0,0) * A.transpose() + B*Nga*B.transpose();
-    C.block<6,6>(9,9) += NgaWalk;
-
-    // Update rotation jacobian wrt bias correction
-    JRg = dRi.deltaR.transpose()*JRg - dRi.rightJ*dt;
-
-    // Total integrated time
-    dT += dt;
-}
-
-void Preintegrated::MergePrevious(Preintegrated* pPrev)
-{
-    if (pPrev==this)
-        return;
-
-    std::unique_lock<std::mutex> lock1(mMutex);
-    std::unique_lock<std::mutex> lock2(pPrev->mMutex);
-    Bias bav;
-    bav.bwx = bu.bwx;
-    bav.bwy = bu.bwy;
-    bav.bwz = bu.bwz;
-    bav.bax = bu.bax;
-    bav.bay = bu.bay;
-    bav.baz = bu.baz;
-
-    const std::vector<integrable > aux1 = pPrev->mvMeasurements;
-    const std::vector<integrable> aux2 = mvMeasurements;
-
-    Initialize(bav);
-    for(size_t i=0;i<aux1.size();i++)
-        IntegrateNewMeasurement(aux1[i].a,aux1[i].w,aux1[i].t);
-    for(size_t i=0;i<aux2.size();i++)
-        IntegrateNewMeasurement(aux2[i].a,aux2[i].w,aux2[i].t);
-
-}
 
 IMU::Bias Preintegrated::GetDeltaBias(const Bias &b_)
 {

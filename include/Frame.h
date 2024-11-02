@@ -27,7 +27,6 @@
 
 #include "Thirdparty/Sophus/sophus/geometry.hpp"
 
-#include "ImuTypes.h"
 #include "ORBVocabulary.h"
 
 #include "Converter.h"
@@ -69,7 +68,7 @@ public:
     // Compute Bag of Words representation.
     void ComputeBoW();
 
-    // Set the camera pose. (Imu pose is not modified!)
+    // Set the camera pose
     void SetPose(const Sophus::SE3<float> &Tcw);
 
     Sophus::SE3f GetRelativePoseTrl();

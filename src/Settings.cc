@@ -373,35 +373,6 @@ namespace ORB_SLAM3 {
         bRGB_ = (bool) readParameter<int>(fSettings,"Camera.RGB",found);
     }
 
-    void Settings::readIMU(cv::FileStorage &fSettings) {
-        bool found;
-        noiseGyro_ = readParameter<float>(fSettings,"IMU.NoiseGyro",found);
-        noiseAcc_ = readParameter<float>(fSettings,"IMU.NoiseAcc",found);
-        gyroWalk_ = readParameter<float>(fSettings,"IMU.GyroWalk",found);
-        accWalk_ = readParameter<float>(fSettings,"IMU.AccWalk",found);
-        imuFrequency_ = readParameter<float>(fSettings,"IMU.Frequency",found);
-
-        cv::Mat cvTbc = readParameter<cv::Mat>(fSettings,"IMU.T_b_c1",found);
-        Tbc_ = Converter::toSophus(cvTbc);
-
-        readParameter<int>(fSettings,"IMU.InsertKFsWhenLost",found,false);
-        if(found){
-            insertKFsWhenLost_ = (bool) readParameter<int>(fSettings,"IMU.InsertKFsWhenLost",found,false);
-        }
-        else{
-            insertKFsWhenLost_ = true;
-        }
-    }
-
-    void Settings::readRGBD(cv::FileStorage& fSettings) {
-        bool found;
-
-        depthMapFactor_ = readParameter<float>(fSettings,"RGBD.DepthMapFactor",found);
-        thDepth_ = readParameter<float>(fSettings,"Stereo.ThDepth",found);
-        b_ = readParameter<float>(fSettings,"Stereo.b",found);
-        bf_ = b_ * calibration1_->getParameter(0);
-    }
-
     void Settings::readORB(cv::FileStorage &fSettings) {
         bool found;
 
@@ -478,14 +449,6 @@ namespace ORB_SLAM3 {
 
         //Update bf
         bf_ = b_ * P1.at<double>(0,0);
-
-        //Update relative pose between camera 1 and IMU if necessary
-        if(sensor_ == System::IMU_STEREO){
-            Eigen::Matrix3f eigenR_r1_u1;
-            cv::cv2eigen(R_r1_u1,eigenR_r1_u1);
-            Sophus::SE3f T_r1_u1(eigenR_r1_u1,Eigen::Vector3f::Zero());
-            Tbc_ = Tbc_ * T_r1_u1.inverse();
-        }
     }
 
     ostream &operator<<(std::ostream& output, const Settings& settings){

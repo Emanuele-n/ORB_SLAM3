@@ -305,7 +305,6 @@ void LocalMapping::CreateNewMapPoints()
 {
     // Retrieve neighbor keyframes in covisibility graph
     int nn = 10;
-    // For stereo inertial case
     if(mbMonocular)
         nn=30;
     vector<KeyFrame*> vpNeighKFs = mpCurrentKeyFrame->GetBestCovisibilityKeyFrames(nn);

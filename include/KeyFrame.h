@@ -27,7 +27,6 @@
 #include "ORBextractor.h"
 #include "Frame.h"
 #include "KeyFrameDatabase.h"
-#include "ImuTypes.h"
 
 #include "GeometricCamera.h"
 #include "SerializationUtils.h"
@@ -287,7 +286,7 @@ public:
     Sophus::SE3f mTcwBefGBA;
     Eigen::Vector3f mVwbGBA;
     Eigen::Vector3f mVwbBefGBA;
-    IMU::Bias mBiasGBA;
+    // IMU::Bias mBiasGBA;
     long unsigned int mnBAGlobalForKF;
 
     // Variables used by merging
@@ -296,7 +295,7 @@ public:
     Sophus::SE3f mTwcBefMerge;
     Eigen::Vector3f mVwbMerge;
     Eigen::Vector3f mVwbBefMerge;
-    IMU::Bias mBiasMerge;
+    // IMU::Bias mBiasMerge;
     long unsigned int mnMergeCorrectedForKF;
     long unsigned int mnMergeForKF;
     float mfScaleMerge;

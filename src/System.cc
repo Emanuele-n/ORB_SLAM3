@@ -237,7 +237,7 @@ System::System(const string &strVocFile, const string &strSettingsFile, const eS
 }
 
 
-Sophus::SE3f System::TrackMonocular(const cv::Mat &im, const double &timestamp, const vector<IMU::Point>& vImuMeas, string filename)
+Sophus::SE3f System::TrackMonocular(const cv::Mat &im, const double &timestamp, string filename)
 {
 
     {
