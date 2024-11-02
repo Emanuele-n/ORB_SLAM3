@@ -86,8 +86,6 @@ public:
     // Method for change components in the current map
     void AddKeyFrame(KeyFrame* pKF);
     void AddMapPoint(MapPoint* pMP);
-    //void EraseMapPoint(MapPoint* pMP);
-    //void EraseKeyFrame(KeyFrame* pKF);
 
     GeometricCamera* AddCamera(GeometricCamera* pCam);
     std::vector<GeometricCamera*> GetAllCameras();

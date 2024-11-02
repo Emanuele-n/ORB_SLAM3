@@ -22,6 +22,5 @@ def calculate_average_duration(file_path):
         print("No valid durations found in the file.")
 
 
-# Example usage:
-# Replace 'durations.txt' with the path to your file
-calculate_average_duration("logs/log3.txt")
+# Call the function with the path to the log file
+calculate_average_duration("logs/log.txt")

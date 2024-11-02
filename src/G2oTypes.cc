@@ -17,7 +17,6 @@
 */
 
 #include "G2oTypes.h"
-#include "ImuTypes.h"
 #include "Converter.h"
 namespace ORB_SLAM3
 {
@@ -40,23 +39,23 @@ ImuCamPose::ImuCamPose(Eigen::Matrix3d &_Rwc, Eigen::Vector3d &_twc, KeyFrame* p
 void ImuCamPose::SetParam(const std::vector<Eigen::Matrix3d> &_Rcw, const std::vector<Eigen::Vector3d> &_tcw, const std::vector<Eigen::Matrix3d> &_Rbc,
               const std::vector<Eigen::Vector3d> &_tbc, const double &_bf)
 {
-    // Rbc = _Rbc;
-    // tbc = _tbc;
-    // Rcw = _Rcw;
-    // tcw = _tcw;
-    // const int num_cams = Rbc.size();
-    // Rcb.resize(num_cams);
-    // tcb.resize(num_cams);
+    Rbc = _Rbc;
+    tbc = _tbc;
+    Rcw = _Rcw;
+    tcw = _tcw;
+    const int num_cams = Rbc.size();
+    Rcb.resize(num_cams);
+    tcb.resize(num_cams);
 
-    // for(int i=0; i<tcb.size(); i++)
-    // {
-    //     Rcb[i] = Rbc[i].transpose();
-    //     tcb[i] = -Rcb[i]*tbc[i];
-    // }
-    // Rwb = Rcw[0].transpose()*Rcb[0];
-    // twb = Rcw[0].transpose()*(tcb[0]-tcw[0]);
+    for(int i=0; i<tcb.size(); i++)
+    {
+        Rcb[i] = Rbc[i].transpose();
+        tcb[i] = -Rcb[i]*tbc[i];
+    }
+    Rwb = Rcw[0].transpose()*Rcb[0];
+    twb = Rcw[0].transpose()*(tcb[0]-tcw[0]);
 
-    // bf = _bf;
+    bf = _bf;
 }
 
 Eigen::Vector2d ImuCamPose::Project(const Eigen::Vector3d &Xw, int cam_idx) const
@@ -64,16 +63,6 @@ Eigen::Vector2d ImuCamPose::Project(const Eigen::Vector3d &Xw, int cam_idx) cons
     Eigen::Vector3d Xc = Rcw[cam_idx] * Xw + tcw[cam_idx];
 
     return pCamera[cam_idx]->project(Xc);
-}
-
-Eigen::Vector3d ImuCamPose::ProjectStereo(const Eigen::Vector3d &Xw, int cam_idx) const
-{
-    Eigen::Vector3d Pc = Rcw[cam_idx] * Xw + tcw[cam_idx];
-    Eigen::Vector3d pc;
-    double invZ = 1/Pc(2);
-    pc.head(2) = pCamera[cam_idx]->project(Pc);
-    pc(2) = pc(0) - bf*invZ;
-    return pc;
 }
 
 bool ImuCamPose::isDepthPositive(const Eigen::Vector3d &Xw, int cam_idx) const
@@ -145,16 +134,6 @@ void ImuCamPose::UpdateW(const double *pu)
         Rcw[i] = Rcb[i] * Rbw;
         tcw[i] = Rcb[i] * tbw+tcb[i];
     }
-}
-
-InvDepthPoint::InvDepthPoint(double _rho, double _u, double _v, KeyFrame* pHostKF): u(_u), v(_v), rho(_rho),
-    fx(pHostKF->fx), fy(pHostKF->fy), cx(pHostKF->cx), cy(pHostKF->cy), bf(pHostKF->mbf)
-{
-}
-
-void InvDepthPoint::Update(const double *pu)
-{
-    rho += *pu;
 }
 
 bool VertexPose::read(std::istream& is)

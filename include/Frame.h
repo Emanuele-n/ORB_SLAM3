@@ -59,9 +59,6 @@ public:
     // Constructor for Monocular cameras.
     Frame(const cv::Mat &imGray, const double &timeStamp, ORBextractor* extractor,ORBVocabulary* voc, GeometricCamera* pCamera, cv::Mat &distCoef, const float &bf, const float &thDepth, Frame* pPrevF = static_cast<Frame*>(NULL));
 
-    // Destructor
-    // ~Frame();
-
     // Extract ORB on the image. 0 for left image and 1 for right image.
     void ExtractORB(int flag, const cv::Mat &im, const int x0, const int x1);
 
@@ -88,13 +85,6 @@ public:
     bool PosInGrid(const cv::KeyPoint &kp, int &posX, int &posY);
 
     vector<size_t> GetFeaturesInArea(const float &x, const float  &y, const float  &r, const int minLevel=-1, const int maxLevel=-1, const bool bRight = false) const;
-
-    // Search a match for each keypoint in the left image to a keypoint in the right image.
-    // If there is a match, depth is computed and the right coordinate associated to the left keypoint is stored.
-    void ComputeStereoMatches();
-
-    // Associate a "right" coordinate to a keypoint if there is valid depth in the depthmap.
-    void ComputeStereoFromRGBD(const cv::Mat &imDepth);
 
     // Backprojects a keypoint (if stereo/depth info available) into 3D world coordinates.
     bool UnprojectStereo(const int &i, Eigen::Vector3f &x3D);
@@ -140,10 +130,6 @@ private:
     Eigen::Matrix<float,3,3> mRcw;
     Eigen::Matrix<float,3,1> mtcw;
     bool mbHasPose;
-
-    //Rcw_ not necessary as Sophus has a method for extracting the rotation matrix: Tcw_.rotationMatrix()
-    //tcw_ not necessary as Sophus has a method for extracting the translation vector: Tcw_.translation()
-    //Twc_ not necessary as Sophus has a method for easily computing the inverse pose: Tcw_.inverse()
 
     Sophus::SE3<float> mTlr, mTrl;
     Eigen::Matrix<float,3,3> mRlr;
@@ -214,8 +200,8 @@ public:
     static float mfGridElementHeightInv;
     std::vector<std::size_t> mGrid[FRAME_GRID_COLS][FRAME_GRID_ROWS];
 
-    // Imu preintegration from last keyframe
-    KeyFrame* mpLastKeyFrame;
+    // // Imu preintegration from last keyframe
+    // KeyFrame* mpLastKeyFrame;
 
     // Pointer to previous frame
     Frame* mpPrevFrame;

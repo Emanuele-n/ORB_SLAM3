@@ -65,7 +65,6 @@ public:
     // Parse the config file
     bool ParseCamParamFile(cv::FileStorage &fSettings);
     bool ParseORBParamFile(cv::FileStorage &fSettings);
-    // bool ParseIMUParamFile(cv::FileStorage &fSettings);
 
     // Preprocess the input and call Track(). Extract features and performs stereo matching.
     Sophus::SE3f GrabImageMonocular(const cv::Mat &im, const double &timestamp, string filename);
@@ -83,10 +82,10 @@ public:
     // Use this function if you have deactivated local mapping and you only want to localize the camera.
     void InformOnlyTracking(const bool &flag);
 
-    KeyFrame* GetLastKeyFrame()
-    {
-        return mpLastKeyFrame;
-    }
+    // KeyFrame* GetLastKeyFrame()
+    // {
+    //     return mpLastKeyFrame;
+    // }
 
     void CreateMapInAtlas();
     //std::mutex mMutexTracks;
@@ -162,7 +161,6 @@ public:
     bool mbInitWith3KFs;
     double t0; // time-stamp of first read frame
     double t0vis; // time-stamp of first inserted keyframe
-    // double t0IMU; // time-stamp of IMU initialization
     bool mFastInit = false;
 
 
@@ -179,7 +177,6 @@ public:
     vector<double> vdResizeImage_ms;
     vector<double> vdORBExtract_ms;
     vector<double> vdStereoMatch_ms;
-    vector<double> vdIMUInteg_ms;
     vector<double> vdPosePred_ms;
     vector<double> vdLMTrack_ms;
     vector<double> vdNewKF_ms;
@@ -191,12 +188,8 @@ protected:
     // Main tracking function. It is independent of the input sensor.
     void Track();
 
-    // Map initialization for stereo and RGB-D
-    // void StereoInitialization();
-
     // Map initialization for monocular
     void MonocularInitialization();
-    //void CreateNewMapPoints();
     void CreateInitialMapMonocular();
 
     void CheckReplacedInLastFrame();
@@ -214,12 +207,6 @@ protected:
 
     bool NeedNewKeyFrame();
     void CreateNewKeyFrame();
-
-    // Perform preintegration from last frame
-    // void PreintegrateIMU();
-
-    // Reset IMU biases and compute frame velocity
-    // void ResetFrameIMU();
 
     bool mbMapUpdated;
 
@@ -280,14 +267,11 @@ protected:
     // and inserted from just one frame. Far points requiere a match in two keyframes.
     float mThDepth;
 
-    // For RGB-D inputs only. For some datasets (e.g. TUM) the depthmap values are scaled.
-    float mDepthMapFactor;
-
     //Current matches in frame
     int mnMatchesInliers;
 
     //Last Frame, KeyFrame and Relocalisation Info
-    KeyFrame* mpLastKeyFrame;
+    // KeyFrame* mpLastKeyFrame;
     unsigned int mnLastKeyFrameId;
     unsigned int mnLastRelocFrameId;
     double mTimeStampLost;
@@ -307,15 +291,11 @@ protected:
     bool mbRGB;
 
     list<MapPoint*> mlpTemporalPoints;
-
-    //int nMapChangeIndex;
-
     int mnNumDataset;
 
     ofstream f_track_stats;
 
     ofstream f_track_times;
-    // double mTime_PreIntIMU;
     double mTime_PosePred;
     double mTime_LocalMapTrack;
     double mTime_NewKF_Dec;
