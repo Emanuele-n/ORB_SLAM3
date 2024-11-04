@@ -28,6 +28,20 @@ Tcw = SLAM.TrackMonocular(frame, tframe);
             // If tracking state mState is NOT_INITIALIZED, initialize 
             MonocularInitialization();
 
+                // If not ready to initialize we need to set the reference frame, which is set if enough keypoints are detected
+                // else (once the reference frame is set) find orb matches between the reference frame and the current frame
+                int nmatches = matcher.SearchForInitialization(mInitialFrame,mCurrentFrame,mvbPrevMatched,mvIniMatches,100);
+
+                // If the number of matches is not enough, return and reset the reference frame
+                // otherwise try to triangulate the matches and set the two frame poses
+                if(mpCamera->ReconstructWithTwoViews(mInitialFrame.mvKeysUn,mCurrentFrame.mvKeysUn,mvIniMatches,Tcw,mvIniP3D,vbTriangulated))
+                mInitialFrame.SetPose(Sophus::SE3f());
+                mCurrentFrame.SetPose(Tcw);
+
+                // Create the initial map with the two frame poses and the triangulated points
+                CreateInitialMapMonocular();
+
+
             // else (if initialized) get the initial camera pose estimation using motion model or relocalization
             // if  tracking and local mapping (mbOnlyTracking == false)
             //  if mState == ok either track with reference key frame or with motion model
@@ -57,3 +71,14 @@ Tcw = SLAM.TrackMonocular(frame, tframe);
 
             // If we have an initial estimation of the camera pose and matching. Track the local map.
             bOK = TrackLocalMap();
+
+            // Update the drawer with the current camera pose and the local map.
+            mpFrameDrawer->Update(this);
+
+            // Add a new keyframe if needed
+            if(bNeedKF && (bOK)) CreateNewKeyFrame();
+
+            // If the tracking is lost, either reset the active map or create a new map in the atlas based on the number of keyframes in the map
+            mpSystem->ResetActiveMap(); / CreateMapInAtlas();
+
+            // Finally store frame pose info to retrieve the complete camera trajectory afterwards

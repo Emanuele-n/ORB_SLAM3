@@ -1,0 +1,3 @@
+em/data/easier_slam_test_hollow.stl
+em/data/centerline.vtp
+em/data/centerline_frames.txt

@@ -16,10 +16,19 @@ int main(int argc, char **argv)
 {
     if(argc < 3)
     {
-        cerr << endl << "Usage: ./mono_realtime path_to_vocabulary path_to_settings path_to_video" << endl;
+        cerr << endl << "Usage: ./mono_realtime path_to_vocabulary path_to_settings path_to_video [-patient=true]" << endl;
         return 1;
     }
 
+    bool patient_data = false;
+    string CADPath = "";
+    string centerlinePath = "";
+    if(argc >= 5) {
+        string patient_arg = argv[4];
+        if(patient_arg == "-patient=true") {
+            patient_data = true;
+        }
+    }
 
     // Initialize video source either from camera or from video file
     VideoCapture cap;
@@ -34,8 +43,7 @@ int main(int argc, char **argv)
         return -1;
     }
 
-    // Create SLAM system. It initializes all system threads and gets ready to process frames.
-    ORB_SLAM3::System SLAM(argv[1], argv[2], ORB_SLAM3::System::MONOCULAR, true);
+    ORB_SLAM3::System SLAM(argv[1], argv[2], ORB_SLAM3::System::MONOCULAR, true, patient_data);
 
     cout << endl << "-------" << endl;
     cout << "Start processing camera input..." << endl;

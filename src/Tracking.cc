@@ -39,12 +39,12 @@ namespace ORB_SLAM3
 {
 
 
-Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer, MapDrawer *pMapDrawer, Atlas *pAtlas, KeyFrameDatabase* pKFDB, const string &strSettingPath, const int sensor, Settings* settings, const string &_nameSeq):
+Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer, MapDrawer *pMapDrawer, Atlas *pAtlas, KeyFrameDatabase* pKFDB, const string &strSettingPath, const int sensor, Settings* settings, const string &_nameSeq, const bool withPatientData):
     mState(NO_IMAGES_YET), mSensor(sensor), mTrackedFr(0), mbStep(false),
     mbOnlyTracking(false), mbMapUpdated(false), mbVO(false), mpORBVocabulary(pVoc), mpKeyFrameDB(pKFDB),
     mbReadyToInitializate(false), mpSystem(pSys), mpViewer(NULL), bStepByStep(false),
     mpFrameDrawer(pFrameDrawer), mpMapDrawer(pMapDrawer), mpAtlas(pAtlas), mnLastRelocFrameId(0), time_recently_lost(5.0),
-    mnInitialFrameId(0), mbCreatedMap(false), mnFirstFrameId(0), mpCamera2(nullptr)
+    mnInitialFrameId(0), mbCreatedMap(false), mnFirstFrameId(0), mpCamera2(nullptr), mWithPatientData(withPatientData)
 {
     // Load camera parameters from settings file
     if(settings){
@@ -77,6 +77,31 @@ Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer,
             {
 
             }
+        }
+    }
+
+    if(mWithPatientData)
+    {
+        cout << "Initializing tracking with patient data" << endl;
+        // Take the paths to CAD and centerline from a patient data file
+        ifstream patient_data_file("em/data/patient_data.txt");
+        if (patient_data_file.is_open()) {
+            string line;
+            getline(patient_data_file, line);
+            istringstream iss(line);
+            iss >> mCADPath;
+            getline(patient_data_file, line);
+            istringstream iss2(line);
+            iss2 >> mCenterlinePath;
+            getline(patient_data_file, line);
+            istringstream iss3(line);
+            iss3 >> mCenterlineFramesPath;
+            patient_data_file.close();
+            cout << "\t-CAD path: " << mCADPath << endl;
+            cout << "\t-Centerline path: " << mCenterlinePath << endl;
+            cout << "\t-Centerline frames path: " << mCenterlineFramesPath << endl;
+        } else {
+            cerr << "Unable to open patient data file" << endl;
         }
     }
 
@@ -1104,6 +1129,7 @@ void Tracking::Track()
 
     if(mState==NOT_INITIALIZED)
     {   auto start4 = chrono::steady_clock::now();
+        // cout << "Initialization with patient data: " << mWithPatientData << endl; 
         MonocularInitialization();
 
         // EMA: this was commented out
@@ -1380,7 +1406,6 @@ void Tracking::Track()
             bool bNeedKF = NeedNewKeyFrame();
 
             // Check if we need to insert a new keyframe
-            // if(bNeedKF && bOK)
             if(bNeedKF && (bOK))
                 CreateNewKeyFrame();
 
@@ -1473,22 +1498,26 @@ void Tracking::MonocularInitialization()
 {   
     // cout << "MonocularInitialization: ready: " << mbReadyToInitializate << endl;
 
+    // If not ready to initialize we need to set the reference frame
     if(!mbReadyToInitializate)
     {
-        // Set Reference Frame
+        // Check if there are enough keypoints to initialize
         if(mCurrentFrame.mvKeys.size()>100)
-        {
-
+        {   
+            // Initialize frame
             mInitialFrame = Frame(mCurrentFrame);
             mLastFrame = Frame(mCurrentFrame);
+
+            // Resize and store keypoint locations
             mvbPrevMatched.resize(mCurrentFrame.mvKeysUn.size());
             for(size_t i=0; i<mCurrentFrame.mvKeysUn.size(); i++)
                 mvbPrevMatched[i]=mCurrentFrame.mvKeysUn[i].pt;
 
+            // Reset matches vector
             fill(mvIniMatches.begin(),mvIniMatches.end(),-1);
 
+            // Mark as ready to initialize
             mbReadyToInitializate = true;
-
             return;
         }
     }
@@ -1524,6 +1553,20 @@ void Tracking::MonocularInitialization()
                     mvIniMatches[i]=-1;
                     nmatches--;
                 }
+            }
+
+            // EMA: Implement the a priori info about the centerline
+            if(mWithPatientData)
+            {
+                // Draw the centerline
+                mpMapDrawer->SetInitialized(mvIniP3D, Tcw, mCenterlineFramesPath);
+                cout << "Set MapDrawer initialized" << endl;
+
+                // Obtain the transformation of the first centerline point
+                // if encoder is used at the base of the robot it returns the transformation 
+                // from the first centerline point to the estimated current point by using the encoder value as curvilinear abscissa
+                // else it return the transformation from the world to the first centerline point
+                // Sophus::SE3f T_centerline_first_point = GetCenterlineFirstPointPose();
             }
 
             // Set Frame Poses

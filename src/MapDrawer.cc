@@ -26,7 +26,7 @@ namespace ORB_SLAM3
 {
 
 
-MapDrawer::MapDrawer(Atlas* pAtlas, const string &strSettingPath, Settings* settings):mpAtlas(pAtlas)
+MapDrawer::MapDrawer(Atlas* pAtlas, const string &strSettingPath, Settings* settings):mpAtlas(pAtlas), mTrackingInitialized(false)
 {
     if(settings){
         newParameterLoader(settings);
@@ -130,6 +130,121 @@ bool MapDrawer::ParseViewerParamFile(cv::FileStorage &fSettings)
     }
 
     return !b_miss_params;
+}
+
+void MapDrawer::DrawTest()
+{
+    // Draw many huge test points
+    glPointSize(100.0);  // Increased point size
+    glBegin(GL_POINTS);
+    glColor3f(0.0f,1.0f,0.0f); // Green color for points
+
+    // Draw the transformed point
+    glVertex3f(0.0, 0.0, 0.0);
+    glVertex3f(0.0, 0.0, 1.0);
+    glVertex3f(0.0, 1.0, 0.0);
+    glVertex3f(0.0, 1.0, 1.0);
+    glVertex3f(1.0, 0.0, 0.0);
+    glVertex3f(1.0, 0.0, 1.0);
+    glVertex3f(1.0, 1.0, 0.0);
+    glVertex3f(1.0, 1.0, 1.0);
+
+    glEnd();
+}
+
+bool MapDrawer::CheckInitialized()
+{
+    return mTrackingInitialized;
+}
+
+void MapDrawer::SetInitialized(std::vector<cv::Point3f> mvIniP3D, Sophus::SE3f Tcw, string& centerlineFramesPath)
+{
+    mInitTcw = Tcw;
+    mvIniP3D = mvIniP3D;
+    mCenterlineFramesPath = centerlineFramesPath;
+    mTrackingInitialized = true;
+}
+
+void MapDrawer::DrawCenterline()
+{
+
+    // TODO: find transformation between the centerline first frame and the world
+    // then apply it to the centerline points to draw such that the first point is at the origin
+
+    // Read centerline frames from file
+    std::ifstream file(mCenterlineFramesPath);
+    if (!file.is_open()) {
+        std::cerr << "Failed to open file: " << mCenterlineFramesPath << std::endl;
+        return;
+    }
+    // Draw every point in the centerline
+    glPointSize(5.0);  // Increased point size
+    glBegin(GL_POINTS);
+    glColor3f(1.0f,0.0f,0.0f); // Red color for points
+
+    // Draw a point in the origin
+    glVertex3f(0.0, 0.0, 0.0);
+
+    // Read each line of the file and draw the points
+    std::string line;
+    while (std::getline(file, line)) {
+        std::istringstream iss(line);
+
+        // Draw without transforming
+        // float x, y, z;
+        // char comma; // to consume the commas
+        // if (iss >> x >> comma >> y >> comma >> z) {
+        //     glVertex3f(x, y, z);
+        // }
+
+        // Draw transformed
+        float x, y, z, tx, ty, tz, nx, ny, nz, bx, by, bz;
+        char comma; // to consume the commas
+        bool first = true;
+        Eigen::Affine3f T_first_world; // Transformation from the first frame to the world frame
+        Eigen::Affine3f T_world_first; // Inverse of the previous transformation
+        if (iss >> x >> comma >> y >> comma >> z >> comma >> tx >> comma >> ty >> comma >> tz >> comma >> nx >> comma >> ny >> comma >> nz >> comma >> bx >> comma >> by >> comma >> bz) {
+            Eigen::Vector3f point(x, y, z);
+            Eigen::Vector3f tangent(tx, ty, tz);
+            Eigen::Vector3f normal(nx, ny, nz);
+            Eigen::Vector3f binormal(bx, by, bz);
+
+            // if it is the first point (first line) calculate the transformation to the world
+            if (first) {
+                // Calculate the transformation
+                // Build the rotation matrix from the tangent, normal, and binormal vectors
+                Eigen::Matrix3f R_first;
+                R_first.col(0) = tangent.normalized();
+                R_first.col(1) = normal.normalized();
+                R_first.col(2) = binormal.normalized();
+
+                // Build the translation vector
+                Eigen::Vector3f t_first = point;
+
+                // Construct the transformation from the first frame to the world frame
+                T_first_world.linear() = R_first;
+                T_first_world.translation() = t_first;
+
+                // Compute the inverse transformation (from first frame to world frame)
+                T_world_first = T_first_world.inverse();
+
+                // Set the first flag to false
+                first = false;
+            }
+
+            // Transform the point to the world frame
+            Eigen::Vector3f point_world = T_world_first * point;
+
+            // Draw the point
+            glVertex3f(point_world(0), point_world(1), point_world(2));
+        }
+    }
+
+    glEnd();
+
+    // Close the file
+    file.close();
+
 }
 
 void MapDrawer::DrawMapPoints()
@@ -413,7 +528,6 @@ void MapDrawer::DrawCurrentCamera(pangolin::OpenGlMatrix &Twc)
 
     glPopMatrix();
 }
-
 
 void MapDrawer::SetCurrentCameraPose(const Sophus::SE3f &Tcw)
 {
