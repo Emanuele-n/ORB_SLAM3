@@ -186,8 +186,10 @@ void Viewer::Run()
     pangolin::Var<bool> menuStop("menu.Stop",false,false);
     pangolin::Var<bool> menuStepByStep("menu.Step By Step",false,true);  // false, true
     pangolin::Var<bool> menuStep("menu.Step",false,false);
-
     pangolin::Var<bool> menuShowOptLba("menu.Show LBA opt", false, true);
+    pangolin::Var<bool> menuShowOrigin("menu.Show Origin", true, true);
+    pangolin::Var<bool> menuShowCenterline("menu.Show Centerline", true, true);
+
     // Define Camera Render Object (for view / scene browsing)
     pangolin::OpenGlRenderState s_cam(
                 pangolin::ProjectionMatrix(1024,768,mViewpointF,mViewpointF,512,389,0.1,1000),
@@ -280,7 +282,6 @@ void Viewer::Run()
 
         if(menuStepByStep && !bStepByStep)
         {
-            //cout << "Viewer: step by step" << endl;
             mpTracker->SetStepByStep(true);
             bStepByStep = true;
         }
@@ -296,11 +297,12 @@ void Viewer::Run()
             menuStep = false;
         }
 
-
         d_cam.Activate(s_cam);
         glClearColor(1.0f,1.0f,1.0f,1.0f);
         mpMapDrawer->DrawCurrentCamera(Twc); 
-        if (mpMapDrawer->CheckInitialized())
+        if(menuShowOrigin)
+            mpMapDrawer->DrawOrigin();
+        if(menuShowCenterline && mpMapDrawer->CheckInitialized())
             mpMapDrawer->DrawCenterline();
         if(menuShowKeyFrames || menuShowGraph || menuShowOptLba)
             mpMapDrawer->DrawKeyFrames(menuShowKeyFrames,menuShowGraph, menuShowOptLba);
@@ -309,7 +311,6 @@ void Viewer::Run()
 
         pangolin::FinishFrame();
 
-        // EMA: DrawFrame is very slow with the videoscope, I comment it out for now
         // Image with info
         cv::Mat toShow;
         cv::Mat im = mpFrameDrawer->DrawFrame(trackedImageScale);
@@ -325,7 +326,7 @@ void Viewer::Run()
         cv::imshow("ORB-SLAM3: Current Frame",toShow);
         cv::waitKey(mT);
 
-        // // Raw image
+                // // Raw image
         // cv::Mat im = mpFrameDrawer->GetRawImage();
 
         // // Ensure the image is not empty

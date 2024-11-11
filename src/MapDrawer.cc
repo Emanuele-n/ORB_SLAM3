@@ -165,6 +165,26 @@ void MapDrawer::SetInitialized(std::vector<cv::Point3f> mvIniP3D, Sophus::SE3f T
     mTrackingInitialized = true;
 }
 
+void MapDrawer::DrawOrigin()
+{
+    // Draw the origin frame
+    glBegin(GL_LINES);
+    glColor3f(1.0f,0.0f,0.0f);
+    glVertex3f(0, 0, 0);
+    glVertex3f(1, 0, 0);
+    glEnd();
+    glBegin(GL_LINES);
+    glColor3f(0.0f,1.0f,0.0f);
+    glVertex3f(0, 0, 0);
+    glVertex3f(0, 1, 0);
+    glEnd();
+    glBegin(GL_LINES);
+    glColor3f(0.0f,0.0f,1.0f);
+    glVertex3f(0, 0, 0);
+    glVertex3f(0, 0, 1);
+    glEnd();
+}
+
 void MapDrawer::DrawCenterline()
 {
     // Read centerline frames from file
@@ -262,24 +282,6 @@ void MapDrawer::DrawCenterline()
             glVertex3f(o_p_i(0), o_p_i(1), o_p_i(2));
             glVertex3f(o_p_i(0) + arrow_scale*o_b_i(0), o_p_i(1) + arrow_scale*o_b_i(1), o_p_i(2) + arrow_scale*o_b_i(2));
             glEnd();
-
-            // Draw the origin frame
-            glBegin(GL_LINES);
-            glColor3f(1.0f,0.0f,0.0f);
-            glVertex3f(0, 0, 0);
-            glVertex3f(1, 0, 0);
-            glEnd();
-            glBegin(GL_LINES);
-            glColor3f(0.0f,1.0f,0.0f);
-            glVertex3f(0, 0, 0);
-            glVertex3f(0, 1, 0);
-            glEnd();
-            glBegin(GL_LINES);
-            glColor3f(0.0f,0.0f,1.0f);
-            glVertex3f(0, 0, 0);
-            glVertex3f(0, 0, 1);
-            glEnd();
-
         }
     }
 
