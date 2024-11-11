@@ -189,6 +189,7 @@ void Viewer::Run()
     pangolin::Var<bool> menuShowOptLba("menu.Show LBA opt", false, true);
     pangolin::Var<bool> menuShowOrigin("menu.Show Origin", true, true);
     pangolin::Var<bool> menuShowCenterline("menu.Show Centerline", true, true);
+    pangolin::Var<bool> menuShowTrajectory("menu.Show Trajectory", true, true);
 
     // Define Camera Render Object (for view / scene browsing)
     pangolin::OpenGlRenderState s_cam(
@@ -300,6 +301,8 @@ void Viewer::Run()
         d_cam.Activate(s_cam);
         glClearColor(1.0f,1.0f,1.0f,1.0f);
         mpMapDrawer->DrawCurrentCamera(Twc); 
+        if(menuShowTrajectory)
+            mpMapDrawer->DrawCameraTrajectory();
         if(menuShowOrigin)
             mpMapDrawer->DrawOrigin();
         if(menuShowCenterline && mpMapDrawer->CheckInitialized())
@@ -326,7 +329,7 @@ void Viewer::Run()
         cv::imshow("ORB-SLAM3: Current Frame",toShow);
         cv::waitKey(mT);
 
-                // // Raw image
+        // // Raw image
         // cv::Mat im = mpFrameDrawer->GetRawImage();
 
         // // Ensure the image is not empty

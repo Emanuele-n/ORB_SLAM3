@@ -45,6 +45,7 @@ public:
 
     bool CheckInitialized();
     void DrawTest();
+    void DrawCameraTrajectory();
     void DrawCenterline();
     void DrawOrigin();
     void DrawMapPoints();

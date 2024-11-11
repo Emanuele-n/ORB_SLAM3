@@ -55,6 +55,81 @@ Atlas::~Atlas()
     }
 }
 
+
+void Atlas::CreateCenterline(string& centerlineFramesPath)
+{   
+    // Protect with mutex
+    unique_lock<mutex> lock(mMutexCenterlineFrames);
+
+    // Read centerline frames from file
+    std::ifstream file(centerlineFramesPath);
+    if (!file.is_open()) {
+        std::cerr << "Failed to open file: " << centerlineFramesPath << std::endl;
+        return;
+    }
+
+    // Read each line of the file and draw the points
+    std::string line;
+    float x, y, z, tx, ty, tz, nx, ny, nz, bx, by, bz;
+    char comma; // to consume the commas
+    Eigen::Affine3f w_T_o; // Transformation from world to the first centerline point
+    Eigen::Affine3f w_T_i; // Transformation from world to the i-th centerline point
+    Eigen::Affine3f o_T_i; // Transformation from the first centerline point to the i-th point
+    bool first = true;
+    while (std::getline(file, line)) {
+        std::istringstream iss(line);
+
+        // Read the values from the line
+        if (iss >> x >> comma >> y >> comma >> z >> comma >> tx >> comma >> ty >> comma >> tz >> comma >> nx >> comma >> ny >> comma >> nz >> comma >> bx >> comma >> by >> comma >> bz) {
+            Eigen::Vector3f w_p_i(x, y, z);
+            Eigen::Vector3f w_t_i(tx, ty, tz);
+            Eigen::Vector3f w_n_i(nx, ny, nz);
+            Eigen::Vector3f w_b_i(bx, by, bz);
+
+            if (first){
+                // Get the transformation w_T_o from world frame to the first centerline point (vectors are already normilized)
+                // Construct the rotation matrix considering the tangent must be aligned with the z-axis
+                // TODO: check better the order of the vectors, the forward positive direction is the tangent (z-axis) but I am not sure about the other two
+                Eigen::Matrix3f R;
+                R.col(2) = w_t_i;
+                R.col(1) = w_n_i;
+                R.col(0) = w_b_i;
+                w_T_o.linear() = R;
+                w_T_o.translation() = w_p_i;
+                // cout << "w_T_o: " << w_T_o.matrix() << endl;
+                first = false;
+            }
+
+            // // Coordinates of the i-th point wrt the first point
+            // Eigen::Vector3f o_p_i = w_T_o.inverse() * w_p_i;
+            // cout << "Point: " << w_p_i.transpose() << " -> " << o_p_i.transpose() << endl;
+
+            // Get the Frenet-Serret frame at the i-th point
+            Eigen::Matrix3f R;
+            R.col(0) = w_t_i;
+            R.col(1) = w_n_i;
+            R.col(2) = w_b_i;
+            w_T_i.linear() = R;
+            w_T_i.translation() = w_p_i;
+
+            // Get o_T_i transformation
+            o_T_i = w_T_o.inverse() * w_T_i;
+
+            // Save the current o_T_i in std::vector<Eigen::Matrix4d> mCenterlineFrames;
+            Eigen::Matrix4d o_T_i_mat = o_T_i.matrix().cast<double>();
+            mCenterlineFrames.push_back(o_T_i_mat);
+        }
+    }
+    // Close the files
+    file.close();
+}
+
+std::vector<Eigen::Matrix4d> Atlas::GetCenterlineFrames()
+{
+    unique_lock<mutex> lock(mMutexCenterlineFrames);
+    return mCenterlineFrames;
+}
+
 void Atlas::CreateNewMap()
 {
     unique_lock<mutex> lock(mMutexAtlas);

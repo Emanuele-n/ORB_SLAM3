@@ -1557,7 +1557,10 @@ void Tracking::MonocularInitialization()
 
             // EMA: Implement the a priori info about the centerline
             if(mWithPatientData)
-            {
+            {   
+                // Create centerline in Atlas
+                mpAtlas->CreateCenterline(mCenterlineFramesPath);
+
                 // Draw the centerline
                 mpMapDrawer->SetInitialized(mvIniP3D, Tcw, mCenterlineFramesPath);
                 cout << "Set MapDrawer initialized" << endl;
@@ -1565,12 +1568,14 @@ void Tracking::MonocularInitialization()
                 // Obtain the transformation of the first centerline point
                 // if encoder is used at the base of the robot it returns the transformation 
                 // from the first centerline point to the estimated current point by using the encoder value as curvilinear abscissa
-                // else it return the transformation from the world to the first centerline point
+                // else the first centerline frame is set coincident with the origin of the world frame, so the transformation is the identity Sophus::SE3f()
                 // Sophus::SE3f T_centerline_first_point = GetCenterlineFirstPointPose();
             }
 
             // Set Frame Poses
             mInitialFrame.SetPose(Sophus::SE3f());
+            // // Set the initial frame pose to the centerline first point pose
+            // mInitialFrame.SetPose(T_centerline_first_point);
             mCurrentFrame.SetPose(Tcw);
 
             CreateInitialMapMonocular();

@@ -185,111 +185,54 @@ void MapDrawer::DrawOrigin()
     glEnd();
 }
 
+void MapDrawer::DrawCameraTrajectory()
+{
+    Map* pMap = mpAtlas->GetCurrentMap();
+    if(!pMap)
+        return;
+
+    const std::vector<KeyFrame*> vpKFs = pMap->GetAllKeyFrames();
+    if(vpKFs.empty())
+        return;
+
+    glLineWidth(2.0f);
+    glColor3f(1.0f, 0.0f, 0.0f); // Red color for the trajectory
+
+    glBegin(GL_LINE_STRIP);
+    for(size_t i = 0; i < vpKFs.size(); ++i)
+    {
+        KeyFrame* pKF = vpKFs[i];
+        if(!pKF || pKF->isBad())
+            continue;
+
+        Eigen::Vector3f Ow = pKF->GetCameraCenter();
+        glVertex3f(Ow[0], Ow[1], Ow[2]);
+    }
+    glEnd();
+}
+
 void MapDrawer::DrawCenterline()
 {
-    // Read centerline frames from file
-    std::ifstream file(mCenterlineFramesPath);
-    if (!file.is_open()) {
-        std::cerr << "Failed to open file: " << mCenterlineFramesPath << std::endl;
+    // Access the centerline frames from the atlas
+    const std::vector<Eigen::Matrix4d>& centerlineFrames = mpAtlas->GetCenterlineFrames();
+
+    if (centerlineFrames.empty())
         return;
-    }
 
-    // Read each line of the file and draw the points
-    std::string line;
-    float x, y, z, tx, ty, tz, nx, ny, nz, bx, by, bz;
-    char comma; // to consume the commas
-    Eigen::Affine3f w_T_o; // Transformation from world to the first centerline point
-    Eigen::Affine3f w_T_i; // Transformation from world to the i-th centerline point
-    Eigen::Affine3f o_T_i; // Transformation from the first centerline point to the i-th point
-    bool first = true;
-    while (std::getline(file, line)) {
-        std::istringstream iss(line);
+    glPointSize(5.0f);
+    glBegin(GL_POINTS);
+    glColor3f(0.0f, 0.0f, 1.0f);
 
-        // Read the values from the line
-        if (iss >> x >> comma >> y >> comma >> z >> comma >> tx >> comma >> ty >> comma >> tz >> comma >> nx >> comma >> ny >> comma >> nz >> comma >> bx >> comma >> by >> comma >> bz) {
-            Eigen::Vector3f w_p_i(x, y, z);
-            Eigen::Vector3f w_t_i(tx, ty, tz);
-            Eigen::Vector3f w_n_i(nx, ny, nz);
-            Eigen::Vector3f w_b_i(bx, by, bz);
+    for (const auto& frame : centerlineFrames)
+    {
+        // Extract the position from the frame
+        Eigen::Vector3d position = frame.block<3,1>(0,3);
 
-            if (first){
-                // Get the transformation w_T_o from world frame to the first centerline point (vectors are already normilized)
-                // Construct the rotation matrix considering the tangent must be aligned with the z-axis
-                // TODO: check better the order of the vectors, the forward positive direction is the tangent (z-axis) but I am not sure about the other two
-                Eigen::Matrix3f R;
-                R.col(2) = w_t_i;
-                R.col(1) = w_n_i;
-                R.col(0) = w_b_i;
-                w_T_o.linear() = R;
-                w_T_o.translation() = w_p_i;
-                // cout << "w_T_o: " << w_T_o.matrix() << endl;
-                first = false;
-            }
-
-            // // Coordinates of the i-th point wrt the first point
-            // Eigen::Vector3f o_p_i = w_T_o.inverse() * w_p_i;
-            // cout << "Point: " << w_p_i.transpose() << " -> " << o_p_i.transpose() << endl;
-
-            // Get the Frenet-Serret frame at the i-th point
-            Eigen::Matrix3f R;
-            R.col(0) = w_t_i;
-            R.col(1) = w_n_i;
-            R.col(2) = w_b_i;
-            w_T_i.linear() = R;
-            w_T_i.translation() = w_p_i;
-
-            // Get o_T_i transformation
-            o_T_i = w_T_o.inverse() * w_T_i;
-            Eigen::Vector3f o_p_i = o_T_i.translation();
-            Eigen::Vector3f o_t_i = o_T_i.linear().col(0);
-            Eigen::Vector3f o_n_i = o_T_i.linear().col(1);
-            Eigen::Vector3f o_b_i = o_T_i.linear().col(2);
-            // cout << "Point: " << w_p_i.transpose() << " -> " << o_p_i.transpose() << endl;
-
-            // Draw both the original and the transformed point
-            // glPointSize(5.0);  
-            // glBegin(GL_POINTS);
-            // glColor3f(1.0f,0.0f,0.0f); // Red color for points
-            // glVertex3f(w_p_i(0), w_p_i(1), w_p_i(2));
-            // glEnd();
-
-            glPointSize(5.0);
-            glBegin(GL_POINTS);
-            glColor3f(1.0f,0.0f,0.0f); // Red color for points
-            glVertex3f(o_p_i(0), o_p_i(1), o_p_i(2));
-            glEnd();
-            
-            // Draw the Frenet-Serret frames (tangent, normal, binormal) as arrows
-            float arrow_scale = 0.1f; // Scaling factor for arrow length
-
-            // Draw the tangent vector (red)
-            glBegin(GL_LINES);
-            glColor3f(1.0f,0.0f,0.0f); 
-            glVertex3f(o_p_i(0), o_p_i(1), o_p_i(2));
-            glVertex3f(o_p_i(0) + arrow_scale*o_t_i(0), o_p_i(1) + arrow_scale*o_t_i(1), o_p_i(2) + arrow_scale*o_t_i(2));
-            glEnd();
-
-            // Draw the normal vector (green)
-            glBegin(GL_LINES);
-            glColor3f(0.0f,1.0f,0.0f); 
-            glVertex3f(o_p_i(0), o_p_i(1), o_p_i(2));
-            glVertex3f(o_p_i(0) + arrow_scale*o_n_i(0), o_p_i(1) + arrow_scale*o_n_i(1), o_p_i(2) + arrow_scale*o_n_i(2));
-            glEnd();
-
-            // Draw the binormal vector (blue)
-            glBegin(GL_LINES);
-            glColor3f(0.0f,0.0f,1.0f); 
-            glVertex3f(o_p_i(0), o_p_i(1), o_p_i(2));
-            glVertex3f(o_p_i(0) + arrow_scale*o_b_i(0), o_p_i(1) + arrow_scale*o_b_i(1), o_p_i(2) + arrow_scale*o_b_i(2));
-            glEnd();
-        }
+        // Draw the point
+        glVertex3d(position.x(), position.y(), position.z());
     }
 
     glEnd();
-
-    // Close the file
-    file.close();
-
 }
 
 void MapDrawer::DrawMapPoints()
@@ -535,6 +478,7 @@ void MapDrawer::DrawKeyFrames(const bool bDrawKF, const bool bDrawGraph, const b
 void MapDrawer::DrawCurrentCamera(pangolin::OpenGlMatrix &Twc)
 {
     const float &w = mCameraSize;
+    // const float &w = mCameraSize/10;
     const float h = w*0.75;
     const float z = w*0.6;
 
