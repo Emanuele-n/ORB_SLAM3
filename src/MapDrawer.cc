@@ -167,76 +167,119 @@ void MapDrawer::SetInitialized(std::vector<cv::Point3f> mvIniP3D, Sophus::SE3f T
 
 void MapDrawer::DrawCenterline()
 {
-
-    // TODO: find transformation between the centerline first frame and the world
-    // then apply it to the centerline points to draw such that the first point is at the origin
-
     // Read centerline frames from file
     std::ifstream file(mCenterlineFramesPath);
     if (!file.is_open()) {
         std::cerr << "Failed to open file: " << mCenterlineFramesPath << std::endl;
         return;
     }
-    // Draw every point in the centerline
-    glPointSize(5.0);  // Increased point size
-    glBegin(GL_POINTS);
-    glColor3f(1.0f,0.0f,0.0f); // Red color for points
-
-    // Draw a point in the origin
-    glVertex3f(0.0, 0.0, 0.0);
 
     // Read each line of the file and draw the points
     std::string line;
+    float x, y, z, tx, ty, tz, nx, ny, nz, bx, by, bz;
+    char comma; // to consume the commas
+    Eigen::Affine3f w_T_o; // Transformation from world to the first centerline point
+    Eigen::Affine3f w_T_i; // Transformation from world to the i-th centerline point
+    Eigen::Affine3f o_T_i; // Transformation from the first centerline point to the i-th point
+    bool first = true;
     while (std::getline(file, line)) {
         std::istringstream iss(line);
 
-        // Draw without transforming
-        // float x, y, z;
-        // char comma; // to consume the commas
-        // if (iss >> x >> comma >> y >> comma >> z) {
-        //     glVertex3f(x, y, z);
-        // }
-
-        // Draw transformed
-        float x, y, z, tx, ty, tz, nx, ny, nz, bx, by, bz;
-        char comma; // to consume the commas
-        bool first = true;
-        Eigen::Affine3f T_first_world; // Transformation from the first frame to the world frame
-        Eigen::Affine3f T_world_first; // Inverse of the previous transformation
+        // Read the values from the line
         if (iss >> x >> comma >> y >> comma >> z >> comma >> tx >> comma >> ty >> comma >> tz >> comma >> nx >> comma >> ny >> comma >> nz >> comma >> bx >> comma >> by >> comma >> bz) {
-            Eigen::Vector3f point(x, y, z);
-            Eigen::Vector3f tangent(tx, ty, tz);
-            Eigen::Vector3f normal(nx, ny, nz);
-            Eigen::Vector3f binormal(bx, by, bz);
+            Eigen::Vector3f w_p_i(x, y, z);
+            Eigen::Vector3f w_t_i(tx, ty, tz);
+            Eigen::Vector3f w_n_i(nx, ny, nz);
+            Eigen::Vector3f w_b_i(bx, by, bz);
 
-            // if it is the first point (first line) calculate the transformation to the world
-            if (first) {
-                // Calculate the transformation
-                // Build the rotation matrix from the tangent, normal, and binormal vectors
-                Eigen::Matrix3f R_first;
-                R_first.col(0) = tangent.normalized();
-                R_first.col(1) = normal.normalized();
-                R_first.col(2) = binormal.normalized();
-
-                // Build the translation vector
-                Eigen::Vector3f t_first = point;
-
-                // Construct the transformation from the first frame to the world frame
-                T_first_world.linear() = R_first;
-                T_first_world.translation() = t_first;
-
-                // Compute the inverse transformation (from first frame to world frame)
-                T_world_first = T_first_world.inverse();
-
-                // Set the first flag to false
+            if (first){
+                // Get the transformation w_T_o from world frame to the first centerline point (vectors are already normilized)
+                // Construct the rotation matrix considering the tangent must be aligned with the z-axis
+                // TODO: check better the order of the vectors, the forward positive direction is the tangent (z-axis) but I am not sure about the other two
+                Eigen::Matrix3f R;
+                R.col(2) = w_t_i;
+                R.col(1) = w_n_i;
+                R.col(0) = w_b_i;
+                w_T_o.linear() = R;
+                w_T_o.translation() = w_p_i;
+                // cout << "w_T_o: " << w_T_o.matrix() << endl;
                 first = false;
             }
 
-            // Transform the point to the world frame
-            Eigen::Vector3f point_world = T_world_first * point;
+            // // Coordinates of the i-th point wrt the first point
+            // Eigen::Vector3f o_p_i = w_T_o.inverse() * w_p_i;
+            // cout << "Point: " << w_p_i.transpose() << " -> " << o_p_i.transpose() << endl;
 
-            // Draw the point
-            glVertex3f(point_world(0), point_world(1), point_world(2));
+            // Get the Frenet-Serret frame at the i-th point
+            Eigen::Matrix3f R;
+            R.col(0) = w_t_i;
+            R.col(1) = w_n_i;
+            R.col(2) = w_b_i;
+            w_T_i.linear() = R;
+            w_T_i.translation() = w_p_i;
+
+            // Get o_T_i transformation
+            o_T_i = w_T_o.inverse() * w_T_i;
+            Eigen::Vector3f o_p_i = o_T_i.translation();
+            Eigen::Vector3f o_t_i = o_T_i.linear().col(0);
+            Eigen::Vector3f o_n_i = o_T_i.linear().col(1);
+            Eigen::Vector3f o_b_i = o_T_i.linear().col(2);
+            // cout << "Point: " << w_p_i.transpose() << " -> " << o_p_i.transpose() << endl;
+
+            // Draw both the original and the transformed point
+            // glPointSize(5.0);  
+            // glBegin(GL_POINTS);
+            // glColor3f(1.0f,0.0f,0.0f); // Red color for points
+            // glVertex3f(w_p_i(0), w_p_i(1), w_p_i(2));
+            // glEnd();
+
+            glPointSize(5.0);
+            glBegin(GL_POINTS);
+            glColor3f(1.0f,0.0f,0.0f); // Red color for points
+            glVertex3f(o_p_i(0), o_p_i(1), o_p_i(2));
+            glEnd();
+            
+            // Draw the Frenet-Serret frames (tangent, normal, binormal) as arrows
+            float arrow_scale = 0.1f; // Scaling factor for arrow length
+
+            // Draw the tangent vector (red)
+            glBegin(GL_LINES);
+            glColor3f(1.0f,0.0f,0.0f); 
+            glVertex3f(o_p_i(0), o_p_i(1), o_p_i(2));
+            glVertex3f(o_p_i(0) + arrow_scale*o_t_i(0), o_p_i(1) + arrow_scale*o_t_i(1), o_p_i(2) + arrow_scale*o_t_i(2));
+            glEnd();
+
+            // Draw the normal vector (green)
+            glBegin(GL_LINES);
+            glColor3f(0.0f,1.0f,0.0f); 
+            glVertex3f(o_p_i(0), o_p_i(1), o_p_i(2));
+            glVertex3f(o_p_i(0) + arrow_scale*o_n_i(0), o_p_i(1) + arrow_scale*o_n_i(1), o_p_i(2) + arrow_scale*o_n_i(2));
+            glEnd();
+
+            // Draw the binormal vector (blue)
+            glBegin(GL_LINES);
+            glColor3f(0.0f,0.0f,1.0f); 
+            glVertex3f(o_p_i(0), o_p_i(1), o_p_i(2));
+            glVertex3f(o_p_i(0) + arrow_scale*o_b_i(0), o_p_i(1) + arrow_scale*o_b_i(1), o_p_i(2) + arrow_scale*o_b_i(2));
+            glEnd();
+
+            // Draw the origin frame
+            glBegin(GL_LINES);
+            glColor3f(1.0f,0.0f,0.0f);
+            glVertex3f(0, 0, 0);
+            glVertex3f(1, 0, 0);
+            glEnd();
+            glBegin(GL_LINES);
+            glColor3f(0.0f,1.0f,0.0f);
+            glVertex3f(0, 0, 0);
+            glVertex3f(0, 1, 0);
+            glEnd();
+            glBegin(GL_LINES);
+            glColor3f(0.0f,0.0f,1.0f);
+            glVertex3f(0, 0, 0);
+            glVertex3f(0, 0, 1);
+            glEnd();
+
         }
     }
 
