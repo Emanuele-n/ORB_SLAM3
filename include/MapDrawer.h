@@ -46,7 +46,8 @@ public:
     bool CheckInitialized();
     void DrawTest();
     void DrawCameraTrajectory();
-    void DrawCenterline();
+    void DrawRefCenterline();
+    void DrawTrajCenterline();
     void DrawOrigin();
     void DrawMapPoints();
     void DrawKeyFrames(const bool bDrawKF, const bool bDrawGraph, const bool bDrawOptLba);

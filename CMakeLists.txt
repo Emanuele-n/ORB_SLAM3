@@ -112,6 +112,7 @@ include/Settings.h
 include/External/ORBextractor.h
 include/External/ORBmatcher.h
 include/External/MLPnPsolver.h
+include/External/spline.h
 src/External/ORBextractor.cc
 src/External/ORBmatcher.cc
 src/External/MLPnPsolver.cpp

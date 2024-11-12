@@ -82,6 +82,12 @@ public:
     std::vector<Eigen::Matrix4d> mRefCenterlineFrames;
     std::mutex mMutexRefCenterlineFrames;
 
+    // Trajectory centerline
+    void ComputeTrajectoryCenterline();
+    std::vector<Eigen::Vector3d> GetTrajectoryCenterline();
+    std::vector<Eigen::Vector3d> mTrajectoryCenterline;
+    std::mutex mMutexTrajectoryCenterline;
+
     void CreateNewMap();
     void ChangeMap(Map* pMap);
 

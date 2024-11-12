@@ -18,10 +18,29 @@
 
 #include "Atlas.h"
 #include "Viewer.h"
-
 #include "GeometricCamera.h"
 #include "Pinhole.h"
 #include "KannalaBrandt8.h"
+#include "spline.h"
+
+// Helper function to create Gaussian kernel
+std::vector<double> gaussianKernel(int size, double sigma) {
+    std::vector<double> kernel(size);
+    double sum = 0.0;
+    int mean = size/2;
+    
+    for(int x = 0; x < size; x++) {
+        kernel[x] = exp(-0.5 * pow((x - mean)/sigma, 2.0));
+        sum += kernel[x];
+    }
+    
+    // Normalize the kernel
+    for(int x = 0; x < size; x++) {
+        kernel[x] /= sum;
+    }
+    
+    return kernel;
+}
 
 namespace ORB_SLAM3
 {
@@ -128,6 +147,97 @@ std::vector<Eigen::Matrix4d> Atlas::GetRefCenterlineFrames()
 {
     unique_lock<mutex> lock(mMutexRefCenterlineFrames);
     return mRefCenterlineFrames;
+}
+
+void Atlas::ComputeTrajectoryCenterline()
+{
+    // Protect with mutex
+    unique_lock<mutex> lock(mMutexTrajectoryCenterline);
+
+    // Get the current map
+    Map* pMap = GetCurrentMap();
+    if(!pMap)
+        return;
+
+    // Get all keyframes
+    const std::vector<KeyFrame*> vpKFs = pMap->GetAllKeyFrames();
+    if(vpKFs.empty())
+        return;
+
+    // Clear the trajectory centerline
+    mTrajectoryCenterline.clear();
+
+    // Compute the trajectory centerline
+    for (const auto& pKF : vpKFs)
+    {
+        // Get the camera center of the keyframe
+        Eigen::Vector3f Ow = pKF->GetCameraCenter();
+
+        // Get only the camera center position
+        Eigen::Vector3d Ow_d = Ow.cast<double>();
+
+        // Save only the position vector
+        mTrajectoryCenterline.push_back(Ow_d);
+    }
+
+    // Fit a cubic spline through the trajectory points
+    std::vector<double> x, y, z;
+    for(const auto& p : mTrajectoryCenterline) {
+        x.push_back(p[0]);
+        y.push_back(p[1]); 
+        z.push_back(p[2]);
+    }
+
+    // Create parameter vector (0 to 1)
+    std::vector<double> t(mTrajectoryCenterline.size());
+    for(size_t i = 0; i < t.size(); i++) {
+        t[i] = static_cast<double>(i) / (t.size() - 1);
+    }
+
+    // Fit cubic splines
+    tk::spline spline_x(t, x);
+    tk::spline spline_y(t, y);
+    tk::spline spline_z(t, z);
+
+    // Resample at higher density
+    const int num_samples = mTrajectoryCenterline.size() * 4;
+    mTrajectoryCenterline.clear();
+
+    for(int i = 0; i < num_samples; i++) {
+        double ti = static_cast<double>(i) / (num_samples - 1);
+        Eigen::Vector3d p;
+        p << spline_x(ti), spline_y(ti), spline_z(ti);
+        mTrajectoryCenterline.push_back(p);
+    }
+
+    // Apply Gaussian smoothing
+    const int window = 5;
+    const double sigma = 1.0;
+    std::vector<Eigen::Vector3d> smoothed;
+    std::vector<double> kernel = gaussianKernel(window, sigma);
+
+    for(size_t i = 0; i < mTrajectoryCenterline.size(); i++) {
+        Eigen::Vector3d sum = Eigen::Vector3d::Zero();
+        double weight_sum = 0;
+        
+        for(int j = -window/2; j <= window/2; j++) {
+            int idx = i + j;
+            if(idx >= 0 && idx < mTrajectoryCenterline.size()) {
+                sum += kernel[j + window/2] * mTrajectoryCenterline[idx];
+                weight_sum += kernel[j + window/2];
+            }
+        }
+        smoothed.push_back(sum / weight_sum);
+    }
+
+    mTrajectoryCenterline = smoothed;
+
+}
+
+std::vector<Eigen::Vector3d> Atlas::GetTrajectoryCenterline()
+{
+    unique_lock<mutex> lock(mMutexTrajectoryCenterline);
+    return mTrajectoryCenterline;
 }
 
 void Atlas::CreateNewMap()

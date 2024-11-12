@@ -211,7 +211,7 @@ void MapDrawer::DrawCameraTrajectory()
     glEnd();
 }
 
-void MapDrawer::DrawCenterline()
+void MapDrawer::DrawRefCenterline()
 {
     // Access the centerline frames from the atlas
     const std::vector<Eigen::Matrix4d>& centerlineFrames = mpAtlas->GetRefCenterlineFrames();
@@ -228,6 +228,30 @@ void MapDrawer::DrawCenterline()
         // Extract the position from the frame
         Eigen::Vector3d position = frame.block<3,1>(0,3);
 
+        // Draw the point
+        glVertex3d(position.x(), position.y(), position.z());
+    }
+
+    glEnd();
+}
+
+void MapDrawer::DrawTrajCenterline()
+{
+    // TEMP: compute the trajectory centerline here
+    mpAtlas->ComputeTrajectoryCenterline();
+
+    // Access the trajectory centerline from the atlas
+    const std::vector<Eigen::Vector3d>& trajectoryCenterline = mpAtlas->GetTrajectoryCenterline();
+
+    if (trajectoryCenterline.empty())
+        return;
+
+    glPointSize(5.0f);
+    glBegin(GL_POINTS);
+    glColor3f(0.0f, 1.0f, 0.0f);
+
+    for (const auto& position : trajectoryCenterline)
+    {
         // Draw the point
         glVertex3d(position.x(), position.y(), position.z());
     }
