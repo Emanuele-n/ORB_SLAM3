@@ -26,6 +26,7 @@ Tcw = SLAM.TrackMonocular(frame, tframe);
             pCurrentMap->SetLastMapChange(nCurMapChangeIndex);
     
             // If tracking state mState is NOT_INITIALIZED, initialize 
+            // ----- IV. AUTOMATIC MAP INITIALIZATION starts here -----
             MonocularInitialization();
 
                 // If not ready to initialize we need to set the reference frame, which is set if enough keypoints are detected
@@ -40,6 +41,29 @@ Tcw = SLAM.TrackMonocular(frame, tframe);
 
                 // Create the initial map with the two frame poses and the triangulated points
                 CreateInitialMapMonocular();
+
+                    // For both frames (inital and current) create a keyframe and add it to the map
+                    ... = new KeyFrame(...);
+                    mpAtlas->AddKeyFrame(...);
+
+                    // For each match, create a new map point and associate it to the keyframes
+                    ... = new MapPoint(...);
+                    // Remember each map point contains (its 3D position, viewing direction, orb descriptor, max and min distance at which it can be observed)
+                    // After all these are computed and set, add the map point to the map
+                    mpAtlas->AddMapPoint(pMP);
+
+                    // Update connections for both frames: for all map points in the keyframe check in which other keyframes they are observed and increase the counter for those keyframes
+                    ...->UpdateConnections(); 
+
+                    // Perform full bundle adjustment
+                    Optimizer::GlobalBundleAdjustment(mpAtlas->GetCurrentMap(),20);
+
+                        // Get all keyframes and map points in the map and compute the BA
+                        vector<KeyFrame*> vpKFs = pMap->GetAllKeyFrames();
+                        vector<MapPoint*> vpMPs = pMap->GetAllMapPoints();
+                        BundleAdjustemnt(vpKFs,vpMPs,nIterations, ...);
+
+                    // ----- IV. AUTOMATIC MAP INITIALIZATION ends here -----
 
 
             // else (if initialized) get the initial camera pose estimation using motion model or relocalization

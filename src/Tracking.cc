@@ -1497,6 +1497,8 @@ void Tracking::Track()
 void Tracking::MonocularInitialization()
 {   
     // cout << "MonocularInitialization: ready: " << mbReadyToInitializate << endl;
+    // Paper: ORB-SLAM: A Versatile and Accurate Monocular SLAM System
+    // ----- IV. AUTOMATIC MAP INITIALIZATION starts here -----
 
     // If not ready to initialize we need to set the reference frame
     if(!mbReadyToInitializate)
@@ -1629,12 +1631,13 @@ void Tracking::CreateInitialMapMonocular()
     pKFini->UpdateConnections();
     pKFcur->UpdateConnections();
 
-    std::set<MapPoint*> sMPs;
-    sMPs = pKFini->GetMapPoints();
+    // std::set<MapPoint*> sMPs;
+    // sMPs = pKFini->GetMapPoints();
 
     // Bundle Adjustment
     Verbose::PrintMess("New Map created with " + to_string(mpAtlas->MapPointsInMap()) + " points", Verbose::VERBOSITY_QUIET);
-    Optimizer::GlobalBundleAdjustemnt(mpAtlas->GetCurrentMap(),20);
+    Optimizer::GlobalBundleAdjustment(mpAtlas->GetCurrentMap(),20);
+    // ----- IV. AUTOMATIC MAP INITIALIZATION ends here -----
 
     float medianDepth = pKFini->ComputeSceneMedianDepth(2);
     float invMedianDepth;

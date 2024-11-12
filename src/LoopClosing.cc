@@ -1811,7 +1811,7 @@ void LoopClosing::RunGlobalBundleAdjustment(Map* pActiveMap, unsigned long nLoop
     vnGBAKFs.push_back(pActiveMap->GetAllKeyFrames().size());
     vnGBAMPs.push_back(pActiveMap->GetAllMapPoints().size());
 #endif
-    Optimizer::GlobalBundleAdjustemnt(pActiveMap,10,&mbStopGBA,nLoopKF,false);
+    Optimizer::GlobalBundleAdjustment(pActiveMap,10,&mbStopGBA,nLoopKF,false);
 
 #ifdef REGISTER_TIMES
     std::chrono::steady_clock::time_point time_EndGBA = std::chrono::steady_clock::now();
@@ -1826,7 +1826,7 @@ void LoopClosing::RunGlobalBundleAdjustment(Map* pActiveMap, unsigned long nLoop
 #endif
 
     int idx =  mnFullBAIdx;
-    // Optimizer::GlobalBundleAdjustemnt(mpMap,10,&mbStopGBA,nLoopKF,false);
+    // Optimizer::GlobalBundleAdjustment(mpMap,10,&mbStopGBA,nLoopKF,false);
 
     // Update all MapPoints and KeyFrames
     // Local Mapping was active during BA, that means that there might be new keyframes
