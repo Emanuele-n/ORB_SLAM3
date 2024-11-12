@@ -76,11 +76,11 @@ public:
     Atlas(int initKFid); // When its initialization the first map is created
     ~Atlas();
 
-    // Centerline
-    void CreateCenterline(string& centerlineFramesPath);
-    std::vector<Eigen::Matrix4d> GetCenterlineFrames();
-    std::vector<Eigen::Matrix4d> mCenterlineFrames;
-    std::mutex mMutexCenterlineFrames;
+    // Reference centerline
+    void SetRefCenterline(string& refCenterlineFramesPath);
+    std::vector<Eigen::Matrix4d> GetRefCenterlineFrames();
+    std::vector<Eigen::Matrix4d> mRefCenterlineFrames;
+    std::mutex mMutexRefCenterlineFrames;
 
     void CreateNewMap();
     void ChangeMap(Map* pMap);

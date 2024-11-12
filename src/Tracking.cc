@@ -1561,7 +1561,7 @@ void Tracking::MonocularInitialization()
             if(mWithPatientData)
             {   
                 // Create centerline in Atlas
-                mpAtlas->CreateCenterline(mCenterlineFramesPath);
+                mpAtlas->SetRefCenterline(mCenterlineFramesPath);
 
                 // Draw the centerline
                 mpMapDrawer->SetInitialized(mvIniP3D, Tcw, mCenterlineFramesPath);

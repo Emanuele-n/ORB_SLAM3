@@ -157,11 +157,11 @@ bool MapDrawer::CheckInitialized()
     return mTrackingInitialized;
 }
 
-void MapDrawer::SetInitialized(std::vector<cv::Point3f> mvIniP3D, Sophus::SE3f Tcw, string& centerlineFramesPath)
+void MapDrawer::SetInitialized(std::vector<cv::Point3f> mvIniP3D, Sophus::SE3f Tcw, string& refCenterlineFramesPath)
 {
     mInitTcw = Tcw;
     mvIniP3D = mvIniP3D;
-    mCenterlineFramesPath = centerlineFramesPath;
+    mCenterlineFramesPath = refCenterlineFramesPath;
     mTrackingInitialized = true;
 }
 
@@ -214,7 +214,7 @@ void MapDrawer::DrawCameraTrajectory()
 void MapDrawer::DrawCenterline()
 {
     // Access the centerline frames from the atlas
-    const std::vector<Eigen::Matrix4d>& centerlineFrames = mpAtlas->GetCenterlineFrames();
+    const std::vector<Eigen::Matrix4d>& centerlineFrames = mpAtlas->GetRefCenterlineFrames();
 
     if (centerlineFrames.empty())
         return;

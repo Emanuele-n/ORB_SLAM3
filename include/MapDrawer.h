@@ -51,7 +51,7 @@ public:
     void DrawMapPoints();
     void DrawKeyFrames(const bool bDrawKF, const bool bDrawGraph, const bool bDrawOptLba);
     void DrawCurrentCamera(pangolin::OpenGlMatrix &Twc);
-    void SetInitialized(std::vector<cv::Point3f> mvIniP3D, Sophus::SE3f Tcw, string& centerlineFramesPath);
+    void SetInitialized(std::vector<cv::Point3f> mvIniP3D, Sophus::SE3f Tcw, string& refCenterlineFramesPath);
     void SetCurrentCameraPose(const Sophus::SE3f &Tcw);
     void SetReferenceKeyFrame(KeyFrame *pKF);
     void GetCurrentOpenGLCameraMatrix(pangolin::OpenGlMatrix &M, pangolin::OpenGlMatrix &MOw);

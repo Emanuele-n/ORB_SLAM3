@@ -56,15 +56,15 @@ Atlas::~Atlas()
 }
 
 
-void Atlas::CreateCenterline(string& centerlineFramesPath)
+void Atlas::SetRefCenterline(string& refCenterlineFramesPath)
 {   
     // Protect with mutex
-    unique_lock<mutex> lock(mMutexCenterlineFrames);
+    unique_lock<mutex> lock(mMutexRefCenterlineFrames);
 
     // Read centerline frames from file
-    std::ifstream file(centerlineFramesPath);
+    std::ifstream file(refCenterlineFramesPath);
     if (!file.is_open()) {
-        std::cerr << "Failed to open file: " << centerlineFramesPath << std::endl;
+        std::cerr << "Failed to open file: " << refCenterlineFramesPath << std::endl;
         return;
     }
 
@@ -115,19 +115,19 @@ void Atlas::CreateCenterline(string& centerlineFramesPath)
             // Get o_T_i transformation
             o_T_i = w_T_o.inverse() * w_T_i;
 
-            // Save the current o_T_i in std::vector<Eigen::Matrix4d> mCenterlineFrames;
+            // Save the current o_T_i in std::vector<Eigen::Matrix4d> mRefCenterlineFrames;
             Eigen::Matrix4d o_T_i_mat = o_T_i.matrix().cast<double>();
-            mCenterlineFrames.push_back(o_T_i_mat);
+            mRefCenterlineFrames.push_back(o_T_i_mat);
         }
     }
     // Close the files
     file.close();
 }
 
-std::vector<Eigen::Matrix4d> Atlas::GetCenterlineFrames()
+std::vector<Eigen::Matrix4d> Atlas::GetRefCenterlineFrames()
 {
-    unique_lock<mutex> lock(mMutexCenterlineFrames);
-    return mCenterlineFrames;
+    unique_lock<mutex> lock(mMutexRefCenterlineFrames);
+    return mRefCenterlineFrames;
 }
 
 void Atlas::CreateNewMap()
