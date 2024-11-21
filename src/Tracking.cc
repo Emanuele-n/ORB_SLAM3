@@ -44,7 +44,7 @@ Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer,
     mbOnlyTracking(false), mbMapUpdated(false), mbVO(false), mpORBVocabulary(pVoc), mpKeyFrameDB(pKFDB),
     mbReadyToInitializate(false), mpSystem(pSys), mpViewer(NULL), bStepByStep(false),
     mpFrameDrawer(pFrameDrawer), mpMapDrawer(pMapDrawer), mpAtlas(pAtlas), mnLastRelocFrameId(0), time_recently_lost(5.0),
-    mnInitialFrameId(0), mbCreatedMap(false), mnFirstFrameId(0), mpCamera2(nullptr), mWithPatientData(withPatientData)
+    mnInitialFrameId(0), mbCreatedMap(false), mnFirstFrameId(0), mpCamera2(nullptr), mWithPatientData(withPatientData), mCandidateFrame(Sophus::SE3f())
 {
     // Load camera parameters from settings file
     if(settings){
@@ -100,6 +100,7 @@ Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer,
             cout << "\t-CAD path: " << mCADPath << endl;
             cout << "\t-Centerline path: " << mCenterlinePath << endl;
             cout << "\t-Centerline frames path: " << mCenterlineFramesPath << endl;
+
         } else {
             cerr << "Unable to open patient data file" << endl;
         }
@@ -1071,6 +1072,110 @@ Sophus::SE3f Tracking::GrabImageMonocular(const cv::Mat &im, const double &times
     return mCurrentFrame.GetPose();
 }
 
+void Tracking::FindCandidateFrame()
+{   
+    bool debug = false;
+    if (debug) cout << "Finding candidate frame" << endl;
+
+    // Get the current camera pose
+    Sophus::SE3f Tcw = mLastFrame.GetPose();
+    if (Tcw.matrix().rows() != 4 || Tcw.matrix().cols() != 4) {
+        std::cerr << "Invalid Tcw matrix size." << std::endl;
+        return;
+    }
+    if (debug) cout << "Tcw: " << endl;
+    if (debug) cout << Tcw.matrix() << endl;
+    // Get camera position from the pose
+    Eigen::Vector3f Ow = Tcw.translation();
+    Eigen::Vector3d Ow_d = Ow.cast<double>();
+    if (debug) cout << "Ow_d: " << Ow_d << endl;
+
+    if (Ow_d.hasNaN()) {
+        std::cerr << "Invalid Ow_d received." << std::endl;
+        return;
+    }
+
+    std::vector<Sophus::SE3f> refCenterlineFrames = mpAtlas->GetRefCenterlineFrames();
+    if (refCenterlineFrames.empty())
+    {
+        cout << "Reference centerline is empty" << endl;
+        return;
+    }
+
+    if (debug) cout << "refCenterlineFrames " << refCenterlineFrames.size() << endl;
+
+    Sophus::SE3f candidateFrame; // Identity transformation
+    double s = mpAtlas->GetCurvilinearAbscissa(Ow_d);
+    if (debug) cout << "s: " << s << endl;
+
+    if (s < 0.0005)
+    {
+        cout << "Curvilinear abscissa close to zero, setting first frame from reference centerline" << endl;
+        candidateFrame = refCenterlineFrames[0];
+        SetCandidateFrame(candidateFrame);
+        return;
+    }
+
+    double minDist = std::numeric_limits<double>::max();
+    double s_i = 0.0;
+    bool candidateFound = false;
+
+    if (debug) cout << "Finding candidate frame among " << refCenterlineFrames.size() << " in reference centerline" << endl;
+    for (size_t i = 1; i < refCenterlineFrames.size(); i++) {
+        // Check if the underlying matrices are valid
+        if (refCenterlineFrames[i].matrix().rows() != 4 || refCenterlineFrames[i].matrix().cols() != 4 ||
+            refCenterlineFrames[i-1].matrix().rows() != 4 || refCenterlineFrames[i-1].matrix().cols() != 4) {
+            std::cerr << "Invalid matrix size at index " << i << endl;
+            continue;
+        }
+
+        if (!refCenterlineFrames[i].matrix().allFinite() || !refCenterlineFrames[i-1].matrix().allFinite()) {
+            std::cerr << "Invalid matrix data at index " << i << endl;
+            continue;
+        }
+
+        Eigen::Vector3d p1 = refCenterlineFrames[i].translation().cast<double>();
+        Eigen::Vector3d p2 = refCenterlineFrames[i-1].translation().cast<double>();
+
+        double dist = (p2 - p1).norm();
+        s_i += dist;
+        if (debug) cout << "s_i: " << s_i << endl;
+        double diff = abs(s - s_i);
+        if (debug) cout << "diff: " << diff << endl;
+
+        if (diff < minDist) {
+            if (debug) cout << "Candidate frame updated" << endl;
+            minDist = diff;
+            candidateFrame = refCenterlineFrames[i];
+            candidateFound = true;
+        }
+    }
+
+    if (!candidateFound) {
+        cout << "No candidate frame found" << endl;
+        candidateFrame = refCenterlineFrames[0];
+        return;
+    }
+
+    if (debug) cout << " " << endl;
+    SetCandidateFrame(candidateFrame);
+    return;
+}
+
+
+
+void Tracking::SetCandidateFrame(const Sophus::SE3f &candidateFrame)
+{
+    std::unique_lock<std::mutex> lock(mMutexCandidateFrame);
+    mCandidateFrame = candidateFrame;
+}
+
+Sophus::SE3f Tracking::GetCandidateFrame()
+{
+    std::unique_lock<std::mutex> lock(mMutexCandidateFrame);
+    return mCandidateFrame;
+}
+
 void Tracking::Track()
 {   
     // cout << "TRACK" << endl;
@@ -1154,6 +1259,15 @@ void Tracking::Track()
     {
         // System is initialized. Track Frame.
         bool bOK;
+
+        // Find candidate frame
+        FindCandidateFrame();
+
+        // Get candidate frame for debugging
+        // Sophus::SE3f candidateFrame = GetCandidateFrame();
+        // cout << "Candidate frame: " << endl;
+        // cout << candidateFrame << endl;
+        // cout << "END TRACK, state: " << mState << endl;
 
 #ifdef REGISTER_TIMES
         std::chrono::steady_clock::time_point time_StartPosePred = std::chrono::steady_clock::now();
@@ -1491,7 +1605,6 @@ void Tracking::Track()
     }
 #endif
 
-    // cout << "END TRACK, state: " << mState << endl;
 }
 
 void Tracking::MonocularInitialization()

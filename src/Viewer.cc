@@ -190,7 +190,7 @@ void Viewer::Run()
     pangolin::Var<bool> menuShowOrigin("menu.Show Origin", true, true);
     pangolin::Var<bool> menuShowRefCenterline("menu.Show Ref Centerline", true, true);
     pangolin::Var<bool> menuShowTrajCenterline("menu.Show Traj Centerline", true, true);
-    pangolin::Var<bool> menuShowTrajectory("menu.Show Trajectory", true, true);
+    pangolin::Var<bool> menuShowTrajectory("menu.Show Trajectory", false, true);
 
     // Define Camera Render Object (for view / scene browsing)
     pangolin::OpenGlRenderState s_cam(

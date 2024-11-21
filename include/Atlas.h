@@ -78,15 +78,12 @@ public:
 
     // Reference centerline
     void SetRefCenterline(string& refCenterlineFramesPath);
-    std::vector<Eigen::Matrix4d> GetRefCenterlineFrames();
-    std::vector<Eigen::Matrix4d> mRefCenterlineFrames;
+    std::vector<Sophus::SE3f> GetRefCenterlineFrames();
+    std::vector<Sophus::SE3f> mRefCenterlineFrames;
     std::mutex mMutexRefCenterlineFrames;
 
-    // Trajectory centerline
-    void ComputeTrajectoryCenterline();
-    std::vector<Eigen::Vector3d> GetTrajectoryCenterline();
-    std::vector<Eigen::Vector3d> mTrajectoryCenterline;
-    std::mutex mMutexTrajectoryCenterline;
+    // Curvilinear abscissa from the current position computed on the spanning tree
+    double GetCurvilinearAbscissa(Eigen::Vector3d &Ow_d);
 
     void CreateNewMap();
     void ChangeMap(Map* pMap);

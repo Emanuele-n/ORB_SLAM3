@@ -74,7 +74,6 @@ Atlas::~Atlas()
     }
 }
 
-
 void Atlas::SetRefCenterline(string& refCenterlineFramesPath)
 {   
     // Protect with mutex
@@ -87,13 +86,16 @@ void Atlas::SetRefCenterline(string& refCenterlineFramesPath)
         return;
     }
 
-    // Read each line of the file and draw the points
+    // Clear previous frames
+    mRefCenterlineFrames.clear();
+
+    // Read each line of the file and process the points
     std::string line;
     float x, y, z, tx, ty, tz, nx, ny, nz, bx, by, bz;
     char comma; // to consume the commas
-    Eigen::Affine3f w_T_o; // Transformation from world to the first centerline point
-    Eigen::Affine3f w_T_i; // Transformation from world to the i-th centerline point
-    Eigen::Affine3f o_T_i; // Transformation from the first centerline point to the i-th point
+    Sophus::SE3f w_T_o; // Transformation from world to the first centerline point
+    Sophus::SE3f w_T_i; // Transformation from world to the i-th centerline point
+    Sophus::SE3f o_T_i; // Transformation from the first centerline point to the i-th point
     bool first = true;
     while (std::getline(file, line)) {
         std::istringstream iss(line);
@@ -103,141 +105,138 @@ void Atlas::SetRefCenterline(string& refCenterlineFramesPath)
             Eigen::Vector3f w_p_i(x, y, z);
             Eigen::Vector3f w_t_i(tx, ty, tz);
             Eigen::Vector3f w_n_i(nx, ny, nz);
-            Eigen::Vector3f w_b_i(bx, by, bz);
+
+            // Normalize the vectors
+            w_t_i.normalize();
+            w_n_i.normalize();
+
+            // Orthonormalize using Gram-Schmidt
+            Eigen::Vector3f t = w_t_i;
+            Eigen::Vector3f n_temp = w_n_i - (w_n_i.dot(t)) * t;
+            Eigen::Vector3f n = n_temp.normalized();
+            Eigen::Vector3f b = t.cross(n);
+
+            // Ensure b is normalized
+            b.normalize();
+
+            // Construct rotation matrix
+            Eigen::Matrix3f R;
+            R.col(0) = b;
+            R.col(1) = n;
+            R.col(2) = t;
+
+            // Check determinant and adjust if necessary
+            if (R.determinant() < 0) {
+                R.col(0) *= -1.0f;
+            }
+
+            // Verify orthogonality
+            Eigen::Matrix3f RtR = R.transpose() * R;
+            Eigen::Matrix3f I = Eigen::Matrix3f::Identity();
+            Eigen::Matrix3f error = RtR - I;
+            float maxError = error.cwiseAbs().maxCoeff();
+            if (maxError > 1e-6) {
+                std::cerr << "Rotation matrix is not orthogonal enough. Max error: " << maxError << std::endl;
+                continue; // Skip this frame
+            }
 
             if (first){
-                // Get the transformation w_T_o from world frame to the first centerline point (vectors are already normilized)
-                // Construct the rotation matrix considering the tangent must be aligned with the z-axis
-                // TODO: check better the order of the vectors, the forward positive direction is the tangent (z-axis) but I am not sure about the other two
-                Eigen::Matrix3f R;
-                R.col(2) = w_t_i;
-                R.col(1) = w_n_i;
-                R.col(0) = w_b_i;
-                w_T_o.linear() = R;
-                w_T_o.translation() = w_p_i;
-                // cout << "w_T_o: " << w_T_o.matrix() << endl;
+                w_T_o = Sophus::SE3f(R, w_p_i);
                 first = false;
             }
 
-            // // Coordinates of the i-th point wrt the first point
-            // Eigen::Vector3f o_p_i = w_T_o.inverse() * w_p_i;
-            // cout << "Point: " << w_p_i.transpose() << " -> " << o_p_i.transpose() << endl;
+            w_T_i = Sophus::SE3f(R, w_p_i);
 
-            // Get the Frenet-Serret frame at the i-th point
-            Eigen::Matrix3f R;
-            R.col(0) = w_t_i;
-            R.col(1) = w_n_i;
-            R.col(2) = w_b_i;
-            w_T_i.linear() = R;
-            w_T_i.translation() = w_p_i;
-
-            // Get o_T_i transformation
+            // Compute o_T_i transformation
             o_T_i = w_T_o.inverse() * w_T_i;
 
-            // Save the current o_T_i in std::vector<Eigen::Matrix4d> mRefCenterlineFrames;
-            Eigen::Matrix4d o_T_i_mat = o_T_i.matrix().cast<double>();
-            mRefCenterlineFrames.push_back(o_T_i_mat);
+            // Save the current o_T_i in mRefCenterlineFrames
+            mRefCenterlineFrames.push_back(o_T_i);
         }
     }
-    // Close the files
+    // Close the file
+    cout << "Set reference centerline in Atlas with " << mRefCenterlineFrames.size() << " frames" << endl;
     file.close();
 }
 
-std::vector<Eigen::Matrix4d> Atlas::GetRefCenterlineFrames()
+std::vector<Sophus::SE3f> Atlas::GetRefCenterlineFrames()
 {
     unique_lock<mutex> lock(mMutexRefCenterlineFrames);
     return mRefCenterlineFrames;
 }
 
-void Atlas::ComputeTrajectoryCenterline()
-{
-    // Protect with mutex
-    unique_lock<mutex> lock(mMutexTrajectoryCenterline);
-
-    // Get the current map
-    Map* pMap = GetCurrentMap();
-    if(!pMap)
-        return;
+double Atlas::GetCurvilinearAbscissa(Eigen::Vector3d& Ow_d)
+{   
+    bool debug = false;
+    if (debug) cout << "Getting curvilinear abscissa" << endl;
+    if (debug) cout << "Camera center: " << Ow_d.transpose() << endl;
+    // Check if Ow_d is valid
+    if (Ow_d.hasNaN()) {
+        std::cerr << "Invalid Ow_d received." << std::endl;
+        return 0.0;
+    }
 
     // Get all keyframes
+    Map* pMap = GetCurrentMap();
+    if (debug) cout << "Got current map" << endl;
+    if(!pMap)
+    {
+        cout << "Current map is empty" << endl;
+        return 0.0;
+    }
+
     const std::vector<KeyFrame*> vpKFs = pMap->GetAllKeyFrames();
     if(vpKFs.empty())
-        return;
-
-    // Clear the trajectory centerline
-    mTrajectoryCenterline.clear();
-
-    // Compute the trajectory centerline
-    for (const auto& pKF : vpKFs)
     {
-        // Get the camera center of the keyframe
-        Eigen::Vector3f Ow = pKF->GetCameraCenter();
-
-        // Get only the camera center position
-        Eigen::Vector3d Ow_d = Ow.cast<double>();
-
-        // Save only the position vector
-        mTrajectoryCenterline.push_back(Ow_d);
+        cout << "No keyframes in the map" << endl;
+        return 0.0;
     }
 
-    // Fit a cubic spline through the trajectory points
-    std::vector<double> x, y, z;
-    for(const auto& p : mTrajectoryCenterline) {
-        x.push_back(p[0]);
-        y.push_back(p[1]); 
-        z.push_back(p[2]);
-    }
-
-    // Create parameter vector (0 to 1)
-    std::vector<double> t(mTrajectoryCenterline.size());
-    for(size_t i = 0; i < t.size(); i++) {
-        t[i] = static_cast<double>(i) / (t.size() - 1);
-    }
-
-    // Fit cubic splines
-    tk::spline spline_x(t, x);
-    tk::spline spline_y(t, y);
-    tk::spline spline_z(t, z);
-
-    // Resample at higher density
-    const int num_samples = mTrajectoryCenterline.size() * 4;
-    mTrajectoryCenterline.clear();
-
-    for(int i = 0; i < num_samples; i++) {
-        double ti = static_cast<double>(i) / (num_samples - 1);
-        Eigen::Vector3d p;
-        p << spline_x(ti), spline_y(ti), spline_z(ti);
-        mTrajectoryCenterline.push_back(p);
-    }
-
-    // Apply Gaussian smoothing
-    const int window = 5;
-    const double sigma = 1.0;
-    std::vector<Eigen::Vector3d> smoothed;
-    std::vector<double> kernel = gaussianKernel(window, sigma);
-
-    for(size_t i = 0; i < mTrajectoryCenterline.size(); i++) {
-        Eigen::Vector3d sum = Eigen::Vector3d::Zero();
-        double weight_sum = 0;
-        
-        for(int j = -window/2; j <= window/2; j++) {
-            int idx = i + j;
-            if(idx >= 0 && idx < mTrajectoryCenterline.size()) {
-                sum += kernel[j + window/2] * mTrajectoryCenterline[idx];
-                weight_sum += kernel[j + window/2];
-            }
+    // Find the keyframe closest to current position
+    KeyFrame* closestKF = nullptr;
+    double minDist = std::numeric_limits<double>::max();
+    for(const auto& pKF : vpKFs) {
+        Eigen::Vector3f kfPos = pKF->GetCameraCenter();
+        double dist = (kfPos.cast<double>() - Ow_d).norm();
+        if(dist < minDist) {
+            minDist = dist;
+            closestKF = pKF;
         }
-        smoothed.push_back(sum / weight_sum);
     }
 
-    mTrajectoryCenterline = smoothed;
+    if(!closestKF)
+    {
+        cout << "Closest keyframe not found" << endl;
+        return 0.0;
+    }
+    if (debug) cout << "Found closest key frame" << endl;
 
-}
+    // Find path to origin through spanning tree
+    std::vector<KeyFrame*> path;
+    KeyFrame* current = closestKF;
 
-std::vector<Eigen::Vector3d> Atlas::GetTrajectoryCenterline()
-{
-    unique_lock<mutex> lock(mMutexTrajectoryCenterline);
-    return mTrajectoryCenterline;
+    // Follow parent pointers until we reach a keyframe with no parent (origin)
+    while(current) {
+        path.push_back(current);
+        current = current->GetParent();
+    }
+    if (debug) cout << "Done building path" << endl;
+
+    // Compute curvilinear abscissa by summing distances between consecutive keyframes
+    double s = 0.0;
+    for(int i = path.size()-1; i > 0; i--) {
+        Eigen::Vector3f pos1 = path[i]->GetCameraCenter();
+        Eigen::Vector3f pos2 = path[i-1]->GetCameraCenter();
+        s += (pos2 - pos1).norm();
+    }
+    if (debug) cout << "Done computing s" << endl;
+
+    // Add distance from closest keyframe to current position
+    s += minDist;
+
+    // TODO: Reduce the total length to take into account the non smoothness of the path based on the number of points in the path
+
+    return s;
 }
 
 void Atlas::CreateNewMap()
@@ -459,7 +458,6 @@ void Atlas::RemoveBadMaps()
     }*/
     mspBadMaps.clear();
 }
-
 
 void Atlas::PreSave()
 {

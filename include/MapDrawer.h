@@ -56,13 +56,18 @@ public:
     void SetCurrentCameraPose(const Sophus::SE3f &Tcw);
     void SetReferenceKeyFrame(KeyFrame *pKF);
     void GetCurrentOpenGLCameraMatrix(pangolin::OpenGlMatrix &M, pangolin::OpenGlMatrix &MOw);
-
-private:
-
     bool mTrackingInitialized;
     Sophus::SE3f mInitTcw;
     std::vector<cv::Point3f> mvIniP3D;
+    
+    // Reference centerline
     string mCenterlineFramesPath;
+    void SetRefCenterline(string& refCenterlineFramesPath);
+    std::vector<Sophus::SE3f> GetRefCenterlineFrames();
+    std::vector<Sophus::SE3f> mRefCenterlineFrames;
+    std::mutex mMutexRefCenterlineFrames;
+
+private:
 
     bool ParseViewerParamFile(cv::FileStorage &fSettings);
 

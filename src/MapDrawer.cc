@@ -162,6 +162,7 @@ void MapDrawer::SetInitialized(std::vector<cv::Point3f> mvIniP3D, Sophus::SE3f T
     mInitTcw = Tcw;
     mvIniP3D = mvIniP3D;
     mCenterlineFramesPath = refCenterlineFramesPath;
+    SetRefCenterline(mCenterlineFramesPath);
     mTrackingInitialized = true;
 }
 
@@ -211,52 +212,228 @@ void MapDrawer::DrawCameraTrajectory()
     glEnd();
 }
 
-void MapDrawer::DrawRefCenterline()
+std::vector<Sophus::SE3f> MapDrawer::GetRefCenterlineFrames()
 {
-    // Access the centerline frames from the atlas
-    const std::vector<Eigen::Matrix4d>& centerlineFrames = mpAtlas->GetRefCenterlineFrames();
+    unique_lock<mutex> lock(mMutexRefCenterlineFrames);
+    return mRefCenterlineFrames;
+}
 
-    if (centerlineFrames.empty())
+void MapDrawer::DrawRefCenterline()
+{   
+    // Access the centerline frames from the atlas
+    std::vector<Sophus::SE3f> refCenterlineFrames = GetRefCenterlineFrames();
+
+    if (refCenterlineFrames.empty())
         return;
 
     glPointSize(5.0f);
     glBegin(GL_POINTS);
     glColor3f(0.0f, 0.0f, 1.0f);
 
-    for (const auto& frame : centerlineFrames)
+    for (const auto& frame : refCenterlineFrames)
     {
-        // Extract the position from the frame
-        Eigen::Vector3d position = frame.block<3,1>(0,3);
+        Eigen::Vector3f pos = frame.translation();
+        glVertex3f(pos[0], pos[1], pos[2]);
+    }
+    glEnd();
 
-        // Draw the point
-        glVertex3d(position.x(), position.y(), position.z());
+    // Get candidate frame from tracking
+
+    // // Check if candidateFrame is valid
+    // if (candidateFrame.hasNaN()) {
+    //     std::cerr << "Invalid candidateFrame received." << std::endl;
+    //     return;
+    // }
+    // else {
+    //     std::cout << "Candidate frame: " << candidateFrame << std::endl;
+    // }
+
+    // // Draw the candidate frame
+    // glPointSize(10.0f);
+    // glBegin(GL_POINTS);
+    // glColor3f(1.0f, 0.0f, 0.0f);
+    // Eigen::Vector3f pos = candidateFrame.block<3, 1>(0, 3).cast<float>();
+    // if (pos.hasNaN()) {
+    //     std::cerr << "Invalid position in candidateFrame." << std::endl;
+    //     glEnd();
+    //     return;
+    // }
+    // glVertex3f(pos[0], pos[1], pos[2]);
+    // glEnd();
+}
+
+void MapDrawer::SetRefCenterline(string& refCenterlineFramesPath)
+{   
+    // Protect with mutex
+    unique_lock<mutex> lock(mMutexRefCenterlineFrames);
+
+    // Read centerline frames from file
+    std::ifstream file(refCenterlineFramesPath);
+    if (!file.is_open()) {
+        std::cerr << "Failed to open file: " << refCenterlineFramesPath << std::endl;
+        return;
     }
 
-    glEnd();
+    // Clear previous frames
+    mRefCenterlineFrames.clear();
+
+    // Read each line of the file and process the points
+    std::string line;
+    float x, y, z, tx, ty, tz, nx, ny, nz, bx, by, bz;
+    char comma; // to consume the commas
+    Sophus::SE3f w_T_o; // Transformation from world to the first centerline point
+    Sophus::SE3f w_T_i; // Transformation from world to the i-th centerline point
+    Sophus::SE3f o_T_i; // Transformation from the first centerline point to the i-th point
+    bool first = true;
+    while (std::getline(file, line)) {
+        std::istringstream iss(line);
+
+        // Read the values from the line
+        if (iss >> x >> comma >> y >> comma >> z >> comma >> tx >> comma >> ty >> comma >> tz >> comma >> nx >> comma >> ny >> comma >> nz >> comma >> bx >> comma >> by >> comma >> bz) {
+            Eigen::Vector3f w_p_i(x, y, z);
+            Eigen::Vector3f w_t_i(tx, ty, tz);
+            Eigen::Vector3f w_n_i(nx, ny, nz);
+
+            // Normalize the vectors
+            w_t_i.normalize();
+            w_n_i.normalize();
+
+            // Orthonormalize using Gram-Schmidt
+            Eigen::Vector3f t = w_t_i;
+            Eigen::Vector3f n_temp = w_n_i - (w_n_i.dot(t)) * t;
+            Eigen::Vector3f n = n_temp.normalized();
+            Eigen::Vector3f b = t.cross(n);
+
+            // Ensure b is normalized
+            b.normalize();
+
+            // Construct rotation matrix
+            Eigen::Matrix3f R;
+            R.col(0) = b;
+            R.col(1) = n;
+            R.col(2) = t;
+
+            // Check determinant and adjust if necessary
+            if (R.determinant() < 0) {
+                R.col(0) *= -1.0f;
+            }
+
+            // Verify orthogonality
+            Eigen::Matrix3f RtR = R.transpose() * R;
+            Eigen::Matrix3f I = Eigen::Matrix3f::Identity();
+            Eigen::Matrix3f error = RtR - I;
+            float maxError = error.cwiseAbs().maxCoeff();
+            if (maxError > 1e-6) {
+                std::cerr << "Rotation matrix is not orthogonal enough. Max error: " << maxError << std::endl;
+                continue; // Skip this frame
+            }
+
+            if (first){
+                w_T_o = Sophus::SE3f(R, w_p_i);
+                first = false;
+            }
+
+            w_T_i = Sophus::SE3f(R, w_p_i);
+
+            // Compute o_T_i transformation
+            o_T_i = w_T_o.inverse() * w_T_i;
+
+            // Save the current o_T_i in mRefCenterlineFrames
+            mRefCenterlineFrames.push_back(o_T_i);
+        }
+    }
+    // Close the file
+    cout << "Set reference centerline in MapDrawer with " << mRefCenterlineFrames.size() << " frames" << endl;
+    file.close();
 }
+
 
 void MapDrawer::DrawTrajCenterline()
 {
-    // TEMP: compute the trajectory centerline here
-    mpAtlas->ComputeTrajectoryCenterline();
+    // Get current position
+    Eigen::Matrix4f Twc;
+    {
+        unique_lock<mutex> lock(mMutexCamera);
+        Twc = mCameraPose.matrix();
+    }
+    Eigen::Vector3f Ow = Twc.block<3, 1>(0, 3);
+    Eigen::Vector3d Ow_d = Ow.cast<double>();
 
-    // Access the trajectory centerline from the atlas
-    const std::vector<Eigen::Vector3d>& trajectoryCenterline = mpAtlas->GetTrajectoryCenterline();
-
-    if (trajectoryCenterline.empty())
+    // Get all keyframes
+    Map* pMap = mpAtlas->GetCurrentMap();
+    if(!pMap)
         return;
 
-    glPointSize(5.0f);
-    glBegin(GL_POINTS);
-    glColor3f(0.0f, 1.0f, 0.0f);
+    const std::vector<KeyFrame*> vpKFs = pMap->GetAllKeyFrames();
+    if(vpKFs.empty())
+        return;
 
-    for (const auto& position : trajectoryCenterline)
-    {
-        // Draw the point
-        glVertex3d(position.x(), position.y(), position.z());
+    // Find the keyframe closest to current position
+    KeyFrame* closestKF = nullptr;
+    double minDist = std::numeric_limits<double>::max();
+    for(const auto& pKF : vpKFs) {
+        Eigen::Vector3f kfPos = pKF->GetCameraCenter();
+        double dist = (kfPos.cast<double>() - Ow_d).norm();
+        if(dist < minDist) {
+            minDist = dist;
+            closestKF = pKF;
+        }
     }
 
+    if(!closestKF)
+        return;
+
+    // Find path to origin through spanning tree
+    std::vector<KeyFrame*> path;
+    KeyFrame* current = closestKF;
+
+    // Follow parent pointers until we reach a keyframe with no parent (origin)
+    while(current) {
+        path.push_back(current);
+        current = current->GetParent();
+    }
+
+    // Draw the path
+    if(path.size() > 1) {
+        glLineWidth(2.0f);
+        glColor3f(0.0f, 1.0f, 0.0f); // Green path
+        glBegin(GL_LINE_STRIP);
+        
+        for(const auto& pKF : path) {
+            Eigen::Vector3f pos = pKF->GetCameraCenter();
+            glVertex3f(pos[0], pos[1], pos[2]);
+        }
+        
+        glEnd();
+    }
+
+    // Draw all the key frames and all the key frames in the path
+    glPointSize(5.0f);
+    glBegin(GL_POINTS);
+    glColor3f(1.0f, 0.0f, 0.0f); // Red color for all keyframes
+    for(const auto& pKF : vpKFs) {
+        Eigen::Vector3f pos = pKF->GetCameraCenter();
+        glVertex3f(pos[0], pos[1], pos[2]);
+    }
     glEnd();
+
+    glPointSize(10.0f);
+    glBegin(GL_POINTS);
+    glColor3f(0.0f, 0.0f, 1.0f); // Blue color for path keyframes
+    for(const auto& pKF : path) {
+        Eigen::Vector3f pos = pKF->GetCameraCenter();
+        glVertex3f(pos[0], pos[1], pos[2]);
+    }
+    glEnd();
+
+    // Draw the current position
+    glPointSize(20.0f);
+    glBegin(GL_POINTS);
+    glColor3f(1.0f, 1.0f, 0.0f); // Yellow color for current position
+    glVertex3f(Ow[0], Ow[1], Ow[2]);
+    glEnd();
+
+    
 }
 
 void MapDrawer::DrawMapPoints()

@@ -1,1 +1,4 @@
 ImuCamPose
+
+
+run Vocabulary/ORBvoc.txt ./em/calibration_videoscope_1280x720p_offline.yaml ./em/o.mp4 -patient=true
