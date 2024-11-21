@@ -76,13 +76,13 @@ int main(int argc, char **argv)
             auto duration = chrono::duration_cast<chrono::milliseconds>(end - start);
             // cout << "TrackMonocular: " << duration.count() << " milliseconds" << endl;
             // Write duration to log.txt
-            ofstream logFile("log.txt", ios_base::app);
-            if (logFile.is_open()) {
-                logFile << "TrackMonocular duration: " << duration.count() << " milliseconds" << endl;
-                logFile.close();
-            } else {
-                cerr << "Unable to open log file" << endl;
-            }
+            // ofstream logFile("log.txt", ios_base::app);
+            // if (logFile.is_open()) {
+            //     logFile << "TrackMonocular duration: " << duration.count() << " milliseconds" << endl;
+            //     logFile.close();
+            // } else {
+            //     cerr << "Unable to open log file" << endl;
+            // }
             // std::cout << "Camera pose: " << Tcw.matrix() << std::endl;
 
             // Exit if ESC key is pressed
