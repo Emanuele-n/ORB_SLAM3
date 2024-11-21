@@ -1162,8 +1162,6 @@ void Tracking::FindCandidateFrame()
     return;
 }
 
-
-
 void Tracking::SetCandidateFrame(const Sophus::SE3f &candidateFrame)
 {
     std::unique_lock<std::mutex> lock(mMutexCandidateFrame);

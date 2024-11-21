@@ -62,6 +62,9 @@ public:
 
     ~Tracking();
 
+    // Get the candidate frame on the reference centerline
+    Sophus::SE3f GetCandidateFrame();
+
     // Parse the config file
     bool ParseCamParamFile(cv::FileStorage &fSettings);
     bool ParseORBParamFile(cv::FileStorage &fSettings);
@@ -203,7 +206,6 @@ protected:
     std::mutex mMutexCandidateFrame;
     void FindCandidateFrame();
     void SetCandidateFrame(const Sophus::SE3f &candidateFrame);
-    Sophus::SE3f GetCandidateFrame();
 
     void CheckReplacedInLastFrame();
     bool TrackReferenceKeyFrame();

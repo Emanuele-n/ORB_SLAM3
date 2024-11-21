@@ -46,9 +46,11 @@ public:
     bool CheckInitialized();
     void DrawTest();
     void DrawCameraTrajectory();
+    void DrawCandidateFrame(Sophus::SE3f Tcw);
     void DrawRefCenterline();
     void DrawTrajCenterline();
     void DrawOrigin();
+
     void DrawMapPoints();
     void DrawKeyFrames(const bool bDrawKF, const bool bDrawGraph, const bool bDrawOptLba);
     void DrawCurrentCamera(pangolin::OpenGlMatrix &Twc);

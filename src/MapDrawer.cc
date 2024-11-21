@@ -236,30 +236,17 @@ void MapDrawer::DrawRefCenterline()
         glVertex3f(pos[0], pos[1], pos[2]);
     }
     glEnd();
+}
 
-    // Get candidate frame from tracking
-
-    // // Check if candidateFrame is valid
-    // if (candidateFrame.hasNaN()) {
-    //     std::cerr << "Invalid candidateFrame received." << std::endl;
-    //     return;
-    // }
-    // else {
-    //     std::cout << "Candidate frame: " << candidateFrame << std::endl;
-    // }
-
-    // // Draw the candidate frame
-    // glPointSize(10.0f);
-    // glBegin(GL_POINTS);
-    // glColor3f(1.0f, 0.0f, 0.0f);
-    // Eigen::Vector3f pos = candidateFrame.block<3, 1>(0, 3).cast<float>();
-    // if (pos.hasNaN()) {
-    //     std::cerr << "Invalid position in candidateFrame." << std::endl;
-    //     glEnd();
-    //     return;
-    // }
-    // glVertex3f(pos[0], pos[1], pos[2]);
-    // glEnd();
+void MapDrawer::DrawCandidateFrame(Sophus::SE3f Tcw)
+{
+    // Draw the candidate frame
+    glPointSize(10.0f);
+    glBegin(GL_POINTS);
+    glColor3f(1.0f, 0.0f, 0.0f);
+    Eigen::Vector3f pos = Tcw.translation();
+    glVertex3f(pos[0], pos[1], pos[2]);
+    glEnd();
 }
 
 void MapDrawer::SetRefCenterline(string& refCenterlineFramesPath)
@@ -346,7 +333,6 @@ void MapDrawer::SetRefCenterline(string& refCenterlineFramesPath)
     cout << "Set reference centerline in MapDrawer with " << mRefCenterlineFrames.size() << " frames" << endl;
     file.close();
 }
-
 
 void MapDrawer::DrawTrajCenterline()
 {
