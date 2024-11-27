@@ -10,6 +10,7 @@ controllers/data_visualization/node_modules
 # Unignore all dirs
 !*/
 log.txt
+check.txt
 CMakeLists.txt.user
 CMakeLists_modified.txt
 
