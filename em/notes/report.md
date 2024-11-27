@@ -28,10 +28,10 @@ The second main problem is the rate of image processing once the algorithm is in
 After I solve the current problems, I will focus on the following: first include the knowledge of the map as a priori information into the algorithm. In this way I should be able to improve both the initialization, by making it faster, and the tracking, by making it more precise; second I will include other sensors to get similar improvements in both initialization and tracking, mayhbe encoder at the base of the robot, or hall sensor, of monocular depth estimation with neural networks... The timeline to get to this point is very hard to predict, mainly because I don't know how long it will take to solve the current problems, while for the inclusion of other sensors I think a couple of months should be enough, so I predict to have a paper done by the beginning of the next year.
 
 ## Images
-<img src="videoscope_stream.png" alt="videoscope stream" width="300"/>
-<img src="initialization.png" alt="initialization" width="300"/>
-<img src="track_lost.png" alt="track lost" width="300"/>
-<img src="loc.png" alt="localization" width="300"/>
+<img src="imgs/videoscope_stream.png" alt="videoscope stream" width="300"/>
+<img src="imgs/initialization.png" alt="initialization" width="300"/>
+<img src="imgs/track_lost.png" alt="track lost" width="300"/>
+<img src="imgs/loc.png" alt="localization" width="300"/>
 
 <br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/>
 # Appendix

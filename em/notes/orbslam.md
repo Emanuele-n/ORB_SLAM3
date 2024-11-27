@@ -61,7 +61,7 @@ Spanning tree: a connected subgraph of the covisibility graph with minimal numbe
 
 Essential graph: a sparser subgraph of the covisibility graph, designed to maintain the essential structural integrity of the map while significantly reducing computational complexity. It is build using a covisbility threshold of 100 common map points, if an edge has less, it is discarded.
 
-![alt text](maps.png)
+![alt text](imgs/maps.png)
 
 ### ORB-SLAM Overview
 1. INPUT: the input is the camera frame, can come from video or from a sequence of images captured by the camera. I want to use it in real time so I assume that frames are coming from the video captured by the camera
@@ -73,7 +73,7 @@ Essential graph: a sparser subgraph of the covisibility graph, designed to maint
 7. GLOBAL OPTIMIZATION: after detecting a loop closure, a global optimization is performed over the entire map to correct inconsistencies and refine the positions of all mapped features and camera poses. 
 8. OUTPUT: The output of ORB-SLAM is a map of the environment, including the spatial positions of various features, and the trajectory of the camera over time. 
 
-![alt text](overview.png)
+![alt text](imgs/overview.png)
 
 These operations are divided accross three main parallel threads: tracking, local mapping, loop closing:
 - TRACKING: is in charge of localizing the camera with every frame and deciding when to insert a new keyframe.
@@ -127,7 +127,7 @@ RGB-D Images <br/>
 RGB-D cameras provide an image where each pixel has not only the usual color information (Red, Green, Blue) but also a depth value (D). This depth information is typically acquired using either structured light or time-of-flight (ToF) methods. Structured Light: This technique projects a known pattern of light (often infrared) onto the scene, and the way this pattern deforms upon striking surfaces provides depth cues. Cameras like the Microsoft Kinect use this method. Time-of-Flight (ToF): ToF cameras emit a pulse of light and measure the time it takes for the light to return after bouncing off objects. The time measurement directly relates to the distance traveled, providing accurate depth information. This method can work in a wide range of conditions, including outdoor environments.
 
 ## Introduction
-![alt text](overview2.png)
+![alt text](imgs/overview2.png)
 
 Addition to original ORB-SLAM:
 - Open source code
@@ -136,7 +136,7 @@ Addition to original ORB-SLAM:
 - Global optimization: ORB-SLAM2 integrates a full bundle adjustment, which refines the map globally using all gathered information, thereby improving the overall map accuracy and consistency.
 - Performance improvements in: map initialization, loop closure, faster processing times, scalability in environment of different sizes
 
-![alt text](stereo_input.png)
+![alt text](imgs/stereo_input.png)
 
 In the following some of the major changes are explained.
 
