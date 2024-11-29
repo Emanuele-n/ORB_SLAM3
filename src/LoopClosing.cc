@@ -1811,7 +1811,8 @@ void LoopClosing::RunGlobalBundleAdjustment(Map* pActiveMap, unsigned long nLoop
     vnGBAKFs.push_back(pActiveMap->GetAllKeyFrames().size());
     vnGBAMPs.push_back(pActiveMap->GetAllMapPoints().size());
 #endif
-    Optimizer::GlobalBundleAdjustment(pActiveMap,10,&mbStopGBA,nLoopKF,false);
+    // Optimizer::GlobalBundleAdjustment(pActiveMap,10,&mbStopGBA,nLoopKF,false);
+    Optimizer::GlobalBundleAdjustment(mpAtlas->GetRefCenterlineFrames(), pActiveMap,10,&mbStopGBA,nLoopKF,false);
 
 #ifdef REGISTER_TIMES
     std::chrono::steady_clock::time_point time_EndGBA = std::chrono::steady_clock::now();

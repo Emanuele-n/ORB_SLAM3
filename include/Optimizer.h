@@ -47,15 +47,33 @@ class Optimizer
 {
 public:
 
-    void static BundleAdjustment(const std::vector<KeyFrame*> &vpKF, const std::vector<MapPoint*> &vpMP,
-                                 int nIterations = 5, bool *pbStopFlag=NULL, const unsigned long nLoopKF=0,
-                                 const bool bRobust = true);
-    void static GlobalBundleAdjustment(Map* pMap, int nIterations=5, bool *pbStopFlag=NULL,
-                                       const unsigned long nLoopKF=0, const bool bRobust = true);
+    // Global Bundle Adjustment (Full BA): find all keyframes poses and all map points
+    // Used in:
+    //  - Map Initialization: Tracking::Track() -> MonocularInitialization() -> CreateInitialMapMonocular()
+    //  - Loop Closing: LoopClosing::Run() -> RunGlobalBundleAdjustment()
+    // void static GlobalBundleAdjustment(Map* pMap, int nIterations=5, bool *pbStopFlag=NULL, const unsigned long nLoopKF=0, const bool bRobust = true);
+    // void static BundleAdjustment(const std::vector<KeyFrame*> &vpKF, const std::vector<MapPoint*> &vpMP, int nIterations = 5, bool *pbStopFlag=NULL, const unsigned long nLoopKF=0, const bool bRobust = true);
+    void static GlobalBundleAdjustment(const std::vector<Sophus::SE3f> &RefCenterlineFrames, Map* pMap, int nIterations=5, bool *pbStopFlag=NULL, const unsigned long nLoopKF=0, const bool bRobust = true);
+    void static BundleAdjustment(const std::vector<Sophus::SE3f> &RefCenterlineFrames, const std::vector<KeyFrame*> &vpKF, const std::vector<MapPoint*> &vpMP, int nIterations = 5, bool *pbStopFlag=NULL, const unsigned long nLoopKF=0, const bool bRobust = true);
 
+    // Local Bundle Adjustment: (Local BA) find recent keyframes poses and map points seen in those keyframes
+    // Used in:
+    //  - LocalMapping::Run()
     void static LocalBundleAdjustment(KeyFrame* pKF, bool *pbStopFlag, Map *pMap, int& num_fixedKF, int& num_OptKF, int& num_MPs, int& num_edges);
+    
+    // Local BA in welding area when two maps are merged
+    // Used in:
+    //  - LoopClosing::Run() -> MergeLocal()
+    void static LocalBundleAdjustment(KeyFrame* pMainKF, vector<KeyFrame*> vpAdjustKF, vector<KeyFrame*> vpFixedKF, bool *pbStopFlag);
 
-    int static PoseOptimization(Frame* pFrame);
+    // Pose Optimization (Motion-only BA): find the current camera pose 
+    // Used in:
+    //  - Tracking::Track() -> TrackReferenceKeyFrame()
+    //  - Tracking::Track() -> TrackWithMotionModel()
+    //  - Tracking::Track() -> TrackLocalMap()
+    //  - Tracking::Track() -> Relocalization()
+    // int static PoseOptimization(Frame* pFrame); // EMA: commented out
+    int static PoseOptimization(Frame *pFrame, const Sophus::SE3f &priorPose, const double priorWeight);
 
     // if bFixScale is true, 6DoF optimization (stereo,rgbd), 7DoF otherwise (mono)
     void static OptimizeEssentialGraph(Map* pMap, KeyFrame* pLoopKF, KeyFrame* pCurKF,
@@ -71,13 +89,6 @@ public:
     static int OptimizeSim3(KeyFrame* pKF1, KeyFrame* pKF2, std::vector<MapPoint *> &vpMatches1,
                             g2o::Sim3 &g2oS12, const float th2, const bool bFixScale,
                             Eigen::Matrix<double,7,7> &mAcumHessian, const bool bAllPoints=false);
-
-    // Local BA in welding area when two maps are merged
-    void static LocalBundleAdjustment(KeyFrame* pMainKF,vector<KeyFrame*> vpAdjustKF, vector<KeyFrame*> vpFixedKF, bool *pbStopFlag);
-
-    // Marginalize block element (start:end,start:end). Perform Schur complement.
-    // Marginalized elements are filled with zeros.
-    static Eigen::MatrixXd Marginalize(const Eigen::MatrixXd &H, const int &start, const int &end);
 
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
 };

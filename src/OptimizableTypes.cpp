@@ -19,6 +19,25 @@
 #include "OptimizableTypes.h"
 
 namespace ORB_SLAM3 {
+
+    EdgeSE3Prior::EdgeSE3Prior(const g2o::SE3Quat& T_prior) : T_prior_(T_prior) {}
+
+    void EdgeSE3Prior::computeError() {
+        const g2o::VertexSE3Expmap* v = static_cast<const g2o::VertexSE3Expmap*>(_vertices[0]);
+        g2o::SE3Quat T_current = v->estimate();
+        _error = (T_prior_.inverse() * T_current).log();
+    }
+
+    void EdgeSE3Prior::linearizeOplus() {
+        _jacobianOplusXi = Eigen::Matrix<double,6,6>::Identity();
+    }
+
+    bool EdgeSE3Prior::read(std::istream& is) { return false; }
+    
+    bool EdgeSE3Prior::write(std::ostream& os) const { return false; }
+
+
+
     bool EdgeSE3ProjectXYZOnlyPose::read(std::istream& is){
         for (int i=0; i<2; i++){
             is >> _measurement[i];
@@ -45,7 +64,6 @@ namespace ORB_SLAM3 {
         return os.good();
     }
 
-
     void EdgeSE3ProjectXYZOnlyPose::linearizeOplus() {
         g2o::VertexSE3Expmap * vi = static_cast<g2o::VertexSE3Expmap *>(_vertices[0]);
         Eigen::Vector3d xyz_trans = vi->estimate().map(Xw);
@@ -61,6 +79,7 @@ namespace ORB_SLAM3 {
 
         _jacobianOplusXi = -pCamera->projectJac(xyz_trans) * SE3deriv;
     }
+
 
     bool EdgeSE3ProjectXYZOnlyPoseToBody::read(std::istream& is){
         for (int i=0; i<2; i++){
@@ -106,6 +125,7 @@ namespace ORB_SLAM3 {
         _jacobianOplusXi = -pCamera->projectJac(X_r) * mTrl.rotation().toRotationMatrix() * SE3deriv;
     }
 
+
     EdgeSE3ProjectXYZ::EdgeSE3ProjectXYZ() : BaseBinaryEdge<2, Eigen::Vector2d, g2o::VertexSBAPointXYZ, g2o::VertexSE3Expmap>() {
     }
 
@@ -135,7 +155,6 @@ namespace ORB_SLAM3 {
         return os.good();
     }
 
-
     void EdgeSE3ProjectXYZ::linearizeOplus() {
         g2o::VertexSE3Expmap * vj = static_cast<g2o::VertexSE3Expmap *>(_vertices[1]);
         g2o::SE3Quat T(vj->estimate());
@@ -158,6 +177,7 @@ namespace ORB_SLAM3 {
 
         _jacobianOplusXj = projectJac * SE3deriv;
     }
+
 
     EdgeSE3ProjectXYZToBody::EdgeSE3ProjectXYZToBody() : BaseBinaryEdge<2, Eigen::Vector2d, g2o::VertexSBAPointXYZ, g2o::VertexSE3Expmap>() {
     }
@@ -187,7 +207,6 @@ namespace ORB_SLAM3 {
             }
         return os.good();
     }
-
 
     void EdgeSE3ProjectXYZToBody::linearizeOplus() {
         g2o::VertexSE3Expmap * vj = static_cast<g2o::VertexSE3Expmap *>(_vertices[1]);
@@ -261,6 +280,7 @@ namespace ORB_SLAM3 {
         return os.good();
     }
 
+
     EdgeSim3ProjectXYZ::EdgeSim3ProjectXYZ() :
             g2o::BaseBinaryEdge<2, Eigen::Vector2d, g2o::VertexSBAPointXYZ, VertexSim3Expmap>()
     {
@@ -294,6 +314,7 @@ namespace ORB_SLAM3 {
             }
         return os.good();
     }
+
 
     EdgeInverseSim3ProjectXYZ::EdgeInverseSim3ProjectXYZ() :
             g2o::BaseBinaryEdge<2, Eigen::Vector2d, g2o::VertexSBAPointXYZ, VertexSim3Expmap>()
