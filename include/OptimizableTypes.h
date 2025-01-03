@@ -30,6 +30,108 @@
 
 namespace ORB_SLAM3 {
 
+
+class EdgeSE3Barrier : public g2o::BaseUnaryEdge<1, double, g2o::VertexSE3Expmap>
+{
+public:
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
+    /**
+     * \param T_ref        Reference pose (SE3Quat) whose translation is the center.
+     * \param threshold    Max distance allowed from t_ref.
+     * \param weight       Weight for the log barrier.
+     * \param epsilon      Small offset to avoid log(0).
+     */
+    EdgeSE3Barrier(const g2o::SE3Quat& T_ref,
+                   double threshold,
+                   double weight,
+                   double epsilon = 1e-3)
+    : T_ref_(T_ref),
+      threshold_(threshold),
+      weight_(weight),
+      epsilon_(epsilon)
+    {
+    }
+
+    // The 'computeError' function calculates the barrier cost
+    //   cost = - weight * log(threshold - dist + epsilon)
+    // if dist < threshold, else it saturates to a large penalty
+    void computeError() override
+    {
+        const auto* v = static_cast<const g2o::VertexSE3Expmap*>(_vertices[0]);
+        g2o::SE3Quat T_cur = v->estimate();
+        
+        Eigen::Vector3d t_ref = T_ref_.translation();
+        Eigen::Vector3d t_cur = T_cur.translation();
+        double dist = (t_cur - t_ref).norm();
+
+        double gap = threshold_ - dist + epsilon_;  // "feasibility margin"
+
+        if(gap <= 0.0) {
+            // Already out of feasible region, set cost very high
+            // to effectively push the solver away
+            _error[0] = 1e6;
+        } else {
+            // Log barrier: cost = - w * log(gap)
+            // The closer to threshold, the smaller 'gap' => cost grows large
+            _error[0] = -weight_ * std::log(gap);
+        }
+    }
+
+    // The 'linearizeOplus' function calculates the derivative of the cost
+    //   wrt. the 6D SE3 state. We'll only differentiate in translation part.
+    void linearizeOplus() override
+    {
+        _jacobianOplusXi.setZero();  // (1 x 6) matrix
+
+        const auto* v = static_cast<const g2o::VertexSE3Expmap*>(_vertices[0]);
+        g2o::SE3Quat T_cur = v->estimate();
+
+        Eigen::Vector3d t_ref = T_ref_.translation();
+        Eigen::Vector3d t_cur = T_cur.translation();
+        double dist = (t_cur - t_ref).norm();
+        double gap = threshold_ - dist + epsilon_;
+
+        if(gap <= 0.0) {
+            // "Out-of-bounds" => derivative is basically zero or undefined
+            // We'll just push the cost to huge. Let the solver try to step back.
+            _jacobianOplusXi.setZero();
+        } else {
+            // derivative of cost = -w * d/dx( log(gap) ) = -w * ( 1 / gap ) * d(gap)/dx
+            // gap = threshold - dist + epsilon
+            // dist = norm(t_cur - t_ref)
+            // d(dist)/d(t_cur) = ( t_cur - t_ref ) / dist
+            if(dist < 1e-12) {
+                // Avoid division by zero if t_cur == t_ref
+                return;
+            }
+            double invGap = 1.0 / gap; 
+            Eigen::Vector3d dir = (t_cur - t_ref) / dist;  // derivative of dist wrt t_cur
+            // d(gap)/d(t_cur) = -d(dist)/d(t_cur) = -dir
+            // => d(cost)/d(t_cur) = -w * 1/gap * (-dir) = w * (dir / gap)
+
+            double coeff = weight_ * invGap;
+            Eigen::Vector3d grad = coeff * dir;
+
+            // In a SE3Expmap vertex, translation derivatives go in columns 3..5
+            // (the first 3 columns are rotation-derivatives, the last 3 columns are translation)
+            _jacobianOplusXi(0,3) = grad.x();
+            _jacobianOplusXi(0,4) = grad.y();
+            _jacobianOplusXi(0,5) = grad.z();
+        }
+    }
+
+    bool read(std::istream& is) override { return false; }
+    bool write(std::ostream& os) const override { return false; }
+
+private:
+    g2o::SE3Quat T_ref_;
+    double threshold_;
+    double weight_;
+    double epsilon_;
+};
+
+
 class EdgeSE3Prior : public g2o::BaseUnaryEdge<6, g2o::SE3Quat, g2o::VertexSE3Expmap> {
 public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW

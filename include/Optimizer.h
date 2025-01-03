@@ -73,7 +73,7 @@ public:
     //  - Tracking::Track() -> TrackLocalMap()
     //  - Tracking::Track() -> Relocalization()
     // int static PoseOptimization(Frame* pFrame); // EMA: commented out
-    int static PoseOptimization(Frame *pFrame, const Sophus::SE3f &priorPose, const double priorWeight);
+    int static PoseOptimization(Frame *pFrame, const Sophus::SE3f &priorPose);
 
     // if bFixScale is true, 6DoF optimization (stereo,rgbd), 7DoF otherwise (mono)
     void static OptimizeEssentialGraph(Map* pMap, KeyFrame* pLoopKF, KeyFrame* pCurKF,

@@ -21,6 +21,12 @@ also change
 ```
 in mono_realtime.cc to match the camera resolution and fps
 
+Run with gdb
+```
+gdb ./build/mono_video 
+(gdb) run Vocabulary/ORBvoc.txt ./em/calibration_videoscope_1280x720p_offline.yaml ./em/o.mp4 -patient=true
+```
+
 # Real time pose
 Currently the executable is sending the Tcw matrix to localhost:12345
 This is received by the navigation.py 

@@ -41,6 +41,11 @@
 
 #include "OptimizableTypes.h"
 
+// Optimization parameters file path
+#include "External/ini.h"
+// Optimization parameters file path
+std::string strOptimizationFile = "/home/emanuele/Desktop/github/ORB_SLAM3/em/opt_params.ini";
+
 namespace ORB_SLAM3
 {
 bool sortByVal(const pair<MapPoint*, int> &a, const pair<MapPoint*, int> &b)
@@ -288,11 +293,50 @@ void Optimizer::BundleAdjustment(const std::vector<Sophus::SE3f> &refCenterlineF
         e->setMeasurement(g2o::SE3Quat(candidateFrame.unit_quaternion().cast<double>(), candidateFrame.translation().cast<double>()));
 
         // Set information matrix
-        const double priorWeight = 10000.0;
-        e->setInformation(Eigen::Matrix<double,6,6>::Identity()*priorWeight);
+        // Load optimization parameters from file
+        mINI::INIFile file(strOptimizationFile);
+        mINI::INIStructure ini;
+        file.read(ini);
+
+        // Read weights from ini file 
+        double wT = std::stod(ini["PRIOR_WEIGHTS"].get("wT"));           // Matrix weight
+        double wx = std::stod(ini["PRIOR_WEIGHTS"].get("wx"));           // x translation weight  
+        double wy = std::stod(ini["PRIOR_WEIGHTS"].get("wy"));           // y translation weight
+        double wz = std::stod(ini["PRIOR_WEIGHTS"].get("wz"));           // z translation weight
+        double wroll = std::stod(ini["PRIOR_WEIGHTS"].get("wroll"));     // roll weight
+        double wpitch = std::stod(ini["PRIOR_WEIGHTS"].get("wpitch"));   // pitch weight
+        double wyaw = std::stod(ini["PRIOR_WEIGHTS"].get("wyaw"));       // yaw weight
+
+        // Create diagonal information matrix with weights
+        Eigen::Matrix<double,6,6> information = Eigen::Matrix<double,6,6>::Zero();
+        information.diagonal() << 
+            wT * wx,            // x translation
+            wT * wy,            // y translation 
+            wT * wz,            // z translation
+            wT * wroll * 0,     // roll
+            wT * wpitch * 0,    // pitch
+            wT * wyaw * 0;      // yaw
+        e->setInformation(information);
 
         // Add edge to optimizer
         optimizer.addEdge(e);
+
+        // Add CBF edge
+        // Read barrier parameters from ini file
+        double distanceThreshold = std::stod(ini["CBF"].get("distanceThreshold"));
+        double barrierWeight = std::stod(ini["CBF"].get("barrierWeight")); 
+
+        g2o::SE3Quat T_candidate(candidateFrame.unit_quaternion().cast<double>(), candidateFrame.translation().cast<double>());
+
+        auto* edgeBarrier = new EdgeSE3Barrier(T_candidate,
+                                            distanceThreshold,
+                                            barrierWeight,  // how strongly you want to push away from boundary
+                                            1e-3);          // epsilon
+
+        edgeBarrier->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex*>(vSE3));
+        optimizer.addEdge(edgeBarrier);
+
+
         // --- End of candidate frame computation ---
     }
 
@@ -1393,7 +1437,7 @@ void Optimizer::LocalBundleAdjustment(KeyFrame* pMainKF,vector<KeyFrame*> vpAdju
 // TODO: 
 // -check if matrix error is correct
 // -add weight to only minimize error between prior's tangent versor and pose z-axis and frame origin (translation), it can free the rotation
-int Optimizer::PoseOptimization(Frame *pFrame, const Sophus::SE3f &priorPose, const double priorWeight)
+int Optimizer::PoseOptimization(Frame *pFrame, const Sophus::SE3f &priorPose)
 {   
     // Solver initialization
     g2o::SparseOptimizer optimizer;
@@ -1585,8 +1629,45 @@ int Optimizer::PoseOptimization(Frame *pFrame, const Sophus::SE3f &priorPose, co
     EdgeSE3Prior* edgePrior = new EdgeSE3Prior(T_prior_quat);
     edgePrior->setVertex(0, vSE3);
     edgePrior->setMeasurement(T_prior_quat);
-    edgePrior->setInformation(Eigen::Matrix<double,6,6>::Identity() * priorWeight);
+
+    // Set higher weights for translation (x,y,z) and lower weights for rotation
+    // Read weights from ini file
+    mINI::INIFile file(strOptimizationFile);
+    mINI::INIStructure ini;
+    file.read(ini);
+
+    double wT = std::stod(ini["PRIOR_WEIGHTS"].get("wT"));           // Matrix weight
+    double wx = std::stod(ini["PRIOR_WEIGHTS"].get("wx"));           // x translation weight  
+    double wy = std::stod(ini["PRIOR_WEIGHTS"].get("wy"));           // y translation weight
+    double wz = std::stod(ini["PRIOR_WEIGHTS"].get("wz"));           // z translation weight
+    double wroll = std::stod(ini["PRIOR_WEIGHTS"].get("wroll"));     // roll weight
+    double wpitch = std::stod(ini["PRIOR_WEIGHTS"].get("wpitch"));   // pitch weight
+    double wyaw = std::stod(ini["PRIOR_WEIGHTS"].get("wyaw"));       // yaw weight
+
+    // Create diagonal information matrix with weights
+    Eigen::Matrix<double,6,6> information = Eigen::Matrix<double,6,6>::Zero();
+    information.diagonal() << 
+        wT * wx,            // x translation
+        wT * wy,            // y translation 
+        wT * wz,            // z translation
+        wT * wroll * 0,     // roll
+        wT * wpitch * 0,    // pitch
+        wT * wyaw * 0;      // yaw
+    edgePrior->setInformation(information);
     optimizer.addEdge(edgePrior);
+
+    // Add CBF edge
+    double distanceThreshold = std::stod(ini["CBF"].get("distanceThreshold"));
+    double barrierWeight = std::stod(ini["CBF"].get("barrierWeight"));
+
+    g2o::SE3Quat T_candidate(priorPose.unit_quaternion().cast<double>(), priorPose.translation().cast<double>());
+
+    auto* edgeBarrier = new EdgeSE3Barrier(T_candidate,
+                                           distanceThreshold,
+                                           barrierWeight,  // how strongly you want to push away from boundary
+                                           1e-3);          // epsilon
+    edgeBarrier->setVertex(0, vSE3);
+    optimizer.addEdge(edgeBarrier);
 
     // We perform 4 optimizations, after each optimization we classify observation as inlier/outlier
     // At the next optimization, outliers are not included, but at the end they can be classified as inliers again.
@@ -1704,6 +1785,15 @@ int Optimizer::PoseOptimization(Frame *pFrame, const Sophus::SE3f &priorPose, co
     // Print pose and prior pose
     cout << "Pose: " << endl << pose.matrix() << endl;
     cout << "Prior pose: " << endl << priorPose.matrix() << endl;
+
+    // Compute error by explicitly casting to double
+    Sophus::SE3d poseDouble(pose.unit_quaternion().cast<double>(), pose.translation().cast<double>());
+    Sophus::SE3d priorPoseDouble(priorPose.unit_quaternion().cast<double>(), priorPose.translation().cast<double>());
+    Eigen::Matrix<double, 6, 1> error = poseDouble.log() - priorPoseDouble.log();
+
+    // Get the error norm
+    double errorNorm = error.norm();
+    cout << "Error norm: " << endl << errorNorm << endl;
 
     return nInitialCorrespondences - nBad;
 }
