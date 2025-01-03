@@ -301,7 +301,7 @@ void Viewer::Run()
 
         d_cam.Activate(s_cam);
         glClearColor(1.0f,1.0f,1.0f,1.0f);
-        // mpMapDrawer->DrawCurrentCamera(Twc); 
+        mpMapDrawer->DrawCurrentCamera(Twc); 
         if(menuShowTrajectory)
             mpMapDrawer->DrawCameraTrajectory();
         if(menuShowOrigin)

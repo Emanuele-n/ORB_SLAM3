@@ -105,29 +105,18 @@ void Atlas::SetRefCenterline(string& refCenterlineFramesPath)
             Eigen::Vector3f w_p_i(x, y, z);
             Eigen::Vector3f w_t_i(tx, ty, tz);
             Eigen::Vector3f w_n_i(nx, ny, nz);
+            Eigen::Vector3f w_b_i(bx, by, bz);
 
-            // Normalize the vectors
-            w_t_i.normalize();
-            w_n_i.normalize();
-
-            // Orthonormalize using Gram-Schmidt
-            Eigen::Vector3f t = w_t_i;
-            Eigen::Vector3f n_temp = w_n_i - (w_n_i.dot(t)) * t;
-            Eigen::Vector3f n = n_temp.normalized();
-            Eigen::Vector3f b = t.cross(n);
-
-            // Ensure b is normalized
-            b.normalize();
-
-            // Construct rotation matrix
+            // Construct rotation matrix as it is written in the file: t forward, n down, b left
             Eigen::Matrix3f R;
-            R.col(0) = b;
-            R.col(1) = n;
-            R.col(2) = t;
+            R.col(0) = w_t_i;
+            R.col(1) = w_n_i;
+            R.col(2) = w_b_i;
 
             // Check determinant and adjust if necessary
             if (R.determinant() < 0) {
-                R.col(0) *= -1.0f;
+                std::cerr << "Determinant is negative. Adjusting rotation matrix." << std::endl;
+                R.col(2) *= -1.0f;
             }
 
             // Verify orthogonality
@@ -150,6 +139,18 @@ void Atlas::SetRefCenterline(string& refCenterlineFramesPath)
             // Compute o_T_i transformation
             o_T_i = w_T_o.inverse() * w_T_i;
 
+            // Rotate 90 degrees around n axis to match camera convention: 
+            // b forward, t right, n down -> z forward, x right, y down
+            Eigen::Matrix3f Ry;
+            Ry << 0, 0, 1,
+                  0, 1, 0,
+                  -1, 0, 0;
+
+            Eigen::Matrix3f Ry_inv = Ry.transpose();
+
+            // Build the transformation to match the camera convention
+            o_T_i = Sophus::SE3f(Ry_inv, Eigen::Vector3f(0, 0, 0)) * o_T_i * Sophus::SE3f(Ry, Eigen::Vector3f(0, 0, 0));
+            
             // Save the current o_T_i in mRefCenterlineFrames
             mRefCenterlineFrames.push_back(o_T_i);
         }

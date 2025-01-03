@@ -236,15 +236,52 @@ void MapDrawer::DrawRefCenterline()
         glVertex3f(pos[0], pos[1], pos[2]);
     }
     glEnd();
+
+    // // Draw coordinate frames for one point every ten in the centerline
+    // glLineWidth(2.0f);
+    // for (const auto& frame : refCenterlineFrames) {
+    //     // Extract a random number between 0 and 1
+    //     float random = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+
+    //     if (random < 0.1) {
+
+    //         Eigen::Vector3f pos = frame.translation();
+    //         Eigen::Matrix3f rot = frame.rotationMatrix();
+
+    //         // Draw tangent vector (red)
+    //         glBegin(GL_LINES);
+    //         glColor3f(1.0f, 0.0f, 0.0f);
+    //         glVertex3f(pos[0], pos[1], pos[2]);
+    //         Eigen::Vector3f tangent = pos + 0.02f * rot.col(0);
+    //         glVertex3f(tangent[0], tangent[1], tangent[2]);
+    //         glEnd();
+
+    //         // Draw normal vector (green)
+    //         glBegin(GL_LINES);
+    //         glColor3f(0.0f, 1.0f, 0.0f);
+    //         glVertex3f(pos[0], pos[1], pos[2]);
+    //         Eigen::Vector3f normal = pos + 0.02f * rot.col(1);
+    //         glVertex3f(normal[0], normal[1], normal[2]);
+    //         glEnd();
+
+    //         // Draw binormal vector (blue)
+    //         glBegin(GL_LINES);
+    //         glColor3f(0.0f, 0.0f, 1.0f);
+    //         glVertex3f(pos[0], pos[1], pos[2]);
+    //         Eigen::Vector3f binormal = pos + 0.02f * rot.col(2);
+    //         glVertex3f(binormal[0], binormal[1], binormal[2]);
+    //         glEnd();
+    //     }
+    // }
 }
 
-void MapDrawer::DrawCandidateFrame(Sophus::SE3f Tcw)
+void MapDrawer::DrawCandidateFrame(Sophus::SE3f Tfw)
 {
     // Draw the candidate frame
     glPointSize(10.0f);
     glBegin(GL_POINTS);
     glColor3f(1.0f, 0.0f, 0.0f);
-    Eigen::Vector3f pos = Tcw.translation();
+    Eigen::Vector3f pos = Tfw.translation();
     glVertex3f(pos[0], pos[1], pos[2]);
     glEnd();
 }
@@ -268,9 +305,12 @@ void MapDrawer::SetRefCenterline(string& refCenterlineFramesPath)
     std::string line;
     float x, y, z, tx, ty, tz, nx, ny, nz, bx, by, bz;
     char comma; // to consume the commas
-    Sophus::SE3f w_T_o; // Transformation from world to the first centerline point
-    Sophus::SE3f w_T_i; // Transformation from world to the i-th centerline point
-    Sophus::SE3f o_T_i; // Transformation from the first centerline point to the i-th point
+    Sophus::SE3f w_T_i; // Transformation from world to the i-th centerline point (written in the centerline data file)
+    Sophus::SE3f o_T_i; // Transformation from the first centerline point to the i-th point (to be found)
+    Sophus::SE3f w_T_o; // Transformation from world to the first centerline point (to transform from world to origin)
+    // World frame in this case is referred to the world where the CAD model is built and the centerline is extracted
+    // while the origin frame is the world frame in the viewer and SLAM system
+    // So the goal is to write the reference centerline in the origin frame
     bool first = true;
     while (std::getline(file, line)) {
         std::istringstream iss(line);
@@ -280,29 +320,18 @@ void MapDrawer::SetRefCenterline(string& refCenterlineFramesPath)
             Eigen::Vector3f w_p_i(x, y, z);
             Eigen::Vector3f w_t_i(tx, ty, tz);
             Eigen::Vector3f w_n_i(nx, ny, nz);
+            Eigen::Vector3f w_b_i(bx, by, bz);
 
-            // Normalize the vectors
-            w_t_i.normalize();
-            w_n_i.normalize();
-
-            // Orthonormalize using Gram-Schmidt
-            Eigen::Vector3f t = w_t_i;
-            Eigen::Vector3f n_temp = w_n_i - (w_n_i.dot(t)) * t;
-            Eigen::Vector3f n = n_temp.normalized();
-            Eigen::Vector3f b = t.cross(n);
-
-            // Ensure b is normalized
-            b.normalize();
-
-            // Construct rotation matrix
+            // Construct rotation matrix as it is written in the file: t forward, n down, b left
             Eigen::Matrix3f R;
-            R.col(0) = b;
-            R.col(1) = n;
-            R.col(2) = t;
+            R.col(0) = w_t_i;
+            R.col(1) = w_n_i;
+            R.col(2) = w_b_i;
 
             // Check determinant and adjust if necessary
             if (R.determinant() < 0) {
-                R.col(0) *= -1.0f;
+                std::cerr << "Determinant is negative. Adjusting rotation matrix." << std::endl;
+                R.col(2) *= -1.0f;
             }
 
             // Verify orthogonality
@@ -315,15 +344,29 @@ void MapDrawer::SetRefCenterline(string& refCenterlineFramesPath)
                 continue; // Skip this frame
             }
 
+            // Find the transformation from world to the first centerline frame
             if (first){
                 w_T_o = Sophus::SE3f(R, w_p_i);
                 first = false;
             }
-
+            
+            // Compute w_T_i transformation as written in the centerline file
             w_T_i = Sophus::SE3f(R, w_p_i);
 
             // Compute o_T_i transformation
             o_T_i = w_T_o.inverse() * w_T_i;
+
+            // Rotate 90 degrees around n axis to match camera convention: 
+            // b forward, t right, n down -> z forward, x right, y down
+            Eigen::Matrix3f Ry;
+            Ry << 0, 0, 1,
+                  0, 1, 0,
+                  -1, 0, 0;
+
+            Eigen::Matrix3f Ry_inv = Ry.transpose();
+
+            // Build the transformation to match the camera convention
+            o_T_i = Sophus::SE3f(Ry_inv, Eigen::Vector3f(0, 0, 0)) * o_T_i * Sophus::SE3f(Ry, Eigen::Vector3f(0, 0, 0));
 
             // Save the current o_T_i in mRefCenterlineFrames
             mRefCenterlineFrames.push_back(o_T_i);
@@ -666,43 +709,85 @@ void MapDrawer::DrawCurrentCamera(pangolin::OpenGlMatrix &Twc)
 {
     const float &w = mCameraSize;
     // const float &w = mCameraSize/10;
-    const float h = w*0.75;
-    const float z = w*0.6;
+//     const float h = w*0.75;
+//     const float z = w*0.6;
 
-    glPushMatrix();
+//     glPushMatrix();
 
-#ifdef HAVE_GLES
-        glMultMatrixf(Twc.m);
-#else
-        glMultMatrixd(Twc.m);
-#endif
+// #ifdef HAVE_GLES
+//         glMultMatrixf(Twc.m);
+// #else
+//         glMultMatrixd(Twc.m);
+// #endif
 
-    glLineWidth(mCameraLineWidth);
-    glColor3f(0.0f,1.0f,0.0f);
+//     glLineWidth(mCameraLineWidth);
+//     glColor3f(0.0f,1.0f,0.0f);
+//     glBegin(GL_LINES);
+//     glVertex3f(0,0,0);
+//     glVertex3f(w,h,z);
+//     glVertex3f(0,0,0);
+//     glVertex3f(w,-h,z);
+//     glVertex3f(0,0,0);
+//     glVertex3f(-w,-h,z);
+//     glVertex3f(0,0,0);
+//     glVertex3f(-w,h,z);
+
+//     glVertex3f(w,h,z);
+//     glVertex3f(w,-h,z);
+
+//     glVertex3f(-w,h,z);
+//     glVertex3f(-w,-h,z);
+
+//     glVertex3f(-w,h,z);
+//     glVertex3f(w,h,z);
+
+//     glVertex3f(-w,-h,z);
+//     glVertex3f(w,-h,z);
+//     glEnd();
+
+//     glPopMatrix();
+
+    // Draw camera frame as done for the reference frames
+    // For debugging: check if transform is different from identity
+    Eigen::Matrix4f TwcEigen;
+    for (int i = 0; i < 4; i++)
+        for (int j = 0; j < 4; j++)
+            TwcEigen(i,j) = Twc.m[i+4*j];
+    Eigen::Matrix4f Tcw = TwcEigen.inverse();
+
+    // if ((TwcEigen - Eigen::Matrix4f::Identity()).norm() > 1e-6) {
+    //     std::cout << "Twc:\n" << TwcEigen << std::endl;
+    //     std::cout << "Tcw:\n" << Tcw << std::endl;
+    // }
+
+    // Extract position and rotation
+    Eigen::Vector3f pos = Tcw.block<3, 1>(0, 3);
+    Eigen::Matrix3f rot = Tcw.block<3, 3>(0, 0);
+
+    // Draw xc (right) vector (red)
     glBegin(GL_LINES);
-    glVertex3f(0,0,0);
-    glVertex3f(w,h,z);
-    glVertex3f(0,0,0);
-    glVertex3f(w,-h,z);
-    glVertex3f(0,0,0);
-    glVertex3f(-w,-h,z);
-    glVertex3f(0,0,0);
-    glVertex3f(-w,h,z);
-
-    glVertex3f(w,h,z);
-    glVertex3f(w,-h,z);
-
-    glVertex3f(-w,h,z);
-    glVertex3f(-w,-h,z);
-
-    glVertex3f(-w,h,z);
-    glVertex3f(w,h,z);
-
-    glVertex3f(-w,-h,z);
-    glVertex3f(w,-h,z);
+    glColor3f(1.0f, 0.0f, 0.0f);
+    glVertex3f(pos[0], pos[1], pos[2]);
+    Eigen::Vector3f xc = pos + 0.02f * rot.col(0);
+    glVertex3f(xc[0], xc[1], xc[2]);
     glEnd();
 
-    glPopMatrix();
+    // Draw yc (down) vector (green)
+    glBegin(GL_LINES);
+    glColor3f(0.0f, 1.0f, 0.0f);
+    glVertex3f(pos[0], pos[1], pos[2]);
+    Eigen::Vector3f yc = pos + 0.02f * rot.col(1);
+    glVertex3f(yc[0], yc[1], yc[2]);
+    glEnd();
+
+    // Draw zc (forward) vector (blue)
+    glBegin(GL_LINES);
+    glColor3f(0.0f, 0.0f, 1.0f);
+    glVertex3f(pos[0], pos[1], pos[2]);
+    Eigen::Vector3f zc = pos + 0.02f * rot.col(2);
+    glVertex3f(zc[0], zc[1], zc[2]);
+    glEnd();
+
 }
 
 void MapDrawer::SetCurrentCameraPose(const Sophus::SE3f &Tcw)
