@@ -1848,7 +1848,7 @@ void Tracking::CreateInitialMapMonocular()
     // Bundle Adjustment
     Verbose::PrintMess("New Map created with " + to_string(mpAtlas->MapPointsInMap()) + " points", Verbose::VERBOSITY_QUIET);
     // Optimizer::GlobalBundleAdjustment(mpAtlas->GetCurrentMap(),20);
-    Optimizer::GlobalBundleAdjustment(mpAtlas->GetRefCenterlineFrames(), mpAtlas->GetCurrentMap(),20);
+    Optimizer::GlobalBundleAdjustment(mWithPatientData, mpAtlas->GetRefCenterlineFrames(), mpAtlas->GetCurrentMap(),20);
     // ----- IV. AUTOMATIC MAP INITIALIZATION ends here -----
 
     float medianDepth = pKFini->ComputeSceneMedianDepth(2);
@@ -1995,7 +1995,7 @@ bool Tracking::TrackReferenceKeyFrame()
     // Optimizer::PoseOptimization(&mCurrentFrame);
     // EMA: new pose optimization with the reference frame
     const Sophus::SE3f priorPose = GetCandidateFrame();
-    Optimizer::PoseOptimization(&mCurrentFrame, priorPose);
+    Optimizer::PoseOptimization(&mCurrentFrame, mWithPatientData, priorPose);
 
     // Discard outliers
     int nmatchesMap = 0;
@@ -2144,7 +2144,7 @@ bool Tracking::TrackWithMotionModel()
     // Optimizer::PoseOptimization(&mCurrentFrame);
     // EMA: new pose optimization with the reference frame
     const Sophus::SE3f priorPose = GetCandidateFrame();
-    Optimizer::PoseOptimization(&mCurrentFrame, priorPose);
+    Optimizer::PoseOptimization(&mCurrentFrame, mWithPatientData, priorPose);
 
     // Discard outliers
     int nmatchesMap = 0;
@@ -2205,7 +2205,7 @@ bool Tracking::TrackLocalMap()
     // Optimizer::PoseOptimization(&mCurrentFrame);
     // EMA: new pose optimization with the reference frame
     const Sophus::SE3f priorPose = GetCandidateFrame();
-    Optimizer::PoseOptimization(&mCurrentFrame, priorPose);
+    Optimizer::PoseOptimization(&mCurrentFrame, mWithPatientData, priorPose);
 
     aux1 = 0, aux2 = 0;
     for(int i=0; i<mCurrentFrame.N; i++)
@@ -2705,7 +2705,7 @@ bool Tracking::Relocalization()
                 // int nGood = Optimizer::PoseOptimization(&mCurrentFrame);
                 // EMA: new pose optimization with the reference frame
                 const Sophus::SE3f priorPose = GetCandidateFrame();
-                int nGood = Optimizer::PoseOptimization(&mCurrentFrame, priorPose);
+                int nGood = Optimizer::PoseOptimization(&mCurrentFrame, mWithPatientData, priorPose);
 
                 if(nGood<10)
                     continue;
@@ -2724,7 +2724,7 @@ bool Tracking::Relocalization()
                         // nGood = Optimizer::PoseOptimization(&mCurrentFrame);
                         // EMA: new pose optimization with the reference frame
                         const Sophus::SE3f priorPose = GetCandidateFrame();
-                        nGood = Optimizer::PoseOptimization(&mCurrentFrame, priorPose);
+                        nGood = Optimizer::PoseOptimization(&mCurrentFrame, mWithPatientData, priorPose);
 
                         // If many inliers but still not enough, search by projection again in a narrower window
                         // the camera has been already optimized with many points
@@ -2742,7 +2742,7 @@ bool Tracking::Relocalization()
                                 // nGood = Optimizer::PoseOptimization(&mCurrentFrame);
                                 // EMA: new pose optimization with the reference frame
                                 const Sophus::SE3f priorPose = GetCandidateFrame();
-                                nGood = Optimizer::PoseOptimization(&mCurrentFrame, priorPose);
+                                nGood = Optimizer::PoseOptimization(&mCurrentFrame, mWithPatientData, priorPose);
 
                                 for(int io =0; io<mCurrentFrame.N; io++)
                                     if(mCurrentFrame.mvbOutlier[io])

@@ -52,7 +52,7 @@ public:
 
 public:
 
-    LoopClosing(Atlas* pAtlas, KeyFrameDatabase* pDB, ORBVocabulary* pVoc,const bool bFixScale, const bool bActiveLC);
+    LoopClosing(Atlas* pAtlas, KeyFrameDatabase* pDB, ORBVocabulary* pVoc,const bool bFixScale, const bool bActiveLC, const bool withPatientData = false);
 
     void SetTracker(Tracking* pTracker);
 
@@ -67,6 +67,7 @@ public:
     void RequestResetActiveMap(Map* pMap);
 
     // This function will run in a separate thread
+    bool mWithPatientData;
     void RunGlobalBundleAdjustment(Map* pActiveMap, unsigned long nLoopKF);
 
     bool isRunningGBA(){
