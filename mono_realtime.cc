@@ -64,10 +64,26 @@ int main(int argc, char **argv)
 {
     if(argc < 3)
     {
-        cerr << endl << "Usage: ./mono_realtime path_to_vocabulary path_to_settings" << endl;
+        cerr << endl << "Usage: ./mono_realtime path_to_vocabulary path_to_settings [-patient=true] [-encoder=true]" << endl;
         return 1;
     }
 
+    bool patient_data = false;
+    bool use_encoder = false;
+    string CADPath = "";
+    string centerlinePath = "";
+    
+    // Parse command line arguments
+    for(int i = 4; i < argc; i++) {
+        string arg = argv[i];
+        if(arg == "-patient=true") {
+            patient_data = true;
+        }
+        else if(arg == "-encoder=true") {
+            use_encoder = true;
+        }
+    }
+    
     // Initialize the TCP connection
     // string serverIP = "127.0.0.1";
     // int serverPort = 12345;
@@ -91,13 +107,13 @@ int main(int argc, char **argv)
     }
 
     // Create SLAM system. It initializes all system threads and gets ready to process frames.
-    ORB_SLAM3::System SLAM(argv[1], argv[2], ORB_SLAM3::System::MONOCULAR, true);
+    ORB_SLAM3::System SLAM(argv[1], argv[2], ORB_SLAM3::System::MONOCULAR, true, patient_data, use_encoder);
 
     cout << endl << "-------" << endl;
     cout << "Start processing camera input..." << endl;
 
     // Desired frame rate (frames per second)
-    double desiredFPS = 5.0;
+    double desiredFPS = 15.0;
     auto desiredFrameDuration = chrono::milliseconds(int(1000 / desiredFPS));
 
     Mat frame, resized_frame;
@@ -118,18 +134,20 @@ int main(int argc, char **argv)
             
             double tframe = chrono::duration_cast<chrono::duration<double>>(chrono::steady_clock::now().time_since_epoch()).count();
 
-            // // Pass the image to the SLAM system
-            // SLAM.TrackMonocular(frame, tframe);
-
             auto start = chrono::steady_clock::now();
             Sophus::SE3f Tcw = SLAM.TrackMonocular(resized_frame, tframe);
             auto end = chrono::steady_clock::now();
             auto duration = chrono::duration_cast<chrono::milliseconds>(end - start);
             // cout << "TrackMonocular: " << duration.count() << " milliseconds" << endl;
+            // Write duration to log.txt
+            // ofstream logFile("log.txt", ios_base::app);
+            // if (logFile.is_open()) {
+            //     logFile << "TrackMonocular duration: " << duration.count() << " milliseconds" << endl;
+            //     logFile.close();
+            // } else {
+            //     cerr << "Unable to open log file" << endl;
+            // }
             // std::cout << "Camera pose: " << Tcw.matrix() << std::endl;
-
-            // Send the camera pose to the server
-            // sendCameraPose(Tcw, sockfd);
 
             // Exit if ESC key is pressed
             if(waitKey(30) >= 0) break;

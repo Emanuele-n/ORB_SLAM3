@@ -53,7 +53,7 @@ bool sortByVal(const pair<MapPoint*, int> &a, const pair<MapPoint*, int> &b)
     return (a.second < b.second);
 }
 
-double getCurvilinearAbscissa(Eigen::Vector3d& Ow_d, const vector<KeyFrame *> &vpKFs, Map* pMap)
+double getCurvilinearAbscissa(Eigen::Vector3d& Ow_d, const vector<KeyFrame *> &vpKFs, Map* pMap, bool withEncoder)
 {   
     bool debug = false;
     if (debug) cout << "Getting curvilinear abscissa" << endl;
@@ -126,14 +126,14 @@ double getCurvilinearAbscissa(Eigen::Vector3d& Ow_d, const vector<KeyFrame *> &v
 }
 
 // --- Full BA ---
-void Optimizer::GlobalBundleAdjustment(bool withPatientData, const std::vector<std::vector<Sophus::SE3f>> &refCenterlineFrames, Map* pMap, int nIterations, bool* pbStopFlag, const unsigned long nLoopKF, const bool bRobust)
+void Optimizer::GlobalBundleAdjustment(bool withPatientData, bool withEncoder, const std::vector<std::vector<Sophus::SE3f>> &refCenterlineFrames, Map* pMap, int nIterations, bool* pbStopFlag, const unsigned long nLoopKF, const bool bRobust)
 {
     vector<KeyFrame*> vpKFs = pMap->GetAllKeyFrames();
     vector<MapPoint*> vpMP = pMap->GetAllMapPoints();
-    BundleAdjustment(withPatientData, refCenterlineFrames, vpKFs,vpMP,nIterations,pbStopFlag, nLoopKF, bRobust);
+    BundleAdjustment(withPatientData, withEncoder, refCenterlineFrames, vpKFs,vpMP,nIterations,pbStopFlag, nLoopKF, bRobust);
 }
 
-void Optimizer::BundleAdjustment(bool withPatientData, const std::vector<std::vector<Sophus::SE3f>> &refCenterlineFrames, const vector<KeyFrame *> &vpKFs, const vector<MapPoint *> &vpMP, int nIterations, bool* pbStopFlag, const unsigned long nLoopKF, const bool bRobust)
+void Optimizer::BundleAdjustment(bool withPatientData, bool withEncoder, const std::vector<std::vector<Sophus::SE3f>> &refCenterlineFrames, const vector<KeyFrame *> &vpKFs, const vector<MapPoint *> &vpMP, int nIterations, bool* pbStopFlag, const unsigned long nLoopKF, const bool bRobust)
 {
     vector<bool> vbNotIncludedMP;
     vbNotIncludedMP.resize(vpMP.size());
@@ -246,7 +246,7 @@ void Optimizer::BundleAdjustment(bool withPatientData, const std::vector<std::ve
             }
 
             // Compute curvilinear abscissa from the frame pose along the trajectory to the origin
-            double s = getCurvilinearAbscissa(Tcw_pos_d, vpKFs, pMap);
+            double s = getCurvilinearAbscissa(Tcw_pos_d, vpKFs, pMap, withEncoder);
             // TODOE: if with encoder s is the encoder measurement
             if (debug) cout << "s: " << s << endl;
 
@@ -1760,7 +1760,7 @@ int Optimizer::PoseOptimization(Frame *pFrame, bool withPatientData, const Sophu
         edgeBarrier->setVertex(0, vSE3);
         optimizer.addEdge(edgeBarrier);
     }
-    
+
     // We perform 4 optimizations, after each optimization we classify observation as inlier/outlier
     // At the next optimization, outliers are not included, but at the end they can be classified as inliers again.
     const float chi2Mono[4]={5.991,5.991,5.991,5.991};

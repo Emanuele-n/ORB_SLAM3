@@ -39,9 +39,9 @@ namespace ORB_SLAM3
 Verbose::eLevel Verbose::th = Verbose::VERBOSITY_NORMAL;
 
 System::System(const string &strVocFile, const string &strSettingsFile, const eSensor sensor,
-               const bool bUseViewer, const bool withPatientData, const int initFr, const string &strSequence):
+               const bool bUseViewer, const bool withPatientData, const bool withEncoder, const int initFr, const string &strSequence):
     mSensor(sensor), mpViewer(static_cast<Viewer*>(NULL)), mbReset(false), mbResetActiveMap(false),
-    mbActivateLocalizationMode(false), mbDeactivateLocalizationMode(false), mbShutDown(false), mWithPatientData(withPatientData)
+    mbActivateLocalizationMode(false), mbDeactivateLocalizationMode(false), mbShutDown(false), mWithPatientData(withPatientData), mWithEncoder(withEncoder)
 {
     // Output welcome message
     cout << endl <<
@@ -57,6 +57,11 @@ System::System(const string &strVocFile, const string &strSettingsFile, const eS
         cout << "Monocular" << endl;
     else
         cout << "Only Monocular is supported" << endl;
+
+    if(mWithEncoder)
+    {
+        cout << "Feeder encoder is enabled" << endl;
+    }
 
     if(mWithPatientData)
     {
@@ -182,7 +187,7 @@ System::System(const string &strVocFile, const string &strSettingsFile, const eS
     //(it will live in the main thread of execution, the one that called this constructor)
     cout << "Seq. Name: " << strSequence << endl;
     mpTracker = new Tracking(this, mpVocabulary, mpFrameDrawer, mpMapDrawer,
-                             mpAtlas, mpKeyFrameDatabase, strSettingsFile, mSensor, settings_, strSequence, withPatientData);
+                             mpAtlas, mpKeyFrameDatabase, strSettingsFile, mSensor, settings_, strSequence, withPatientData, withEncoder);
 
     //Initialize the Local Mapping thread and launch
     mpLocalMapper = new LocalMapping(this, mpAtlas, mSensor==MONOCULAR, false, strSequence);

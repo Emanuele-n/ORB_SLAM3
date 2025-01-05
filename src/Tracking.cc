@@ -39,12 +39,12 @@ namespace ORB_SLAM3
 {
 
 
-Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer, MapDrawer *pMapDrawer, Atlas *pAtlas, KeyFrameDatabase* pKFDB, const string &strSettingPath, const int sensor, Settings* settings, const string &_nameSeq, const bool withPatientData):
+Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer, MapDrawer *pMapDrawer, Atlas *pAtlas, KeyFrameDatabase* pKFDB, const string &strSettingPath, const int sensor, Settings* settings, const string &_nameSeq, const bool withPatientData, const bool withEncoder):
     mState(NO_IMAGES_YET), mSensor(sensor), mTrackedFr(0), mbStep(false),
     mbOnlyTracking(false), mbMapUpdated(false), mbVO(false), mpORBVocabulary(pVoc), mpKeyFrameDB(pKFDB),
     mbReadyToInitializate(false), mpSystem(pSys), mpViewer(NULL), bStepByStep(false),
     mpFrameDrawer(pFrameDrawer), mpMapDrawer(pMapDrawer), mpAtlas(pAtlas), mnLastRelocFrameId(0), time_recently_lost(5.0),
-    mnInitialFrameId(0), mbCreatedMap(false), mnFirstFrameId(0), mpCamera2(nullptr), mWithPatientData(withPatientData), mCandidateFrame(Sophus::SE3f())
+    mnInitialFrameId(0), mbCreatedMap(false), mnFirstFrameId(0), mpCamera2(nullptr), mWithPatientData(withPatientData), mWithEncoder(withEncoder), mCandidateFrame(Sophus::SE3f())
 {
     // Load camera parameters from settings file
     if(settings){
@@ -104,6 +104,10 @@ Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer,
         } else {
             cerr << "Unable to open patient data file" << endl;
         }
+    }
+
+    if(mWithEncoder){
+        cout << "TODO implement encoder" << endl;
     }
 
     initID = 0; lastID = 0;
@@ -1848,7 +1852,7 @@ void Tracking::CreateInitialMapMonocular()
     // Bundle Adjustment
     Verbose::PrintMess("New Map created with " + to_string(mpAtlas->MapPointsInMap()) + " points", Verbose::VERBOSITY_QUIET);
     // Optimizer::GlobalBundleAdjustment(mpAtlas->GetCurrentMap(),20);
-    Optimizer::GlobalBundleAdjustment(mWithPatientData, mpAtlas->GetRefCenterlineFrames(), mpAtlas->GetCurrentMap(),20);
+    Optimizer::GlobalBundleAdjustment(mWithPatientData, mWithEncoder, mpAtlas->GetRefCenterlineFrames(), mpAtlas->GetCurrentMap(),20);
     // ----- IV. AUTOMATIC MAP INITIALIZATION ends here -----
 
     float medianDepth = pKFini->ComputeSceneMedianDepth(2);

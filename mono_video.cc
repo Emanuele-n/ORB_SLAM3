@@ -16,17 +16,23 @@ int main(int argc, char **argv)
 {
     if(argc < 3)
     {
-        cerr << endl << "Usage: ./mono_realtime path_to_vocabulary path_to_settings path_to_video [-patient=true]" << endl;
+        cerr << endl << "Usage: ./mono_realtime path_to_vocabulary path_to_settings path_to_video [-patient=true] [-encoder=true]" << endl;
         return 1;
     }
 
     bool patient_data = false;
+    bool use_encoder = false;
     string CADPath = "";
     string centerlinePath = "";
-    if(argc >= 5) {
-        string patient_arg = argv[4];
-        if(patient_arg == "-patient=true") {
+    
+    // Parse command line arguments
+    for(int i = 4; i < argc; i++) {
+        string arg = argv[i];
+        if(arg == "-patient=true") {
             patient_data = true;
+        }
+        else if(arg == "-encoder=true") {
+            use_encoder = true;
         }
     }
 
@@ -43,7 +49,7 @@ int main(int argc, char **argv)
         return -1;
     }
 
-    ORB_SLAM3::System SLAM(argv[1], argv[2], ORB_SLAM3::System::MONOCULAR, true, patient_data);
+    ORB_SLAM3::System SLAM(argv[1], argv[2], ORB_SLAM3::System::MONOCULAR, true, patient_data, use_encoder);
 
     cout << endl << "-------" << endl;
     cout << "Start processing camera input..." << endl;

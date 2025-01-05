@@ -53,8 +53,8 @@ public:
     //  - Loop Closing: LoopClosing::Run() -> RunGlobalBundleAdjustment()
     // void static GlobalBundleAdjustment(Map* pMap, int nIterations=5, bool *pbStopFlag=NULL, const unsigned long nLoopKF=0, const bool bRobust = true);
     // void static BundleAdjustment(const std::vector<KeyFrame*> &vpKF, const std::vector<MapPoint*> &vpMP, int nIterations = 5, bool *pbStopFlag=NULL, const unsigned long nLoopKF=0, const bool bRobust = true);
-    void static GlobalBundleAdjustment(bool withPatientData, const std::vector<std::vector<Sophus::SE3f>> &RefCenterlineFrames, Map* pMap, int nIterations=5, bool *pbStopFlag=NULL, const unsigned long nLoopKF=0, const bool bRobust = true);
-    void static BundleAdjustment(bool withPatientData, const std::vector<std::vector<Sophus::SE3f>> &RefCenterlineFrames, const std::vector<KeyFrame*> &vpKF, const std::vector<MapPoint*> &vpMP, int nIterations = 5, bool *pbStopFlag=NULL, const unsigned long nLoopKF=0, const bool bRobust = true);
+    void static GlobalBundleAdjustment(bool withPatientData, bool withEncoder, const std::vector<std::vector<Sophus::SE3f>> &RefCenterlineFrames, Map* pMap, int nIterations=5, bool *pbStopFlag=NULL, const unsigned long nLoopKF=0, const bool bRobust = true);
+    void static BundleAdjustment(bool withPatientData, bool withEncoder, const std::vector<std::vector<Sophus::SE3f>> &RefCenterlineFrames, const std::vector<KeyFrame*> &vpKF, const std::vector<MapPoint*> &vpMP, int nIterations = 5, bool *pbStopFlag=NULL, const unsigned long nLoopKF=0, const bool bRobust = true);
 
     // Local Bundle Adjustment: (Local BA) find recent keyframes poses and map points seen in those keyframes
     // Used in:
@@ -73,7 +73,7 @@ public:
     //  - Tracking::Track() -> TrackLocalMap()
     //  - Tracking::Track() -> Relocalization()
     // int static PoseOptimization(Frame* pFrame); // EMA: commented out
-    int static PoseOptimization(Frame *pFrame, bool withPatientData, const Sophus::SE3f &priorPose);
+    int static PoseOptimization(Frame *pFrame, bool withEncoder, const Sophus::SE3f &priorPose);
 
     // if bFixScale is true, 6DoF optimization (stereo,rgbd), 7DoF otherwise (mono)
     void static OptimizeEssentialGraph(Map* pMap, KeyFrame* pLoopKF, KeyFrame* pCurKF,

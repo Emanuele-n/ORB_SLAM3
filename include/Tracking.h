@@ -58,7 +58,7 @@ class Tracking
 public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     Tracking(System* pSys, ORBVocabulary* pVoc, FrameDrawer* pFrameDrawer, MapDrawer* pMapDrawer, Atlas* pAtlas,
-             KeyFrameDatabase* pKFDB, const string &strSettingPath, const int sensor, Settings* settings, const string &_nameSeq=std::string(), bool withPatientData = false);
+             KeyFrameDatabase* pKFDB, const string &strSettingPath, const int sensor, Settings* settings, const string &_nameSeq=std::string(), bool withPatientData = false, bool withEncoder= false);
 
     ~Tracking();
 
@@ -129,6 +129,7 @@ public:
 
     // Patient data
     bool mWithPatientData;
+    bool mWithEncoder;
     string mCADPath;
     string mCenterlinePath;
     string mCenterlineFramesPath;
