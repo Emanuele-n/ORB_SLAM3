@@ -78,8 +78,8 @@ public:
 
     // Reference centerline
     void SetRefCenterline(string& refCenterlineFramesPath);
-    std::vector<Sophus::SE3f> GetRefCenterlineFrames();
-    std::vector<Sophus::SE3f> mRefCenterlineFrames;
+    std::vector<std::vector<Sophus::SE3f>> GetRefCenterlineFrames();
+    std::vector<std::vector<Sophus::SE3f>> mRefCenterlineFrames;
     std::mutex mMutexRefCenterlineFrames;
 
     // Curvilinear abscissa from the current position computed on the spanning tree

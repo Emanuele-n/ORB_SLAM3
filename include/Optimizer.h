@@ -53,8 +53,8 @@ public:
     //  - Loop Closing: LoopClosing::Run() -> RunGlobalBundleAdjustment()
     // void static GlobalBundleAdjustment(Map* pMap, int nIterations=5, bool *pbStopFlag=NULL, const unsigned long nLoopKF=0, const bool bRobust = true);
     // void static BundleAdjustment(const std::vector<KeyFrame*> &vpKF, const std::vector<MapPoint*> &vpMP, int nIterations = 5, bool *pbStopFlag=NULL, const unsigned long nLoopKF=0, const bool bRobust = true);
-    void static GlobalBundleAdjustment(const std::vector<Sophus::SE3f> &RefCenterlineFrames, Map* pMap, int nIterations=5, bool *pbStopFlag=NULL, const unsigned long nLoopKF=0, const bool bRobust = true);
-    void static BundleAdjustment(const std::vector<Sophus::SE3f> &RefCenterlineFrames, const std::vector<KeyFrame*> &vpKF, const std::vector<MapPoint*> &vpMP, int nIterations = 5, bool *pbStopFlag=NULL, const unsigned long nLoopKF=0, const bool bRobust = true);
+    void static GlobalBundleAdjustment(const std::vector<std::vector<Sophus::SE3f>> &RefCenterlineFrames, Map* pMap, int nIterations=5, bool *pbStopFlag=NULL, const unsigned long nLoopKF=0, const bool bRobust = true);
+    void static BundleAdjustment(const std::vector<std::vector<Sophus::SE3f>> &RefCenterlineFrames, const std::vector<KeyFrame*> &vpKF, const std::vector<MapPoint*> &vpMP, int nIterations = 5, bool *pbStopFlag=NULL, const unsigned long nLoopKF=0, const bool bRobust = true);
 
     // Local Bundle Adjustment: (Local BA) find recent keyframes poses and map points seen in those keyframes
     // Used in:

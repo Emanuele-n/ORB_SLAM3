@@ -1073,93 +1073,191 @@ Sophus::SE3f Tracking::GrabImageMonocular(const cv::Mat &im, const double &times
 }
 
 void Tracking::FindCandidateFrame()
-{   
+{
     bool debug = false;
     if (debug) cout << "Finding candidate frame" << endl;
+    Sophus::SE3f finalCandidateFrame;
 
     // Get the current camera pose
     Sophus::SE3f Tcw = mLastFrame.GetPose();
     if (Tcw.matrix().rows() != 4 || Tcw.matrix().cols() != 4) {
         std::cerr << "Invalid Tcw matrix size." << std::endl;
+        SetCandidateFrame(finalCandidateFrame);
         return;
     }
     if (debug) cout << "Tcw: " << endl;
     if (debug) cout << Tcw.matrix() << endl;
-    // Get camera position from the pose
-    Eigen::Vector3f Ow = Tcw.translation();
-    Eigen::Vector3d Ow_d = Ow.cast<double>();
-    if (debug) cout << "Ow_d: " << Ow_d << endl;
 
-    if (Ow_d.hasNaN()) {
-        std::cerr << "Invalid Ow_d received." << std::endl;
+    // Get camera position from the pose
+    Eigen::Vector3f Tcw_pos = Tcw.translation();
+    Eigen::Vector3d Tcw_pos_d = Tcw_pos.cast<double>();
+    if (debug) cout << "Tcw_pos_d: " << Tcw_pos_d << endl;
+
+    if (Tcw_pos_d.hasNaN()) {
+        std::cerr << "Invalid Tcw_pos_d received." << std::endl;
+        SetCandidateFrame(finalCandidateFrame);
         return;
     }
 
-    std::vector<Sophus::SE3f> refCenterlineFrames = mpAtlas->GetRefCenterlineFrames();
-    if (refCenterlineFrames.empty())
+    // Get the reference centerline frames
+    std::vector<std::vector<Sophus::SE3f>> allRefCenterlineFrames = mpAtlas->GetRefCenterlineFrames();
+    if (allRefCenterlineFrames.empty())
     {
         cout << "Reference centerline is empty" << endl;
+        SetCandidateFrame(finalCandidateFrame);
         return;
     }
 
-    if (debug) cout << "refCenterlineFrames " << refCenterlineFrames.size() << endl;
+    // Check if all branches are empty
+    bool allEmpty = true;
+    for (auto &branchFrames : allRefCenterlineFrames)
+    {
+        if (!branchFrames.empty())
+        {
+            allEmpty = false;
+            break;
+        }
+    }
+    if (allEmpty)
+    {
+        std::cerr << "Reference centerline is empty" << std::endl;
+        SetCandidateFrame(finalCandidateFrame);
+        return;
+    }
 
-    Sophus::SE3f candidateFrame; // Identity transformation
-    double s = mpAtlas->GetCurvilinearAbscissa(Ow_d);
-    // TODO: if with encoder s is the encoder measurement
+    // Compute the curvilinear abscissa from the last pose to the origin on the trajectory
+    double s = mpAtlas->GetCurvilinearAbscissa(Tcw_pos_d);
+    // TODOE: if with encoder s is the encoder measurement
     if (debug) cout << "s: " << s << endl;
 
     if (s < 0.0005)
+        {
+            cout << "Curvilinear abscissa close to zero, setting first frame from reference centerline" << endl;
+            // Return the first frame of the first branch (it's roughly the same for each branch)
+            finalCandidateFrame = allRefCenterlineFrames[0][0];
+            SetCandidateFrame(finalCandidateFrame);
+            return;
+        }
+
+    // To store the candidate frame for each branch
+    struct BranchCandidate {
+        Sophus::SE3f frame; // The candidate frame of the branch
+        double cf_dist;        // The distance from the candidate to the last pose
+        bool valid;            // If the candidate is valid
+    };
+    std::vector<BranchCandidate> branchCandidates(allRefCenterlineFrames.size(),
+                                                  {Sophus::SE3f(), std::numeric_limits<double>::max(), false});
+
+    // Loop over each branch and compute the candidate frame for each
+    for (size_t b = 0; b < allRefCenterlineFrames.size(); b++)
     {
-        cout << "Curvilinear abscissa close to zero, setting first frame from reference centerline" << endl;
-        candidateFrame = refCenterlineFrames[0];
-        SetCandidateFrame(candidateFrame);
-        return;
-    }
-
-    double minDist = std::numeric_limits<double>::max();
-    double s_i = 0.0;
-    bool candidateFound = false;
-
-    if (debug) cout << "Finding candidate frame among " << refCenterlineFrames.size() << " in reference centerline" << endl;
-    for (size_t i = 1; i < refCenterlineFrames.size(); i++) {
-        // Check if the underlying matrices are valid
-        if (refCenterlineFrames[i].matrix().rows() != 4 || refCenterlineFrames[i].matrix().cols() != 4 ||
-            refCenterlineFrames[i-1].matrix().rows() != 4 || refCenterlineFrames[i-1].matrix().cols() != 4) {
-            std::cerr << "Invalid matrix size at index " << i << endl;
+        const auto &refCenterlineFrames = allRefCenterlineFrames[b];
+        if (refCenterlineFrames.empty())
+        {
+            // Skip empty branch
             continue;
         }
 
-        if (!refCenterlineFrames[i].matrix().allFinite() || !refCenterlineFrames[i-1].matrix().allFinite()) {
-            std::cerr << "Invalid matrix data at index " << i << endl;
+        // We replicate the same debug prints you had for a single branch.
+        if (debug) cout << "Finding candidate frame on branch " << b << endl;
+
+        // Variables for the candidate frame
+        Sophus::SE3f candidateFrame; // Identity transformation
+        double minDist = std::numeric_limits<double>::max();
+        double s_i = 0.0;
+        bool candidateFound = false;
+
+        // Project the curvilinear abscissa onto the centerline of the branch
+        for (size_t i = 1; i < refCenterlineFrames.size(); i++)
+        {
+            // Check if the underlying matrices are valid
+            if (refCenterlineFrames[i].matrix().rows() != 4 || refCenterlineFrames[i].matrix().cols() != 4 ||
+                refCenterlineFrames[i - 1].matrix().rows() != 4 || refCenterlineFrames[i - 1].matrix().cols() != 4)
+            {
+                std::cerr << "Invalid matrix size at index " << i << endl;
+                continue;
+            }
+
+            if (!refCenterlineFrames[i].matrix().allFinite() || 
+                !refCenterlineFrames[i - 1].matrix().allFinite())
+            {
+                std::cerr << "Invalid matrix data at index " << i << endl;
+                continue;
+            }
+
+            Eigen::Vector3d p1 = refCenterlineFrames[i].translation().cast<double>();
+            Eigen::Vector3d p2 = refCenterlineFrames[i - 1].translation().cast<double>();
+
+            // Compute the distance between two consecutive points
+            double dist = (p2 - p1).norm();
+
+            // Add the distance to the current curvilinear abscissa
+            s_i += dist;
+            if (debug) cout << "s_i: " << s_i << endl;
+
+            // Compute the difference between the current curvilinear abscissa and the real one and store the minimum
+            double diff = abs(s - s_i);
+            if (debug) cout << "diff: " << diff << endl;
+            if (diff < minDist)
+            {
+                if (debug) cout << "Candidate frame updated" << endl;
+                minDist = diff;
+                candidateFrame = refCenterlineFrames[i];
+                candidateFound = true;
+            }
+            // TODOE: implement early stop when the difference starts increasing
+        }
+
+        if (!candidateFound)
+        {
+            cout << "No candidate frame found" << endl;
+
+            // Set the first frame of the branch as the candidate (TODOE: find a better way)
+            candidateFrame = refCenterlineFrames[0];
+
+            // Store the candidate frame
+            branchCandidates[b].frame = candidateFrame;
+            branchCandidates[b].cf_dist = 1e9;
+            branchCandidates[b].valid = false;
             continue;
         }
 
-        Eigen::Vector3d p1 = refCenterlineFrames[i].translation().cast<double>();
-        Eigen::Vector3d p2 = refCenterlineFrames[i-1].translation().cast<double>();
+        // If we get here, we do have a valid candidate
+        branchCandidates[b].frame = candidateFrame;
 
-        double dist = (p2 - p1).norm();
-        s_i += dist;
-        if (debug) cout << "s_i: " << s_i << endl;
-        double diff = abs(s - s_i);
-        if (debug) cout << "diff: " << diff << endl;
+        // Compute the distance between the candidate frame and the last pose
+        Eigen::Vector3d candidateFrame_pos = candidateFrame.translation().cast<double>();
+        double candidateFrame_dist = (Tcw_pos_d - candidateFrame_pos).norm();
+        branchCandidates[b].cf_dist = candidateFrame_dist;
+        branchCandidates[b].valid = true;
+        
+    } // end for each branch
 
-        if (diff < minDist) {
-            if (debug) cout << "Candidate frame updated" << endl;
-            minDist = diff;
-            candidateFrame = refCenterlineFrames[i];
-            candidateFound = true;
+    // Select the best candidate frame among all branches, based on the distance to the last pose
+    bool anyValid = false;
+    double globalMinDist = std::numeric_limits<double>::max();
+    size_t bestIndex = 0; // arbitrary
+
+    for (size_t b = 0; b < branchCandidates.size(); b++)
+    {
+        if (branchCandidates[b].cf_dist < globalMinDist && branchCandidates[b].valid)
+        {
+            anyValid = true;
+            globalMinDist = branchCandidates[b].cf_dist;
+            bestIndex = b;
         }
     }
 
-    if (!candidateFound) {
+    // If no valid candidate was found, pick the first frame of the first branch (TODOE: find a better way)
+    if (!anyValid)
+    {
         cout << "No candidate frame found" << endl;
-        candidateFrame = refCenterlineFrames[0];
-        return;
+        finalCandidateFrame = allRefCenterlineFrames[0][0];
     }
 
-    if (debug) cout << " " << endl;
-    SetCandidateFrame(candidateFrame);
+    // Get and set the best candidate frame
+    finalCandidateFrame = branchCandidates[bestIndex].frame;
+    SetCandidateFrame(finalCandidateFrame);
     return;
 }
 

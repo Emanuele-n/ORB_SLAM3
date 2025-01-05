@@ -63,10 +63,9 @@ public:
     std::vector<cv::Point3f> mvIniP3D;
     
     // Reference centerline
-    string mCenterlineFramesPath;
     void SetRefCenterline(string& refCenterlineFramesPath);
-    std::vector<Sophus::SE3f> GetRefCenterlineFrames();
-    std::vector<Sophus::SE3f> mRefCenterlineFrames;
+    std::vector<std::vector<Sophus::SE3f>> GetRefCenterlineFrames();
+    std::vector<std::vector<Sophus::SE3f>> mRefCenterlineFrames;
     std::mutex mMutexRefCenterlineFrames;
 
 private:

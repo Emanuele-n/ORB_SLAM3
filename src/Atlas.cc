@@ -79,88 +79,124 @@ void Atlas::SetRefCenterline(string& refCenterlineFramesPath)
     // Protect with mutex
     unique_lock<mutex> lock(mMutexRefCenterlineFrames);
 
-    // Read centerline frames from file
-    std::ifstream file(refCenterlineFramesPath);
-    if (!file.is_open()) {
-        std::cerr << "Failed to open file: " << refCenterlineFramesPath << std::endl;
-        return;
-    }
-
     // Clear previous frames
     mRefCenterlineFrames.clear();
 
-    // Read each line of the file and process the points
-    std::string line;
-    float x, y, z, tx, ty, tz, nx, ny, nz, bx, by, bz;
-    char comma; // to consume the commas
-    Sophus::SE3f w_T_o; // Transformation from world to the first centerline point
-    Sophus::SE3f w_T_i; // Transformation from world to the i-th centerline point
-    Sophus::SE3f o_T_i; // Transformation from the first centerline point to the i-th point
-    bool first = true;
-    while (std::getline(file, line)) {
-        std::istringstream iss(line);
+    bool isDebug = false;
 
-        // Read the values from the line
-        if (iss >> x >> comma >> y >> comma >> z >> comma >> tx >> comma >> ty >> comma >> tz >> comma >> nx >> comma >> ny >> comma >> nz >> comma >> bx >> comma >> by >> comma >> bz) {
-            Eigen::Vector3f w_p_i(x, y, z);
-            Eigen::Vector3f w_t_i(tx, ty, tz);
-            Eigen::Vector3f w_n_i(nx, ny, nz);
-            Eigen::Vector3f w_b_i(bx, by, bz);
-
-            // Construct rotation matrix as it is written in the file: t forward, n down, b left
-            Eigen::Matrix3f R;
-            R.col(0) = w_t_i;
-            R.col(1) = w_n_i;
-            R.col(2) = w_b_i;
-
-            // Check determinant and adjust if necessary
-            if (R.determinant() < 0) {
-                std::cerr << "Determinant is negative. Adjusting rotation matrix." << std::endl;
-                R.col(2) *= -1.0f;
-            }
-
-            // Verify orthogonality
-            Eigen::Matrix3f RtR = R.transpose() * R;
-            Eigen::Matrix3f I = Eigen::Matrix3f::Identity();
-            Eigen::Matrix3f error = RtR - I;
-            float maxError = error.cwiseAbs().maxCoeff();
-            if (maxError > 1e-6) {
-                std::cerr << "Rotation matrix is not orthogonal enough. Max error: " << maxError << std::endl;
-                continue; // Skip this frame
-            }
-
-            if (first){
-                w_T_o = Sophus::SE3f(R, w_p_i);
-                first = false;
-            }
-
-            w_T_i = Sophus::SE3f(R, w_p_i);
-
-            // Compute o_T_i transformation
-            o_T_i = w_T_o.inverse() * w_T_i;
-
-            // Rotate 90 degrees around n axis to match camera convention: 
-            // b forward, t right, n down -> z forward, x right, y down
-            Eigen::Matrix3f Ry;
-            Ry << 0, 0, 1,
-                  0, 1, 0,
-                  -1, 0, 0;
-
-            Eigen::Matrix3f Ry_inv = Ry.transpose();
-
-            // Build the transformation to match the camera convention
-            o_T_i = Sophus::SE3f(Ry_inv, Eigen::Vector3f(0, 0, 0)) * o_T_i * Sophus::SE3f(Ry, Eigen::Vector3f(0, 0, 0));
-            
-            // Save the current o_T_i in mRefCenterlineFrames
-            mRefCenterlineFrames.push_back(o_T_i);
+    int branchIndex = 1;
+    while (true)
+    {
+        // Build the full filename: e.g., <input_folder>/1.txt, b2.txt, etc.
+        std::string filePath = refCenterlineFramesPath + "/b" + std::to_string(branchIndex) + ".txt";
+        if (isDebug) cout << "Reading centerline file: " << filePath << endl;
+        
+        // Try to open the file
+        std::ifstream file(filePath);
+        if (!file.is_open()) {
+            if (isDebug) std::cerr << "No more centerline files found after index " << branchIndex << ". Stopping." << std::endl;
+            break;
         }
+
+        // A temporary container for this branch’s frames
+        std::vector<Sophus::SE3f> currentBranchFrames;
+
+        // Read each line of the file and process the points
+        std::string line;
+        float x, y, z, tx, ty, tz, nx, ny, nz, bx, by, bz;
+        char comma; // to consume the commas
+        Sophus::SE3f w_T_i; // Transformation from world to the i-th centerline point (written in the centerline data file)
+        Sophus::SE3f o_T_i; // Transformation from the first centerline point to the i-th point (to be found)
+        Sophus::SE3f w_T_o; // Transformation from world to the first centerline point (to transform from world to origin)
+        // World frame in this case is referred to the world where the CAD model is built and the centerline is extracted
+        // while the origin frame is the world frame in the viewer and SLAM system
+        // So the goal is to write the reference centerline in the origin frame
+        bool first = true;
+
+        while (std::getline(file, line)) {
+            std::istringstream iss(line);
+
+            // Read the values from the line
+            if (iss >> x >> comma >> y >> comma >> z >> comma >> tx >> comma >> ty >> comma >> tz 
+                    >> comma >> nx >> comma >> ny >> comma >> nz >> comma >> bx >> comma >> by >> comma >> bz) 
+            {
+                Eigen::Vector3f w_p_i(x, y, z);
+                Eigen::Vector3f w_t_i(tx, ty, tz);
+                Eigen::Vector3f w_n_i(nx, ny, nz);
+                Eigen::Vector3f w_b_i(bx, by, bz);
+
+                // Construct rotation matrix as it is written in the file: t forward, n down, b left
+                Eigen::Matrix3f R;
+                R.col(0) = w_t_i;
+                R.col(1) = w_n_i;
+                R.col(2) = w_b_i;
+
+                // Check determinant and adjust if necessary
+                if (R.determinant() < 0) {
+                    std::cerr << "Determinant is negative. Adjusting rotation matrix." << std::endl;
+                    R.col(2) *= -1.0f;
+                }
+
+                // Verify orthogonality
+                Eigen::Matrix3f RtR = R.transpose() * R;
+                Eigen::Matrix3f I = Eigen::Matrix3f::Identity();
+                Eigen::Matrix3f error = RtR - I;
+                float maxError = error.cwiseAbs().maxCoeff();
+                if (maxError > 1e-6) {
+                    std::cerr << "Rotation matrix is not orthogonal enough. Max error: " << maxError << std::endl;
+                    continue; // Skip this frame
+                }
+
+                // Find the transformation from world to the first centerline frame
+                if (first){
+                    w_T_o = Sophus::SE3f(R, w_p_i);
+                    first = false;
+                }
+                
+                // Compute w_T_i transformation as written in the centerline file
+                w_T_i = Sophus::SE3f(R, w_p_i);
+
+                // Compute o_T_i transformation
+                o_T_i = w_T_o.inverse() * w_T_i;
+
+                // Rotate 90 degrees around n axis to match camera convention: 
+                // b forward, t right, n down -> z forward, x right, y down
+                Eigen::Matrix3f Ry;
+                Ry << 0, 0, 1,
+                      0, 1, 0,
+                     -1, 0, 0;
+
+                Eigen::Matrix3f Ry_inv = Ry.transpose();
+
+                // Build the transformation to match the camera convention
+                o_T_i = Sophus::SE3f(Ry_inv, Eigen::Vector3f(0, 0, 0)) 
+                        * o_T_i 
+                        * Sophus::SE3f(Ry, Eigen::Vector3f(0, 0, 0));
+
+                // Save the current o_T_i in currentBranchFrames
+                currentBranchFrames.push_back(o_T_i);
+            }
+        }
+
+        // Close this branch file
+        file.close();
+
+        // Now add this branch’s frames to the main container
+        mRefCenterlineFrames.push_back(currentBranchFrames);
+
+        if (isDebug) std::cout << "Set reference centerline for branch " << branchIndex 
+                  << " in Atlas with " << currentBranchFrames.size() << " frames" 
+                  << std::endl;
+
+        // Go to the next branch index
+        branchIndex++;
     }
-    // Close the file
-    cout << "Set reference centerline in Atlas with " << mRefCenterlineFrames.size() << " frames" << endl;
-    file.close();
+
+    // Optional: You can print how many total branches got loaded
+    if (isDebug) std::cout << "Total branches loaded: " << mRefCenterlineFrames.size() << std::endl;
 }
 
-std::vector<Sophus::SE3f> Atlas::GetRefCenterlineFrames()
+std::vector<std::vector<Sophus::SE3f>> Atlas::GetRefCenterlineFrames()
 {
     unique_lock<mutex> lock(mMutexRefCenterlineFrames);
     return mRefCenterlineFrames;
@@ -235,7 +271,7 @@ double Atlas::GetCurvilinearAbscissa(Eigen::Vector3d& Ow_d)
     // Add distance from closest keyframe to current position
     s += minDist;
 
-    // TODO: Reduce the total length to take into account the non smoothness of the path based on the number of points in the path
+    // TODOE: Reduce the total length to take into account the non smoothness of the path based on the number of points in the path
 
     return s;
 }
