@@ -747,46 +747,46 @@ void MapDrawer::DrawCurrentCamera(pangolin::OpenGlMatrix &Twc)
 {
     const float &w = mCameraSize;
     // const float &w = mCameraSize/10;
-//     const float h = w*0.75;
-//     const float z = w*0.6;
+    const float h = w*0.75;
+    const float z = w*0.6;
 
-//     glPushMatrix();
+    glPushMatrix();
 
-// #ifdef HAVE_GLES
-//         glMultMatrixf(Twc.m);
-// #else
-//         glMultMatrixd(Twc.m);
-// #endif
+#ifdef HAVE_GLES
+        glMultMatrixf(Twc.m);
+#else
+        glMultMatrixd(Twc.m);
+#endif
 
-//     glLineWidth(mCameraLineWidth);
-//     glColor3f(0.0f,1.0f,0.0f);
-//     glBegin(GL_LINES);
-//     glVertex3f(0,0,0);
-//     glVertex3f(w,h,z);
-//     glVertex3f(0,0,0);
-//     glVertex3f(w,-h,z);
-//     glVertex3f(0,0,0);
-//     glVertex3f(-w,-h,z);
-//     glVertex3f(0,0,0);
-//     glVertex3f(-w,h,z);
+    glLineWidth(mCameraLineWidth);
+    glColor3f(0.0f,1.0f,0.0f);
+    glBegin(GL_LINES);
+    glVertex3f(0,0,0);
+    glVertex3f(w,h,z);
+    glVertex3f(0,0,0);
+    glVertex3f(w,-h,z);
+    glVertex3f(0,0,0);
+    glVertex3f(-w,-h,z);
+    glVertex3f(0,0,0);
+    glVertex3f(-w,h,z);
 
-//     glVertex3f(w,h,z);
-//     glVertex3f(w,-h,z);
+    glVertex3f(w,h,z);
+    glVertex3f(w,-h,z);
 
-//     glVertex3f(-w,h,z);
-//     glVertex3f(-w,-h,z);
+    glVertex3f(-w,h,z);
+    glVertex3f(-w,-h,z);
 
-//     glVertex3f(-w,h,z);
-//     glVertex3f(w,h,z);
+    glVertex3f(-w,h,z);
+    glVertex3f(w,h,z);
 
-//     glVertex3f(-w,-h,z);
-//     glVertex3f(w,-h,z);
-//     glEnd();
+    glVertex3f(-w,-h,z);
+    glVertex3f(w,-h,z);
+    glEnd();
 
 //     glPopMatrix();
 
     // Draw camera frame as done for the reference frames
-    // For debugging: check if transform is different from identity
+    // Get cTw 
     Eigen::Matrix4f TwcEigen;
     for (int i = 0; i < 4; i++)
         for (int j = 0; j < 4; j++)
@@ -799,8 +799,10 @@ void MapDrawer::DrawCurrentCamera(pangolin::OpenGlMatrix &Twc)
     // }
 
     // Extract position and rotation
-    Eigen::Vector3f pos = Tcw.block<3, 1>(0, 3);
-    Eigen::Matrix3f rot = Tcw.block<3, 3>(0, 0);
+    // Eigen::Vector3f pos = Tcw.block<3, 1>(0, 3);
+    // Eigen::Matrix3f rot = Tcw.block<3, 3>(0, 0);
+    Eigen::Vector3f pos = TwcEigen.block<3, 1>(0, 3);
+    Eigen::Matrix3f rot = TwcEigen.block<3, 3>(0, 0);
 
     // Draw xc (right) vector (red)
     glBegin(GL_LINES);

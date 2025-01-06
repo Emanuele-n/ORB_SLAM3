@@ -377,6 +377,9 @@ void Optimizer::BundleAdjustment(bool withPatientData, bool withEncoder, const s
             // Get and set the best candidate frame
             finalCandidateFrame = branchCandidates[bestIndex].frame;
 
+            // Take the inverse of the candidate frame
+            finalCandidateFrame = finalCandidateFrame.inverse();
+
             // Add pose prior edge if prior exists
             // Create Edge
             EdgeSE3Prior* e = new EdgeSE3Prior(g2o::SE3Quat(finalCandidateFrame.unit_quaternion().cast<double>(), finalCandidateFrame.translation().cast<double>()));
@@ -408,9 +411,9 @@ void Optimizer::BundleAdjustment(bool withPatientData, bool withEncoder, const s
                 wT * wx,            // x translation
                 wT * wy,            // y translation 
                 wT * wz,            // z translation
-                wT * wroll * 0,     // roll
-                wT * wpitch * 0,    // pitch
-                wT * wyaw * 0;      // yaw
+                wT * wroll,         // roll
+                wT * wpitch,        // pitch
+                wT * wyaw;          // yaw
             e->setInformation(information);
 
             // Add edge to optimizer
@@ -1741,9 +1744,9 @@ int Optimizer::PoseOptimization(Frame *pFrame, bool withPatientData, const Sophu
             wT * wx,            // x translation
             wT * wy,            // y translation 
             wT * wz,            // z translation
-            wT * wroll * 0,     // roll
-            wT * wpitch * 0,    // pitch
-            wT * wyaw * 0;      // yaw
+            wT * wroll,         // roll
+            wT * wpitch,        // pitch
+            wT * wyaw;          // yaw
         edgePrior->setInformation(information);
         optimizer.addEdge(edgePrior);
 
@@ -1875,7 +1878,7 @@ int Optimizer::PoseOptimization(Frame *pFrame, bool withPatientData, const Sophu
     pFrame->SetPose(pose);
 
     // Print pose and prior pose
-    bool isDebug = false;
+    bool isDebug = true;
     if (isDebug) cout << "Pose: " << endl << pose.matrix() << endl;
     if (isDebug) cout << "Prior pose: " << endl << priorPose.matrix() << endl;
 
