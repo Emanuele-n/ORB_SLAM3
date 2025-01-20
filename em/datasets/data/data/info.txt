@@ -1,0 +1,11 @@
+The dataset consists of 3 bronchoscopy videos recorded in an ex-vivo human lung, accompanied by camera pose ground truth. The videos are 15fps, saved as frames in the folder imgs.
+
+The poses was tracked by an electromagnetic tracker (EMT) attached to the camera. Each video has 2 files with pose data. emt_transformed.csv is a downsampled and calibrated version of emt_rawdata.csv to match the video frequency and camera coordinate system. Further details of the calibration process are included in our paper.
+
+For reference, here is the EMT to camera rotation matrix:
+
+R = np.array([[0.45042269, -0.88777651, -0.09472207],
+              [0.89279368, 0.44712913, 0.05472643],
+              [-0.00623184, -0.1092173, 0.99399836]])
+
+For any questions about this data please contact Emile Mackute (emile.mackute@gmail.com).
