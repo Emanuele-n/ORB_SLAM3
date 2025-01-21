@@ -24,7 +24,11 @@ in mono_realtime.cc to match the camera resolution and fps
 Run with gdb
 ```
 gdb ./build/mono_video 
-(gdb) run Vocabulary/ORBvoc.txt ./em/calibration_videoscope_1280x720p_offline.yaml ./em/o.mp4 -patient=true -encoder=false
+(gdb) run em/run/config.ini
+```
+Run with valgrind
+```
+valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --verbose --log-file=valgrind-out.txt ./build/mono_video em/run/config.ini
 ```
 
 # Real time pose

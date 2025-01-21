@@ -7,6 +7,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <sstream>
+#include "External/ini.h"
 
 using namespace std;
 using namespace cv;
@@ -14,31 +15,40 @@ using namespace cv;
 
 int main(int argc, char **argv)
 {
-    if(argc < 3)
+    if(argc != 2)
     {
-        cerr << endl << "Usage: ./mono_realtime path_to_vocabulary path_to_settings path_to_video [-patient=true] [-encoder=true]" << endl;
+        cerr << endl << "Usage: ./mono_realtime path_to_config.ini" << endl;
         return 1;
     }
 
+    // Get the config file path
+    string configFilePath = argv[1];
+    mINI::INIFile file(configFilePath);
+    mINI::INIStructure ini;
+    file.read(ini);
+    
     bool patient_data = false;
     bool use_encoder = false;
-    string CADPath = "";
-    string centerlinePath = "";
+    string patient_data_path = "";
     
-    // Parse command line arguments
-    for(int i = 4; i < argc; i++) {
-        string arg = argv[i];
-        if(arg == "-patient=true") {
-            patient_data = true;
-        }
-        else if(arg == "-encoder=true") {
-            use_encoder = true;
-        }
+    if (ini["RUN"].get("patient") == "true") {
+        patient_data = true;
+        patient_data_path = ini["RUN"].get("patient_data");
     }
+
+    if (ini["RUN"].get("encoder") == "true") {
+        use_encoder = true;
+    }
+
+    string vocPath = ini["RUN"].get("vocabulary");
+    string settingsPath = ini["RUN"].get("calibration");
+    string videoPath = ini["RUN"].get("video");
+
+
 
     // Initialize video source either from camera or from video file
     VideoCapture cap;
-    cap.open(argv[3], cv::CAP_FFMPEG);
+    cap.open(videoPath, cv::CAP_FFMPEG);
     cap.set(cv::CAP_PROP_BUFFERSIZE, 3); // Set buffer size to reduce delay
     cap.set(cv::CAP_PROP_FOURCC, cv::VideoWriter::fourcc('H', '2', '6', '4')); 
     
@@ -49,7 +59,7 @@ int main(int argc, char **argv)
         return -1;
     }
 
-    ORB_SLAM3::System SLAM(argv[1], argv[2], ORB_SLAM3::System::MONOCULAR, true, patient_data, use_encoder);
+    ORB_SLAM3::System SLAM(vocPath, settingsPath, ORB_SLAM3::System::MONOCULAR, true, patient_data, use_encoder);
 
     cout << endl << "-------" << endl;
     cout << "Start processing camera input..." << endl;
@@ -100,7 +110,7 @@ int main(int argc, char **argv)
     SLAM.Shutdown();
 
     // Save camera trajectory
-    SLAM.SaveKeyFrameTrajectoryTUM("KeyFrameTrajectory.txt");
+    // SLAM.SaveKeyFrameTrajectoryTUM("KeyFrameTrajectory.txt");
 
     return 0;
 }

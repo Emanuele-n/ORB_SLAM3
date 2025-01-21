@@ -100,7 +100,7 @@ if __name__ == "__main__":
     convert_dataset_format(
         input_txt=input_file,
         output_txt=output_file,
-        tangent_axis="z",  # camera forward is +Z
+        tangent_axis="x",  # camera forward is +X
         normal_axis="y",  # camera up is +Y
-        binormal_axis="x",  # camera right is +X
+        binormal_axis="z",  # camera right is +Z
     )

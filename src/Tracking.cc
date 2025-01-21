@@ -32,6 +32,7 @@
 
 #include <mutex>
 #include <chrono>
+#include "External/ini.h"
 
 using namespace std;
 
@@ -83,27 +84,12 @@ Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer,
     if(mWithPatientData)
     {
         cout << "Initializing tracking with patient data" << endl;
-        // Take the paths to CAD and centerline from a patient data file
-        ifstream patient_data_file("em/data/patient_data.txt");
-        if (patient_data_file.is_open()) {
-            string line;
-            getline(patient_data_file, line);
-            istringstream iss(line);
-            iss >> mCADPath;
-            getline(patient_data_file, line);
-            istringstream iss2(line);
-            iss2 >> mCenterlinePath;
-            getline(patient_data_file, line);
-            istringstream iss3(line);
-            iss3 >> mCenterlineFramesPath;
-            patient_data_file.close();
-            cout << "\t-CAD path: " << mCADPath << endl;
-            cout << "\t-Centerline path: " << mCenterlinePath << endl;
-            cout << "\t-Centerline frames path: " << mCenterlineFramesPath << endl;
-
-        } else {
-            cerr << "Unable to open patient data file" << endl;
-        }
+        // Take the path (TODO: fix this hardcoded path)
+        string configFilePath = "em/run/config.ini";
+        mINI::INIFile file(configFilePath);
+        mINI::INIStructure ini;
+        file.read(ini);
+        mCenterlineFramesPath = ini["RUN"].get("patient_data");
     }
 
     if(mWithEncoder){

@@ -130,8 +130,6 @@ public:
     // Patient data
     bool mWithPatientData;
     bool mWithEncoder;
-    string mCADPath;
-    string mCenterlinePath;
     string mCenterlineFramesPath;
 
     // Input sensor

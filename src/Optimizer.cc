@@ -44,7 +44,7 @@
 // Optimization parameters file path
 #include "External/ini.h"
 // Optimization parameters file path
-std::string optParamsPath = "/home/emanuele/Desktop/github/ORB_SLAM3/em/opt_params.ini";
+std::string optParamsPath = "/home/emanuele/Desktop/github/ORB_SLAM3/em/run/config.ini";
 
 namespace ORB_SLAM3
 {
@@ -218,7 +218,7 @@ void Optimizer::BundleAdjustment(bool withPatientData, bool withEncoder, const s
 
             if (Tcw_pos_d.hasNaN()) {
                 std::cerr << "Invalid Tcw_pos_d received." << std::endl;
-                return;
+                // return;
             }
 
             // Get the reference centerline frames
@@ -226,7 +226,7 @@ void Optimizer::BundleAdjustment(bool withPatientData, bool withEncoder, const s
             if (allRefCenterlineFrames.empty())
             {
                 cout << "Reference centerline is empty" << endl;
-                return;
+                // return;
             }
 
             // Check if all branches are empty
@@ -242,7 +242,7 @@ void Optimizer::BundleAdjustment(bool withPatientData, bool withEncoder, const s
             if (allEmpty)
             {
                 std::cerr << "Reference centerline is empty" << std::endl;
-                return;
+                // return;
             }
 
             // Compute curvilinear abscissa from the frame pose along the trajectory to the origin
@@ -255,7 +255,7 @@ void Optimizer::BundleAdjustment(bool withPatientData, bool withEncoder, const s
                     cout << "Curvilinear abscissa close to zero, setting first frame from reference centerline" << endl;
                     // Return the first frame of the first branch (it's roughly the same for each branch)
                     finalCandidateFrame = allRefCenterlineFrames[0][0];
-                    return;
+                    // return;
                 }
 
             // To store the candidate frame for each branch

@@ -1,0 +1,634 @@
+==172699== Memcheck, a memory error detector
+==172699== Copyright (C) 2002-2017, and GNU GPL'd, by Julian Seward et al.
+==172699== Using Valgrind-3.18.1-42b08ed5bd-20211015 and LibVEX; rerun with -h for copyright info
+==172699== Command: ./build/mono_video em/run/config.ini
+==172699== Parent PID: 39595
+==172699== 
+--172699-- 
+--172699-- Valgrind options:
+--172699--    --leak-check=full
+--172699--    --show-leak-kinds=all
+--172699--    --track-origins=yes
+--172699--    --verbose
+--172699--    --log-file=valgrind-out.txt
+--172699-- Contents of /proc/version:
+--172699--   Linux version 6.8.0-49-generic (buildd@lcy02-amd64-103) (x86_64-linux-gnu-gcc-12 (Ubuntu 12.3.0-1ubuntu1~22.04) 12.3.0, GNU ld (GNU Binutils for Ubuntu) 2.38) #49~22.04.1-Ubuntu SMP PREEMPT_DYNAMIC Wed Nov  6 17:42:15 UTC 2
+--172699-- 
+--172699-- Arch and hwcaps: AMD64, LittleEndian, amd64-cx16-lzcnt-rdtscp-sse3-ssse3-avx-avx2-bmi-f16c-rdrand-rdseed
+--172699-- Page sizes: currently 4096, max supported 4096
+--172699-- Valgrind library directory: /usr/libexec/valgrind
+--172699-- Reading syms from /home/emanuele/Desktop/github/ORB_SLAM3/build/mono_video
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2
+--172699--   Considering /usr/lib/debug/.build-id/41/86944c50f8a32b47d74931e3f512b811813b64.debug ..
+--172699--   .. build-id is valid
+--172699-- Reading syms from /usr/libexec/valgrind/memcheck-amd64-linux
+--172699--    object doesn't have a symbol table
+--172699--    object doesn't have a dynamic symbol table
+--172699-- Scheduler: using generic scheduler lock implementation.
+--172699-- Reading suppressions file: /usr/libexec/valgrind/default.supp
+==172699== embedded gdbserver: reading from /tmp/vgdb-pipe-from-vgdb-to-172699-by-emanuele-on-???
+==172699== embedded gdbserver: writing to   /tmp/vgdb-pipe-to-vgdb-from-172699-by-emanuele-on-???
+==172699== embedded gdbserver: shared mem   /tmp/vgdb-pipe-shared-mem-vgdb-172699-by-emanuele-on-???
+==172699== 
+==172699== TO CONTROL THIS PROCESS USING vgdb (which you probably
+==172699== don't want to do, unless you know exactly what you're doing,
+==172699== or are doing some strange experiment):
+==172699==   /usr/bin/vgdb --pid=172699 ...command...
+==172699== 
+==172699== TO DEBUG THIS PROCESS USING GDB: start GDB like this
+==172699==   /path/to/gdb ./build/mono_video
+==172699== and then give GDB the following command
+==172699==   target remote | /usr/bin/vgdb --pid=172699
+==172699== --pid is optional if only one valgrind process is running
+==172699== 
+--172699-- REDIR: 0x402aa40 (ld-linux-x86-64.so.2:strlen) redirected to 0x580bcec2 (???)
+--172699-- REDIR: 0x402a810 (ld-linux-x86-64.so.2:index) redirected to 0x580bcedc (???)
+--172699-- Reading syms from /usr/libexec/valgrind/vgpreload_core-amd64-linux.so
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so
+--172699--    object doesn't have a symbol table
+==172699== WARNING: new redirection conflicts with existing -- ignoring it
+--172699--     old: 0x0402aa40 (strlen              ) R-> (0000.0) 0x580bcec2 ???
+--172699--     new: 0x0402aa40 (strlen              ) R-> (2007.0) 0x04856e30 strlen
+--172699-- REDIR: 0x4027220 (ld-linux-x86-64.so.2:strcmp) redirected to 0x4857cd0 (strcmp)
+--172699-- REDIR: 0x402afa0 (ld-linux-x86-64.so.2:mempcpy) redirected to 0x485b840 (mempcpy)
+--172699-- Reading syms from /home/emanuele/Desktop/github/ORB_SLAM3/lib/libORB_SLAM3.so
+--172699-- Reading syms from /usr/local/lib/libopencv_highgui.so.4.10.0
+--172699-- Reading syms from /usr/local/lib/libopencv_videoio.so.4.10.0
+--172699-- Reading syms from /usr/local/lib/libopencv_imgproc.so.4.10.0
+--172699-- Reading syms from /usr/local/lib/libopencv_core.so.4.10.0
+--172699-- Reading syms from /usr/local/lib/libpango_display.so
+--172699-- Reading syms from /usr/local/lib/libpango_opengl.so
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libGLEW.so.2.2.0
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libOpenGL.so.0.0.0
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.30
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libgcc_s.so.1
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libc.so.6
+--172699--   Considering /usr/lib/debug/.build-id/49/0fef8403240c91833978d494d39e537409b92e.debug ..
+--172699--   .. build-id is valid
+==172699== WARNING: new redirection conflicts with existing -- ignoring it
+--172699--     old: 0x07a25c60 (memalign            ) R-> (1011.0) 0x04856080 memalign
+--172699--     new: 0x07a25c60 (memalign            ) R-> (1017.0) 0x04856050 aligned_alloc
+==172699== WARNING: new redirection conflicts with existing -- ignoring it
+--172699--     old: 0x07a25c60 (memalign            ) R-> (1011.0) 0x04856080 memalign
+--172699--     new: 0x07a25c60 (memalign            ) R-> (1017.0) 0x04856020 aligned_alloc
+==172699== WARNING: new redirection conflicts with existing -- ignoring it
+--172699--     old: 0x07a25c60 (memalign            ) R-> (1011.0) 0x04856080 memalign
+--172699--     new: 0x07a25c60 (memalign            ) R-> (1017.0) 0x04856050 aligned_alloc
+==172699== WARNING: new redirection conflicts with existing -- ignoring it
+--172699--     old: 0x07a25c60 (memalign            ) R-> (1011.0) 0x04856080 memalign
+--172699--     new: 0x07a25c60 (memalign            ) R-> (1017.0) 0x04856020 aligned_alloc
+--172699-- Reading syms from /home/emanuele/Desktop/github/ORB_SLAM3/Thirdparty/DBoW2/lib/libDBoW2.so
+--172699-- Reading syms from /home/emanuele/Desktop/github/ORB_SLAM3/Thirdparty/g2o/lib/libg2o.so
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libboost_serialization.so.1.74.0
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libcrypto.so.3
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/local/lib/libopencv_calib3d.so.4.10.0
+--172699-- Reading syms from /usr/local/lib/libopencv_features2d.so.4.10.0
+--172699-- Reading syms from /usr/local/lib/libpango_vars.so
+--172699-- Reading syms from /usr/local/lib/libpango_core.so
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libm.so.6
+--172699--   Considering /usr/lib/debug/.build-id/a5/08ec5d8bf12fb7fd08204e0f87518e5cd0b102.debug ..
+--172699--   .. build-id is valid
+--172699-- Reading syms from /usr/local/lib/libopencv_imgcodecs.so.4.10.0
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libgtk-x11-2.0.so.0.2400.33
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libgdk-x11-2.0.so.0.2400.33
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libcairo.so.2.11600.0
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libgdk_pixbuf-2.0.so.0.4200.8
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libgobject-2.0.so.0.7200.4
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libglib-2.0.so.0.7200.4
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libdc1394.so.25.0.0
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libgstbase-1.0.so.0.2003.0
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libgstreamer-1.0.so.0.2003.0
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libgstapp-1.0.so.0.2001.0
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libgstriff-1.0.so.0.2001.0
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libgstpbutils-1.0.so.0.2001.0
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libgstvideo-1.0.so.0.2001.0
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libgstaudio-1.0.so.0.2001.0
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libavcodec.so.58.134.100
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libavformat.so.58.76.100
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libavutil.so.56.70.100
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libswscale.so.5.9.100
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libz.so.1.2.11
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/local/lib/libpango_windowing.so
+--172699-- Reading syms from /usr/local/lib/libpango_image.so
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libGLX.so.0.0.0
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libGL.so.1.7.0
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libGLdispatch.so.0.0.0
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/local/lib/libopencv_flann.so.4.10.0
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libjpeg.so.8.2.2
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libpng16.so.16.37.0
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libtiff.so.5.7.0
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libIlmImf-2_5.so.25.0.6
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libgmodule-2.0.so.0.7200.4
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libpangocairo-1.0.so.0.5000.6
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libX11.so.6.4.0
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libXfixes.so.3.1.0
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libatk-1.0.so.0.23609.1
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libgio-2.0.so.0.7200.4
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libpangoft2-1.0.so.0.5000.6
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libpango-1.0.so.0.5000.6
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libfontconfig.so.1.12.0
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libXrender.so.1.3.0
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libXinerama.so.1.0.0
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libXi.so.6.1.0
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libXrandr.so.2.2.0
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libXcursor.so.1.0.2
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libXcomposite.so.1.0.0
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libXdamage.so.1.1.0
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libXext.so.6.4.0
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libpixman-1.so.0.40.0
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libfreetype.so.6.18.1
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libxcb-shm.so.0.0.0
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libxcb.so.1.1.0
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libxcb-render.so.0.0.0
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libffi.so.8.1.0
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libpcre.so.3.13.3
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libraw1394.so.11.1.0
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libusb-1.0.so.0.3.0
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libunwind.so.8.0.1
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libdw-0.186.so
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libgsttag-1.0.so.0.2001.0
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/liborc-0.4.so.0.32.0
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libswresample.so.3.9.100
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libvpx.so.7.0.0
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libwebpmux.so.3.0.8
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libwebp.so.7.1.3
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/liblzma.so.5.2.5
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libdav1d.so.5.1.1
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/librsvg-2.so.2.48.0
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libzvbi.so.0.13.2
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libsnappy.so.1.1.8
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libaom.so.3.3.0
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libcodec2.so.1.0
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libgsm.so.1.0.19
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libmp3lame.so.0.0.0
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libopenjp2.so.2.4.0
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libopus.so.0.8.0
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libshine.so.3.0.1
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libspeex.so.1.5.0
+--172699--   Considering /usr/lib/x86_64-linux-gnu/libspeex.so.1.5.0 ..
+--172699--   .. CRC mismatch (computed 599a051d wanted 935f2806)
+--172699--   Considering /lib/x86_64-linux-gnu/libspeex.so.1.5.0 ..
+--172699--   .. CRC mismatch (computed 599a051d wanted 935f2806)
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libtheoraenc.so.1.1.2
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libtheoradec.so.1.1.4
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libtwolame.so.0.0.0
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libvorbis.so.0.4.9
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libvorbisenc.so.2.0.12
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libx264.so.163
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libx265.so.199
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libxvidcore.so.4.3
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libva.so.2.1400.0
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libmfx.so.1.35
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libxml2.so.2.9.13
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libbz2.so.1.0.4
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libgme.so.0.6.3
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libopenmpt.so.0.3.3
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libchromaprint.so.1.5.1
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libbluray.so.2.4.1
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libgnutls.so.30.31.0
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/librabbitmq.so.4.4.0
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libsrt-gnutls.so.1.4.4
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libssh-gcrypt.so.4.8.7
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libzmq.so.5.2.4
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libva-drm.so.2.1400.0
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libva-x11.so.2.1400.0
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libvdpau.so.1.0.0
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libdrm.so.2.4.0
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/local/cuda-12.0/targets/x86_64-linux/lib/libOpenCL.so.1.0.0
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libEGL.so.1.1.0
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/liblz4.so.1.9.3
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libzstd.so.1.4.8
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libjbig.so.0
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libdeflate.so.0
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libImath-2_5.so.25.0.6
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libIlmThread-2_5.so.25.0.6
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libHalf-2_5.so.25.0.6
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libIex-2_5.so.25.0.6
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libharfbuzz.so.0.20704.0
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libmount.so.1.1.0
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libselinux.so.1
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libfribidi.so.0.4.0
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libthai.so.0.3.1
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libexpat.so.1.8.7
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libuuid.so.1.3.0
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libbrotlidec.so.1.0.9
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libXau.so.6.0.0
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libXdmcp.so.6.0.0
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libudev.so.1.7.2
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libelf-0.186.so
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libsoxr.so.0.1.2
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libcairo-gobject.so.2.11600.0
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libogg.so.0.8.5
+--172699--   Considering /usr/lib/x86_64-linux-gnu/libogg.so.0.8.5 ..
+--172699--   .. CRC mismatch (computed 2f010366 wanted 3991f6dc)
+--172699--   Considering /lib/x86_64-linux-gnu/libogg.so.0.8.5 ..
+--172699--   .. CRC mismatch (computed 2f010366 wanted 3991f6dc)
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libnuma.so.1.0.0
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libpthread.so.0
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libicuuc.so.70.1
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libmpg123.so.0.46.7
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libvorbisfile.so.3.3.8
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libudfread.so.0.1.0
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libp11-kit.so.0.3.0
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libidn2.so.0.3.7
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libunistring.so.2.2.0
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libtasn1.so.6.6.2
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libnettle.so.8.4
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libhogweed.so.6.4
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libgmp.so.10.4.1
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libssl.so.3
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libgcrypt.so.20.3.4
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libgpg-error.so.0.32.1
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libgssapi_krb5.so.2.2
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libbsd.so.0.11.5
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libsodium.so.23.3.0
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libpgm-5.3.so.0.0.128
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libnorm.so.1
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libdl.so.2
+--172699--   Considering /usr/lib/debug/.build-id/6f/6fe1a24b7b981e11c9a3373b806d3496d4d9d4.debug ..
+--172699--   .. build-id is valid
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libgraphite2.so.3.2.1
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libblkid.so.1.1.0
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libpcre2-8.so.0.10.4
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libdatrie.so.1.4.0
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libbrotlicommon.so.1.0.9
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libgomp.so.1.0.0
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libicudata.so.70.1
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libkrb5.so.3.3
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libk5crypto.so.3.1
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libcom_err.so.2.1
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libkrb5support.so.0.1
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libmd.so.0.0.5
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libkeyutils.so.1.9
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libresolv.so.2
+--172699--   Considering /usr/lib/debug/.build-id/95/ebf3f0e57d22d884105b9316288167790a36fb.debug ..
+--172699--   .. build-id is valid
+--172699-- REDIR: 0x7a28720 (libc.so.6:strnlen) redirected to 0x4847220 (_vgnU_ifunc_wrapper)
+--172699-- REDIR: 0x7a289e0 (libc.so.6:strpbrk) redirected to 0x4847220 (_vgnU_ifunc_wrapper)
+--172699-- REDIR: 0x7a282e0 (libc.so.6:strcmp) redirected to 0x4847220 (_vgnU_ifunc_wrapper)
+--172699-- REDIR: 0x7a46cd0 (libc.so.6:wcsnlen) redirected to 0x4847220 (_vgnU_ifunc_wrapper)
+--172699-- REDIR: 0x7a296d0 (libc.so.6:memset) redirected to 0x4847220 (_vgnU_ifunc_wrapper)
+--172699-- REDIR: 0x7a45540 (libc.so.6:wcslen) redirected to 0x4847220 (_vgnU_ifunc_wrapper)
+--172699-- REDIR: 0x7a29c10 (libc.so.6:memcpy@@GLIBC_2.14) redirected to 0x4847220 (_vgnU_ifunc_wrapper)
+--172699-- REDIR: 0x7a45370 (libc.so.6:wcschr) redirected to 0x4847220 (_vgnU_ifunc_wrapper)
+--172699-- REDIR: 0x7a28260 (libc.so.6:index) redirected to 0x4847220 (_vgnU_ifunc_wrapper)
+--172699-- REDIR: 0x7a28960 (libc.so.6:rindex) redirected to 0x4847220 (_vgnU_ifunc_wrapper)
+--172699-- REDIR: 0x7a295a0 (libc.so.6:memmove) redirected to 0x4847220 (_vgnU_ifunc_wrapper)
+==172699== Preferring higher priority redirection:
+--172699--     old: 0x07b207c0 (__memcpy_avx_unalign) R-> (2018.0) 0x04858f90 __memcpy_avx_unaligned_erms
+--172699--     new: 0x07b207c0 (__memcpy_avx_unalign) R-> (2018.1) 0x0485a880 memmove
+--172699-- REDIR: 0x7a453f0 (libc.so.6:wcscmp) redirected to 0x4847220 (_vgnU_ifunc_wrapper)
+--172699-- REDIR: 0x7a299e0 (libc.so.6:stpncpy) redirected to 0x4847220 (_vgnU_ifunc_wrapper)
+--172699-- REDIR: 0x7a459b0 (libc.so.6:wmemchr) redirected to 0x4847220 (_vgnU_ifunc_wrapper)
+--172699-- REDIR: 0x7a28830 (libc.so.6:strncmp) redirected to 0x4847220 (_vgnU_ifunc_wrapper)
+--172699-- REDIR: 0x7a29a70 (libc.so.6:strcasecmp) redirected to 0x4847220 (_vgnU_ifunc_wrapper)
+--172699-- REDIR: 0x7a28420 (libc.so.6:strcspn) redirected to 0x4847220 (_vgnU_ifunc_wrapper)
+--172699-- REDIR: 0x7a45470 (libc.so.6:wcscpy) redirected to 0x4847220 (_vgnU_ifunc_wrapper)
+--172699-- REDIR: 0x7a281d0 (libc.so.6:strcat) redirected to 0x4847220 (_vgnU_ifunc_wrapper)
+--172699-- REDIR: 0x7a29b60 (libc.so.6:strncasecmp_l) redirected to 0x4847220 (_vgnU_ifunc_wrapper)
+--172699-- REDIR: 0x7a29480 (libc.so.6:bcmp) redirected to 0x4847220 (_vgnU_ifunc_wrapper)
+--172699-- REDIR: 0x7a31570 (libc.so.6:memrchr) redirected to 0x4847220 (_vgnU_ifunc_wrapper)
+--172699-- REDIR: 0x7a2b010 (libc.so.6:strchrnul) redirected to 0x4847220 (_vgnU_ifunc_wrapper)
+--172699-- REDIR: 0x7a28390 (libc.so.6:strcpy) redirected to 0x4847220 (_vgnU_ifunc_wrapper)
+--172699-- REDIR: 0x7a29b10 (libc.so.6:strcasecmp_l) redirected to 0x4847220 (_vgnU_ifunc_wrapper)
+--172699-- REDIR: 0x7a286a0 (libc.so.6:strlen) redirected to 0x4847220 (_vgnU_ifunc_wrapper)
+--172699-- REDIR: 0x7a288d0 (libc.so.6:strncpy) redirected to 0x4847220 (_vgnU_ifunc_wrapper)
+--172699-- REDIR: 0x7a29950 (libc.so.6:stpcpy) redirected to 0x4847220 (_vgnU_ifunc_wrapper)
+--172699-- REDIR: 0x7a293f0 (libc.so.6:memchr) redirected to 0x4847220 (_vgnU_ifunc_wrapper)
+--172699-- REDIR: 0x7a28b00 (libc.so.6:strspn) redirected to 0x4847220 (_vgnU_ifunc_wrapper)
+--172699-- REDIR: 0x7a297d0 (libc.so.6:mempcpy) redirected to 0x4847220 (_vgnU_ifunc_wrapper)
+--172699-- REDIR: 0x7a29ac0 (libc.so.6:strncasecmp) redirected to 0x4847220 (_vgnU_ifunc_wrapper)
+--172699-- REDIR: 0x7a2af80 (libc.so.6:rawmemchr) redirected to 0x4847220 (_vgnU_ifunc_wrapper)
+--172699-- REDIR: 0x7ab43b0 (libc.so.6:__memmove_chk) redirected to 0x4847220 (_vgnU_ifunc_wrapper)
+--172699-- REDIR: 0x7a29310 (libc.so.6:strstr) redirected to 0x4847220 (_vgnU_ifunc_wrapper)
+--172699-- REDIR: 0x7a287a0 (libc.so.6:strncat) redirected to 0x4847220 (_vgnU_ifunc_wrapper)
+--172699-- REDIR: 0x7ab4280 (libc.so.6:__memcpy_chk) redirected to 0x4847220 (_vgnU_ifunc_wrapper)
+==172699== WARNING: new redirection conflicts with existing -- ignoring it
+--172699--     old: 0x07b20790 (__memcpy_chk_avx_una) R-> (2024.0) 0x0485b2c0 __memmove_chk
+--172699--     new: 0x07b20790 (__memcpy_chk_avx_una) R-> (2030.0) 0x0485b940 __memcpy_chk
+==172699== WARNING: new redirection conflicts with existing -- ignoring it
+--172699--     old: 0x07b20790 (__memcpy_chk_avx_una) R-> (2024.0) 0x0485b2c0 __memmove_chk
+--172699--     new: 0x07b20790 (__memcpy_chk_avx_una) R-> (2030.0) 0x0485b940 __memcpy_chk
+==172699== WARNING: new redirection conflicts with existing -- ignoring it
+--172699--     old: 0x07b20790 (__memcpy_chk_avx_una) R-> (2024.0) 0x0485b2c0 __memmove_chk
+--172699--     new: 0x07b20790 (__memcpy_chk_avx_una) R-> (2030.0) 0x0485b940 __memcpy_chk
+==172699== WARNING: new redirection conflicts with existing -- ignoring it
+--172699--     old: 0x07b20790 (__memcpy_chk_avx_una) R-> (2024.0) 0x0485b2c0 __memmove_chk
+--172699--     new: 0x07b20790 (__memcpy_chk_avx_una) R-> (2030.0) 0x0485b940 __memcpy_chk
+==172699== WARNING: new redirection conflicts with existing -- ignoring it
+--172699--     old: 0x07b20790 (__memcpy_chk_avx_una) R-> (2024.0) 0x0485b2c0 __memmove_chk
+--172699--     new: 0x07b20790 (__memcpy_chk_avx_una) R-> (2030.0) 0x0485b940 __memcpy_chk
+==172699== WARNING: new redirection conflicts with existing -- ignoring it
+--172699--     old: 0x07b20790 (__memcpy_chk_avx_una) R-> (2024.0) 0x0485b2c0 __memmove_chk
+--172699--     new: 0x07b20790 (__memcpy_chk_avx_una) R-> (2030.0) 0x0485b940 __memcpy_chk
+==172699== WARNING: new redirection conflicts with existing -- ignoring it
+--172699--     old: 0x07b20790 (__memcpy_chk_avx_una) R-> (2024.0) 0x0485b2c0 __memmove_chk
+--172699--     new: 0x07b20790 (__memcpy_chk_avx_una) R-> (2030.0) 0x0485b940 __memcpy_chk
+==172699== WARNING: new redirection conflicts with existing -- ignoring it
+--172699--     old: 0x07b20790 (__memcpy_chk_avx_una) R-> (2024.0) 0x0485b2c0 __memmove_chk
+--172699--     new: 0x07b20790 (__memcpy_chk_avx_una) R-> (2030.0) 0x0485b940 __memcpy_chk
+==172699== WARNING: new redirection conflicts with existing -- ignoring it
+--172699--     old: 0x07b20790 (__memcpy_chk_avx_una) R-> (2024.0) 0x0485b2c0 __memmove_chk
+--172699--     new: 0x07b20790 (__memcpy_chk_avx_una) R-> (2030.0) 0x0485b940 __memcpy_chk
+==172699== WARNING: new redirection conflicts with existing -- ignoring it
+--172699--     old: 0x07b20790 (__memcpy_chk_avx_una) R-> (2024.0) 0x0485b2c0 __memmove_chk
+--172699--     new: 0x07b20790 (__memcpy_chk_avx_una) R-> (2030.0) 0x0485b940 __memcpy_chk
+==172699== WARNING: new redirection conflicts with existing -- ignoring it
+--172699--     old: 0x07b20790 (__memcpy_chk_avx_una) R-> (2024.0) 0x0485b2c0 __memmove_chk
+--172699--     new: 0x07b20790 (__memcpy_chk_avx_una) R-> (2030.0) 0x0485b940 __memcpy_chk
+==172699== WARNING: new redirection conflicts with existing -- ignoring it
+--172699--     old: 0x07b20790 (__memcpy_chk_avx_una) R-> (2024.0) 0x0485b2c0 __memmove_chk
+--172699--     new: 0x07b20790 (__memcpy_chk_avx_una) R-> (2030.0) 0x0485b940 __memcpy_chk
+==172699== WARNING: new redirection conflicts with existing -- ignoring it
+--172699--     old: 0x07b20790 (__memcpy_chk_avx_una) R-> (2024.0) 0x0485b2c0 __memmove_chk
+--172699--     new: 0x07b20790 (__memcpy_chk_avx_una) R-> (2030.0) 0x0485b940 __memcpy_chk
+==172699== WARNING: new redirection conflicts with existing -- ignoring it
+--172699--     old: 0x07b20790 (__memcpy_chk_avx_una) R-> (2024.0) 0x0485b2c0 __memmove_chk
+--172699--     new: 0x07b20790 (__memcpy_chk_avx_una) R-> (2030.0) 0x0485b940 __memcpy_chk
+==172699== WARNING: new redirection conflicts with existing -- ignoring it
+--172699--     old: 0x07b20790 (__memcpy_chk_avx_una) R-> (2024.0) 0x0485b2c0 __memmove_chk
+--172699--     new: 0x07b20790 (__memcpy_chk_avx_una) R-> (2030.0) 0x0485b940 __memcpy_chk
+==172699== WARNING: new redirection conflicts with existing -- ignoring it
+--172699--     old: 0x07b20790 (__memcpy_chk_avx_una) R-> (2024.0) 0x0485b2c0 __memmove_chk
+--172699--     new: 0x07b20790 (__memcpy_chk_avx_una) R-> (2030.0) 0x0485b940 __memcpy_chk
+==172699== WARNING: new redirection conflicts with existing -- ignoring it
+--172699--     old: 0x07b20790 (__memcpy_chk_avx_una) R-> (2024.0) 0x0485b2c0 __memmove_chk
+--172699--     new: 0x07b20790 (__memcpy_chk_avx_una) R-> (2030.0) 0x0485b940 __memcpy_chk
+==172699== WARNING: new redirection conflicts with existing -- ignoring it
+--172699--     old: 0x07b20790 (__memcpy_chk_avx_una) R-> (2024.0) 0x0485b2c0 __memmove_chk
+--172699--     new: 0x07b20790 (__memcpy_chk_avx_una) R-> (2030.0) 0x0485b940 __memcpy_chk
+==172699== WARNING: new redirection conflicts with existing -- ignoring it
+--172699--     old: 0x07b20790 (__memcpy_chk_avx_una) R-> (2024.0) 0x0485b2c0 __memmove_chk
+--172699--     new: 0x07b20790 (__memcpy_chk_avx_una) R-> (2030.0) 0x0485b940 __memcpy_chk
+==172699== WARNING: new redirection conflicts with existing -- ignoring it
+--172699--     old: 0x07b20790 (__memcpy_chk_avx_una) R-> (2024.0) 0x0485b2c0 __memmove_chk
+--172699--     new: 0x07b20790 (__memcpy_chk_avx_una) R-> (2030.0) 0x0485b940 __memcpy_chk
+==172699== WARNING: new redirection conflicts with existing -- ignoring it
+--172699--     old: 0x07b20790 (__memcpy_chk_avx_una) R-> (2024.0) 0x0485b2c0 __memmove_chk
+--172699--     new: 0x07b20790 (__memcpy_chk_avx_una) R-> (2030.0) 0x0485b940 __memcpy_chk
+==172699== WARNING: new redirection conflicts with existing -- ignoring it
+--172699--     old: 0x07b20790 (__memcpy_chk_avx_una) R-> (2024.0) 0x0485b2c0 __memmove_chk
+--172699--     new: 0x07b20790 (__memcpy_chk_avx_una) R-> (2030.0) 0x0485b940 __memcpy_chk
+==172699== WARNING: new redirection conflicts with existing -- ignoring it
+--172699--     old: 0x07b20790 (__memcpy_chk_avx_una) R-> (2024.0) 0x0485b2c0 __memmove_chk
+--172699--     new: 0x07b20790 (__memcpy_chk_avx_una) R-> (2030.0) 0x0485b940 __memcpy_chk
+==172699== WARNING: new redirection conflicts with existing -- ignoring it
+--172699--     old: 0x07b20790 (__memcpy_chk_avx_una) R-> (2024.0) 0x0485b2c0 __memmove_chk
+--172699--     new: 0x07b20790 (__memcpy_chk_avx_una) R-> (2030.0) 0x0485b940 __memcpy_chk
+==172699== WARNING: new redirection conflicts with existing -- ignoring it
+--172699--     old: 0x07b20790 (__memcpy_chk_avx_una) R-> (2024.0) 0x0485b2c0 __memmove_chk
+--172699--     new: 0x07b20790 (__memcpy_chk_avx_una) R-> (2030.0) 0x0485b940 __memcpy_chk
+==172699== WARNING: new redirection conflicts with existing -- ignoring it
+--172699--     old: 0x07b20790 (__memcpy_chk_avx_una) R-> (2024.0) 0x0485b2c0 __memmove_chk
+--172699--     new: 0x07b20790 (__memcpy_chk_avx_una) R-> (2030.0) 0x0485b940 __memcpy_chk
+==172699== WARNING: new redirection conflicts with existing -- ignoring it
+--172699--     old: 0x07b20790 (__memcpy_chk_avx_una) R-> (2024.0) 0x0485b2c0 __memmove_chk
+--172699--     new: 0x07b20790 (__memcpy_chk_avx_una) R-> (2030.0) 0x0485b940 __memcpy_chk
+==172699== WARNING: new redirection conflicts with existing -- ignoring it
+--172699--     old: 0x07b20790 (__memcpy_chk_avx_una) R-> (2024.0) 0x0485b2c0 __memmove_chk
+--172699--     new: 0x07b20790 (__memcpy_chk_avx_una) R-> (2030.0) 0x0485b940 __memcpy_chk
+==172699== WARNING: new redirection conflicts with existing -- ignoring it
+--172699--     old: 0x07b20790 (__memcpy_chk_avx_una) R-> (2024.0) 0x0485b2c0 __memmove_chk
+--172699--     new: 0x07b20790 (__memcpy_chk_avx_una) R-> (2030.0) 0x0485b940 __memcpy_chk
+==172699== WARNING: new redirection conflicts with existing -- ignoring it
+--172699--     old: 0x07b20790 (__memcpy_chk_avx_una) R-> (2024.0) 0x0485b2c0 __memmove_chk
+--172699--     new: 0x07b20790 (__memcpy_chk_avx_una) R-> (2030.0) 0x0485b940 __memcpy_chk
+==172699== WARNING: new redirection conflicts with existing -- ignoring it
+--172699--     old: 0x07b20790 (__memcpy_chk_avx_una) R-> (2024.0) 0x0485b2c0 __memmove_chk
+--172699--     new: 0x07b20790 (__memcpy_chk_avx_una) R-> (2030.0) 0x0485b940 __memcpy_chk
+==172699== WARNING: new redirection conflicts with existing -- ignoring it
+--172699--     old: 0x07b20790 (__memcpy_chk_avx_una) R-> (2024.0) 0x0485b2c0 __memmove_chk
+--172699--     new: 0x07b20790 (__memcpy_chk_avx_una) R-> (2030.0) 0x0485b940 __memcpy_chk
+==172699== WARNING: new redirection conflicts with existing -- ignoring it
+--172699--     old: 0x07b20790 (__memcpy_chk_avx_una) R-> (2024.0) 0x0485b2c0 __memmove_chk
+--172699--     new: 0x07b20790 (__memcpy_chk_avx_una) R-> (2030.0) 0x0485b940 __memcpy_chk
+==172699== WARNING: new redirection conflicts with existing -- ignoring it
+--172699--     old: 0x07b20790 (__memcpy_chk_avx_una) R-> (2024.0) 0x0485b2c0 __memmove_chk
+--172699--     new: 0x07b20790 (__memcpy_chk_avx_una) R-> (2030.0) 0x0485b940 __memcpy_chk
+==172699== WARNING: new redirection conflicts with existing -- ignoring it
+--172699--     old: 0x07b20790 (__memcpy_chk_avx_una) R-> (2024.0) 0x0485b2c0 __memmove_chk
+--172699--     new: 0x07b20790 (__memcpy_chk_avx_una) R-> (2030.0) 0x0485b940 __memcpy_chk
+--172699-- REDIR: 0x7b1d610 (libc.so.6:__strrchr_avx2) redirected to 0x4856810 (rindex)
+--172699-- REDIR: 0x7b1d7e0 (libc.so.6:__strlen_avx2) redirected to 0x4856d10 (strlen)
+--172699-- REDIR: 0x7a250a0 (libc.so.6:malloc) redirected to 0x4850820 (malloc)
+--172699-- REDIR: 0x7a253e0 (libc.so.6:free) redirected to 0x4853210 (free)
+--172699-- REDIR: 0x7b20f80 (libc.so.6:__memset_avx2_unaligned_erms) redirected to 0x485a770 (memset)
+--172699-- REDIR: 0x7b19590 (libc.so.6:__rawmemchr_avx2) redirected to 0x485b360 (rawmemchr)
+--172699-- REDIR: 0x7b207c0 (libc.so.6:__memcpy_avx_unaligned_erms) redirected to 0x485a880 (memmove)
+--172699-- REDIR: 0x7b18940 (libc.so.6:__strcmp_avx2) redirected to 0x4857bd0 (strcmp)
+--172699-- REDIR: 0x7b19a80 (libc.so.6:__memcmp_avx2_movbe) redirected to 0x485a010 (bcmp)
+--172699-- REDIR: 0x7b18d80 (libc.so.6:__strncmp_avx2) redirected to 0x48573e0 (strncmp)
+--172699-- REDIR: 0x7b1d180 (libc.so.6:__strchr_avx2) redirected to 0x48569f0 (index)
+--172699-- REDIR: 0x7a28fc0 (libc.so.6:__GI_strstr) redirected to 0x485bae0 (__strstr_sse2)
+--172699-- REDIR: 0x7b192c0 (libc.so.6:__memchr_avx2) redirected to 0x4857d50 (memchr)
+--172699-- REDIR: 0x7a25740 (libc.so.6:realloc) redirected to 0x4855c50 (realloc)
+--172699-- REDIR: 0x7a26520 (libc.so.6:calloc) redirected to 0x48559d0 (calloc)
+--172699-- REDIR: 0x7b1d400 (libc.so.6:__strchrnul_avx2) redirected to 0x485b330 (strchrnul)
+--172699-- REDIR: 0x7b20780 (libc.so.6:__mempcpy_avx_unaligned_erms) redirected to 0x485b440 (mempcpy)
+--172699-- REDIR: 0x7a2a2e0 (libc.so.6:strcasestr) redirected to 0x485bde0 (strcasestr)
+--172699-- REDIR: 0x7a44180 (libc.so.6:__strstr_sse2_unaligned) redirected to 0x485ba50 (strstr)
+--172699-- REDIR: 0x7b1dc30 (libc.so.6:__strcat_avx2) redirected to 0x4856a20 (strcat)
+--172699-- REDIR: 0x7b20790 (libc.so.6:__memcpy_chk_avx_unaligned_erms) redirected to 0x485b2c0 (__memmove_chk)
+--172699-- REDIR: 0x77e2970 (libstdc++.so.6:operator new(unsigned long)) redirected to 0x4850fa0 (operator new(unsigned long))
+--172699-- REDIR: 0x7ab47e0 (libc.so.6:__strcpy_chk) redirected to 0x485b3a0 (__strcpy_chk)
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libdebuginfod-0.186.so
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libcurl-gnutls.so.4.7.0
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libnghttp2.so.14.20.1
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/librtmp.so.1
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libssh.so.4.8.7
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libpsl.so.5.3.2
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libldap-2.5.so.0.1.13
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/liblber-2.5.so.0.1.13
+--172699--    object doesn't have a symbol table
+--172699-- Reading syms from /usr/lib/x86_64-linux-gnu/libsasl2.so.2.0.25
+--172699--    object doesn't have a symbol table
+==172699== WARNING: new redirection conflicts with existing -- ignoring it
+--172699--     old: 0x07b20790 (__memcpy_chk_avx_una) R-> (2024.0) 0x0485b2c0 __memmove_chk
+--172699--     new: 0x07b20790 (__memcpy_chk_avx_una) R-> (2030.0) 0x0485b940 __memcpy_chk
+==172699== WARNING: new redirection conflicts with existing -- ignoring it
+--172699--     old: 0x07b20790 (__memcpy_chk_avx_una) R-> (2024.0) 0x0485b2c0 __memmove_chk
+--172699--     new: 0x07b20790 (__memcpy_chk_avx_una) R-> (2030.0) 0x0485b940 __memcpy_chk
+==172699== WARNING: new redirection conflicts with existing -- ignoring it
+--172699--     old: 0x07b20790 (__memcpy_chk_avx_una) R-> (2024.0) 0x0485b2c0 __memmove_chk
+--172699--     new: 0x07b20790 (__memcpy_chk_avx_una) R-> (2030.0) 0x0485b940 __memcpy_chk
+==172699== WARNING: new redirection conflicts with existing -- ignoring it
+--172699--     old: 0x07b20790 (__memcpy_chk_avx_una) R-> (2024.0) 0x0485b2c0 __memmove_chk
+--172699--     new: 0x07b20790 (__memcpy_chk_avx_una) R-> (2030.0) 0x0485b940 __memcpy_chk
+--172699-- REDIR: 0x77e0c10 (libstdc++.so.6:operator delete(void*)) redirected to 0x4853840 (operator delete(void*))
+--172699-- REDIR: 0x77e29d0 (libstdc++.so.6:operator new[](unsigned long)) redirected to 0x4852280 (operator new[](unsigned long))
+--172699-- REDIR: 0x77e0c40 (libstdc++.so.6:operator delete[](void*)) redirected to 0x4854a20 (operator delete[](void*))
+--172699-- REDIR: 0x77e0c20 (libstdc++.so.6:operator delete(void*, unsigned long)) redirected to 0x4853b00 (operator delete(void*, unsigned long))
+--172699-- REDIR: 0x7a270e0 (libc.so.6:posix_memalign) redirected to 0x4855f60 (posix_memalign)
+--172699-- REDIR: 0x7b18800 (libc.so.6:__strspn_sse42) redirected to 0x485bd50 (strspn)
+--172699-- REDIR: 0x7b1ecb0 (libc.so.6:__strcpy_avx2) redirected to 0x4856e60 (strcpy)
+--172699-- REDIR: 0x7b185a0 (libc.so.6:__strcspn_sse42) redirected to 0x485bc70 (strcspn)
