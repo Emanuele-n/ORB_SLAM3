@@ -17,6 +17,9 @@ The original code is BSD licensed.
 The code is from: http://graphics.stanford.edu/~seander/bithacks.html#CountBitsSetParallel.
 The code is in the public domain.
 
+* ini.h.
+
+
 #####Code in Thirdparty folder
 
 * All code in **DBoW2** folder.

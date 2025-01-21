@@ -28,7 +28,7 @@ gdb ./build/mono_video
 ```
 Run with valgrind
 ```
-valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --verbose --log-file=valgrind-out.txt ./build/mono_video em/run/config.ini
+valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --verbose --log-file=em/logs/valgrind-out.txt ./build/mono_video em/run/config.ini
 ```
 
 # Real time pose

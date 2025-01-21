@@ -21,26 +21,6 @@
 #include "GeometricCamera.h"
 #include "Pinhole.h"
 #include "KannalaBrandt8.h"
-#include "spline.h"
-
-// Helper function to create Gaussian kernel
-std::vector<double> gaussianKernel(int size, double sigma) {
-    std::vector<double> kernel(size);
-    double sum = 0.0;
-    int mean = size/2;
-    
-    for(int x = 0; x < size; x++) {
-        kernel[x] = exp(-0.5 * pow((x - mean)/sigma, 2.0));
-        sum += kernel[x];
-    }
-    
-    // Normalize the kernel
-    for(int x = 0; x < size; x++) {
-        kernel[x] /= sum;
-    }
-    
-    return kernel;
-}
 
 namespace ORB_SLAM3
 {
