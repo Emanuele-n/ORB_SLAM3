@@ -1093,7 +1093,7 @@ void Tracking::FindCandidateFrame()
     std::vector<std::vector<Sophus::SE3f>> allRefCenterlineFrames = mpAtlas->GetRefCenterlineFrames();
     if (allRefCenterlineFrames.empty())
     {
-        cout << "Reference centerline is empty" << endl;
+        cout << "Reference centerline is empty in Tracking" << endl;
         SetCandidateFrame(finalCandidateFrame);
         return;
     }
@@ -1110,7 +1110,7 @@ void Tracking::FindCandidateFrame()
     }
     if (allEmpty)
     {
-        std::cerr << "Reference centerline is empty" << std::endl;
+        std::cerr << "Reference centerline is empty in Tracking" << std::endl;
         SetCandidateFrame(finalCandidateFrame);
         return;
     }
@@ -1347,8 +1347,10 @@ void Tracking::Track()
         // System is initialized. Track Frame.
         bool bOK;
 
-        // Find candidate frame
-        FindCandidateFrame();
+        if (mWithPatientData){
+            // Find candidate frame
+            FindCandidateFrame();
+        }
 
         // Get candidate frame for debugging
         // Sophus::SE3f candidateFrame = GetCandidateFrame();

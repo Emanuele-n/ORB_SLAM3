@@ -22,9 +22,12 @@
 
 #include <complex>
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 #include <Eigen/StdVector>
 #include <Eigen/Dense>
 #include <unsupported/Eigen/MatrixFunctions>
+#pragma GCC diagnostic pop
 
 #include "Thirdparty/g2o/g2o/core/sparse_block_matrix.h"
 #include "Thirdparty/g2o/g2o/core/block_solver.h"
@@ -43,7 +46,7 @@
 
 // Optimization parameters file path
 #include "External/ini.h"
-// Optimization parameters file path
+// Optimization parameters file path (TODO: change this hardcoded path)
 std::string optParamsPath = "/home/emanuele/Desktop/github/ORB_SLAM3/em/run/config.ini";
 
 namespace ORB_SLAM3
@@ -134,7 +137,8 @@ void Optimizer::GlobalBundleAdjustment(bool withPatientData, bool withEncoder, c
 }
 
 void Optimizer::BundleAdjustment(bool withPatientData, bool withEncoder, const std::vector<std::vector<Sophus::SE3f>> &refCenterlineFrames, const vector<KeyFrame *> &vpKFs, const vector<MapPoint *> &vpMP, int nIterations, bool* pbStopFlag, const unsigned long nLoopKF, const bool bRobust)
-{
+{   
+    bool debug = false;
     vector<bool> vbNotIncludedMP;
     vbNotIncludedMP.resize(vpMP.size());
 
@@ -191,7 +195,10 @@ void Optimizer::BundleAdjustment(bool withPatientData, bool withEncoder, const s
     {
         KeyFrame* pKF = vpKFs[i];
         if(pKF->isBad())
+        {
+            cout << "Bad KF" << endl;
             continue;
+        }
         g2o::VertexSE3Expmap * vSE3 = new g2o::VertexSE3Expmap();
         Sophus::SE3<float> Tcw = pKF->GetPose();
         vSE3->setEstimate(g2o::SE3Quat(Tcw.unit_quaternion().cast<double>(),Tcw.translation().cast<double>()));
@@ -200,10 +207,10 @@ void Optimizer::BundleAdjustment(bool withPatientData, bool withEncoder, const s
         optimizer.addVertex(vSE3);
         if(pKF->mnId>maxKFid)
             maxKFid=pKF->mnId;
-
+        
         if (withPatientData){
             // --- Find candidate frame for each keyframe and add the error term to the cost function ---
-            bool debug = false;
+            if (debug) cout << "Optimizing with patient data: " << withPatientData << endl;
             if (debug) cout << "Finding candidate frame" << endl;
             Sophus::SE3f finalCandidateFrame;
 
@@ -225,7 +232,7 @@ void Optimizer::BundleAdjustment(bool withPatientData, bool withEncoder, const s
             std::vector<std::vector<Sophus::SE3f>> allRefCenterlineFrames = refCenterlineFrames;
             if (allRefCenterlineFrames.empty())
             {
-                cout << "Reference centerline is empty" << endl;
+                cout << "Reference centerline is empty in Optimizer" << endl;
                 // return;
             }
 
@@ -241,7 +248,7 @@ void Optimizer::BundleAdjustment(bool withPatientData, bool withEncoder, const s
             }
             if (allEmpty)
             {
-                std::cerr << "Reference centerline is empty" << std::endl;
+                std::cerr << "Reference centerline is empty in Optimizer" << std::endl;
                 // return;
             }
 
@@ -445,7 +452,9 @@ void Optimizer::BundleAdjustment(bool withPatientData, bool withEncoder, const s
     {
         MapPoint* pMP = vpMP[i];
         if(pMP->isBad())
+        {
             continue;
+        }
         g2o::VertexSBAPointXYZ* vPoint = new g2o::VertexSBAPointXYZ();
         vPoint->setEstimate(pMP->GetWorldPos().cast<double>());
         const int id = pMP->mnId+maxKFid+1;
@@ -461,9 +470,13 @@ void Optimizer::BundleAdjustment(bool withPatientData, bool withEncoder, const s
         {
             KeyFrame* pKF = mit->first;
             if(pKF->isBad() || pKF->mnId>maxKFid)
+            {
                 continue;
+            }
             if(optimizer.vertex(id) == NULL || optimizer.vertex(pKF->mnId) == NULL)
+            {
                 continue;
+            }
             nEdges++;
 
             const int leftIndex = get<0>(mit->second);
@@ -590,10 +603,13 @@ void Optimizer::BundleAdjustment(bool withPatientData, bool withEncoder, const s
     // Recover optimized data
     //Keyframes
     for(size_t i=0; i<vpKFs.size(); i++)
-    {
+    {   
         KeyFrame* pKF = vpKFs[i];
         if(pKF->isBad())
+        {
+            if(debug) cout << "Bad KF" << endl;
             continue;
+        }
         g2o::VertexSE3Expmap* vSE3 = static_cast<g2o::VertexSE3Expmap*>(optimizer.vertex(pKF->mnId));
 
         g2o::SE3Quat SE3quat = vSE3->estimate();
@@ -602,7 +618,7 @@ void Optimizer::BundleAdjustment(bool withPatientData, bool withEncoder, const s
             pKF->SetPose(Sophus::SE3f(SE3quat.rotation().cast<float>(), SE3quat.translation().cast<float>()));
         }
         else
-        {
+        {   
             pKF->mTcwGBA = Sophus::SE3d(SE3quat.rotation(),SE3quat.translation()).cast<float>();
             pKF->mnBAGlobalForKF = nLoopKF;
 
@@ -628,7 +644,9 @@ void Optimizer::BundleAdjustment(bool withPatientData, bool withEncoder, const s
                     }
 
                     if(pMP->isBad())
+                    {
                         continue;
+                    }
 
                     if(e->chi2()>5.991 || !e->isDepthPositive())
                     {
@@ -655,7 +673,9 @@ void Optimizer::BundleAdjustment(bool withPatientData, bool withEncoder, const s
                     }
 
                     if(pMP->isBad())
+                    {
                         continue;
+                    }
 
                     if(e->chi2()>7.815 || !e->isDepthPositive())
                     {
@@ -668,6 +688,7 @@ void Optimizer::BundleAdjustment(bool withPatientData, bool withEncoder, const s
                     }
                 }
             }
+            if (debug) cout << "Done setting pose GBA" << endl;
         }
     }
 
@@ -675,16 +696,22 @@ void Optimizer::BundleAdjustment(bool withPatientData, bool withEncoder, const s
     for(size_t i=0; i<vpMP.size(); i++)
     {
         if(vbNotIncludedMP[i])
+        {
+            if (debug) cout << "Not included MP" << endl;
             continue;
+        }
 
         MapPoint* pMP = vpMP[i];
 
         if(pMP->isBad())
+        {
+            if (debug) cout << "Bad MP" << endl;
             continue;
+        }
         g2o::VertexSBAPointXYZ* vPoint = static_cast<g2o::VertexSBAPointXYZ*>(optimizer.vertex(pMP->mnId+maxKFid+1));
 
         if(nLoopKF==pMap->GetOriginKF()->mnId)
-        {
+        {   
             pMP->SetWorldPos(vPoint->estimate().cast<float>());
             pMP->UpdateNormalAndDepth();
         }
@@ -1003,7 +1030,9 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag, Map* pMap
         MapPoint* pMP = vpMapPointEdgeMono[i];
 
         if(pMP->isBad())
+        {
             continue;
+        }
 
         if(e->chi2()>5.991 || !e->isDepthPositive())
         {
@@ -1018,7 +1047,9 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag, Map* pMap
         MapPoint* pMP = vpMapPointEdgeBody[i];
 
         if(pMP->isBad())
+        {
             continue;
+        }
 
         if(e->chi2()>5.991 || !e->isDepthPositive())
         {
@@ -1033,7 +1064,9 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag, Map* pMap
         MapPoint* pMP = vpMapPointEdgeStereo[i];
 
         if(pMP->isBad())
+        {
             continue;
+        }
 
         if(e->chi2()>7.815 || !e->isDepthPositive())
         {
@@ -1150,7 +1183,9 @@ void Optimizer::LocalBundleAdjustment(KeyFrame* pMainKF,vector<KeyFrame*> vpAdju
     for(KeyFrame* pKFi : vpAdjustKF)
     {
         if(pKFi->isBad() || pKFi->GetMap() != pCurrentMap)
+        {
             continue;
+        }
 
         pKFi->mnBALocalForMerge = pMainKF->mnId;
 
@@ -1213,7 +1248,9 @@ void Optimizer::LocalBundleAdjustment(KeyFrame* pMainKF,vector<KeyFrame*> vpAdju
     {
         MapPoint* pMPi = vpMPs[i];
         if(pMPi->isBad())
+        {
             continue;
+        }
 
         g2o::VertexSBAPointXYZ* vPoint = new g2o::VertexSBAPointXYZ();
         vPoint->setEstimate(pMPi->GetWorldPos().cast<double>());
@@ -1230,7 +1267,9 @@ void Optimizer::LocalBundleAdjustment(KeyFrame* pMainKF,vector<KeyFrame*> vpAdju
         {
             KeyFrame* pKF = mit->first;
             if(pKF->isBad() || pKF->mnId>maxKFid || pKF->mnBALocalForMerge != pMainKF->mnId || !pKF->GetMapPoint(get<0>(mit->second)))
+            {
                 continue;
+            }
 
             nEdges++;
 
@@ -1325,7 +1364,9 @@ void Optimizer::LocalBundleAdjustment(KeyFrame* pMainKF,vector<KeyFrame*> vpAdju
             MapPoint* pMP = vpMapPointEdgeMono[i];
 
             if(pMP->isBad())
+            {
                 continue;
+            }
 
             if(e->chi2()>5.991 || !e->isDepthPositive())
             {
@@ -1341,7 +1382,9 @@ void Optimizer::LocalBundleAdjustment(KeyFrame* pMainKF,vector<KeyFrame*> vpAdju
             MapPoint* pMP = vpMapPointEdgeStereo[i];
 
             if(pMP->isBad())
+            {
                 continue;
+            }
 
             if(e->chi2()>7.815 || !e->isDepthPositive())
             {
@@ -1370,7 +1413,9 @@ void Optimizer::LocalBundleAdjustment(KeyFrame* pMainKF,vector<KeyFrame*> vpAdju
         MapPoint* pMP = vpMapPointEdgeMono[i];
 
         if(pMP->isBad())
+        {
             continue;
+        }
 
         if(e->chi2()>5.991 || !e->isDepthPositive())
         {
@@ -1390,7 +1435,9 @@ void Optimizer::LocalBundleAdjustment(KeyFrame* pMainKF,vector<KeyFrame*> vpAdju
         MapPoint* pMP = vpMapPointEdgeStereo[i];
 
         if(pMP->isBad())
+        {
             continue;
+        }
 
         if(e->chi2()>7.815 || !e->isDepthPositive())
         {
@@ -1423,14 +1470,18 @@ void Optimizer::LocalBundleAdjustment(KeyFrame* pMainKF,vector<KeyFrame*> vpAdju
     {
         MapPoint* pMPi = vpMPs[i];
         if(pMPi->isBad())
+        {
             continue;
+        }
 
         const map<KeyFrame*,tuple<int,int>> observations = pMPi->GetObservations();
         for(map<KeyFrame*,tuple<int,int>>::const_iterator mit=observations.begin(); mit!=observations.end(); mit++)
         {
             KeyFrame* pKF = mit->first;
             if(pKF->isBad() || pKF->mnId>maxKFid || pKF->mnBALocalForKF != pMainKF->mnId || !pKF->GetMapPoint(get<0>(mit->second)))
+            {
                 continue;
+            }
 
             if(pKF->mvuRight[get<0>(mit->second)]<0) //Monocular
             {
@@ -1448,7 +1499,9 @@ void Optimizer::LocalBundleAdjustment(KeyFrame* pMainKF,vector<KeyFrame*> vpAdju
     for(KeyFrame* pKFi : vpAdjustKF)
     {
         if(pKFi->isBad())
+        {
             continue;
+        }
 
         g2o::VertexSE3Expmap* vSE3 = static_cast<g2o::VertexSE3Expmap*>(optimizer.vertex(pKFi->mnId));
         g2o::SE3Quat SE3quat = vSE3->estimate();
@@ -1471,7 +1524,9 @@ void Optimizer::LocalBundleAdjustment(KeyFrame* pMainKF,vector<KeyFrame*> vpAdju
             }
 
             if(pMP->isBad())
+            {
                 continue;
+            }
 
             if(e->chi2()>5.991 || !e->isDepthPositive())
             {
@@ -1499,7 +1554,9 @@ void Optimizer::LocalBundleAdjustment(KeyFrame* pMainKF,vector<KeyFrame*> vpAdju
             }
 
             if(pMP->isBad())
+            {
                 continue;
+            }
 
             if(e->chi2()>7.815 || !e->isDepthPositive())
             {
@@ -1520,7 +1577,9 @@ void Optimizer::LocalBundleAdjustment(KeyFrame* pMainKF,vector<KeyFrame*> vpAdju
     for(MapPoint* pMPi : vpMPs)
     {
         if(pMPi->isBad())
+        {
             continue;
+        }
 
         g2o::VertexSBAPointXYZ* vPoint = static_cast<g2o::VertexSBAPointXYZ*>(optimizer.vertex(pMPi->mnId+maxKFid+1));
         pMPi->SetWorldPos(vPoint->estimate().cast<float>());
@@ -1877,19 +1936,21 @@ int Optimizer::PoseOptimization(Frame *pFrame, bool withPatientData, const Sophu
     Sophus::SE3f pose(SE3quat_recov.rotation().cast<float>(), SE3quat_recov.translation().cast<float>());
     pFrame->SetPose(pose);
 
-    // Print pose and prior pose
-    bool isDebug = true;
-    if (isDebug) cout << "Pose: " << endl << pose.matrix() << endl;
-    if (isDebug) cout << "Prior pose: " << endl << priorPose.matrix() << endl;
+    if (withPatientData) {
+        // Print pose and prior pose
+        bool debug = false;
+        if (debug) cout << "Pose: " << endl << pose.matrix() << endl;
+        if (debug) cout << "Prior pose: " << endl << priorPose.matrix() << endl;
 
-    // Compute error by explicitly casting to double
-    Sophus::SE3d poseDouble(pose.unit_quaternion().cast<double>(), pose.translation().cast<double>());
-    Sophus::SE3d priorPoseDouble(priorPose.unit_quaternion().cast<double>(), priorPose.translation().cast<double>());
-    Eigen::Matrix<double, 6, 1> error = poseDouble.log() - priorPoseDouble.log();
+        // Compute error by explicitly casting to double
+        Sophus::SE3d poseDouble(pose.unit_quaternion().cast<double>(), pose.translation().cast<double>());
+        Sophus::SE3d priorPoseDouble(priorPose.unit_quaternion().cast<double>(), priorPose.translation().cast<double>());
+        Eigen::Matrix<double, 6, 1> error = poseDouble.log() - priorPoseDouble.log();
 
-    // Get the error norm
-    double errorNorm = error.norm();
-    if (isDebug) cout << "Error norm: " << endl << errorNorm << endl;
+        // Get the error norm
+        double errorNorm = error.norm();
+        if (debug) cout << "Error norm: " << endl << errorNorm << endl;
+    }
 
     return nInitialCorrespondences - nBad;
 }
@@ -1932,7 +1993,9 @@ void Optimizer::OptimizeEssentialGraph(Map* pMap, KeyFrame* pLoopKF, KeyFrame* p
     {
         KeyFrame* pKF = vpKFs[i];
         if(pKF->isBad())
+        {
             continue;
+        }
         g2o::VertexSim3Expmap* VSim3 = new g2o::VertexSim3Expmap();
 
         const int nIDi = pKF->mnId;
@@ -1984,7 +2047,9 @@ void Optimizer::OptimizeEssentialGraph(Map* pMap, KeyFrame* pLoopKF, KeyFrame* p
         {
             const long unsigned int nIDj = (*sit)->mnId;
             if((nIDi!=pCurKF->mnId || nIDj!=pLoopKF->mnId) && pKF->GetWeight(*sit)<minFeat)
+            {
                 continue;
+            }
 
             const g2o::Sim3 Sjw = vScw[nIDj];
             const g2o::Sim3 Sji = Sjw * Swi;
@@ -2080,7 +2145,9 @@ void Optimizer::OptimizeEssentialGraph(Map* pMap, KeyFrame* pLoopKF, KeyFrame* p
                 if(!pKFn->isBad() && pKFn->mnId<pKF->mnId)
                 {
                     if(sInsertedEdges.count(make_pair(min(pKF->mnId,pKFn->mnId),max(pKF->mnId,pKFn->mnId))))
+                    {
                         continue;
+                    }
 
                     g2o::Sim3 Snw;
 
@@ -2133,7 +2200,9 @@ void Optimizer::OptimizeEssentialGraph(Map* pMap, KeyFrame* pLoopKF, KeyFrame* p
         MapPoint* pMP = vpMPs[i];
 
         if(pMP->isBad())
+        {
             continue;
+        }
 
         int nIDr;
         if(pMP->mnCorrectedByKF==pCurKF->mnId)
@@ -2225,7 +2294,9 @@ void Optimizer::OptimizeEssentialGraph(KeyFrame* pCurKF, vector<KeyFrame*> &vpFi
     for(KeyFrame* pKFi : vpFixedCorrectedKFs)
     {
         if(pKFi->isBad())
+        {
             continue;
+        }
 
         g2o::VertexSim3Expmap* VSim3 = new g2o::VertexSim3Expmap();
 
@@ -2258,12 +2329,16 @@ void Optimizer::OptimizeEssentialGraph(KeyFrame* pCurKF, vector<KeyFrame*> &vpFi
     for(KeyFrame* pKFi : vpNonFixedKFs)
     {
         if(pKFi->isBad())
+        {
             continue;
+        }
 
         const int nIDi = pKFi->mnId;
 
         if(sIdKF.count(nIDi)) // It has already added in the corrected merge KFs
+        {
             continue;
+        }
 
         g2o::VertexSim3Expmap* VSim3 = new g2o::VertexSim3Expmap();
 

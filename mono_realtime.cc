@@ -11,6 +11,8 @@
 using namespace std;
 using namespace cv;
 
+// TODO: update this file as mono_video.cc
+
 int initTCPConnection(const string& serverIP, int serverPort) {
     int sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sockfd < 0) {

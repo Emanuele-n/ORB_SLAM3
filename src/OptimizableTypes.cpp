@@ -155,9 +155,34 @@ namespace ORB_SLAM3 {
         return os.good();
     }
 
+    // void EdgeSE3ProjectXYZ::linearizeOplus() {
+    //     g2o::VertexSE3Expmap * vj = static_cast<g2o::VertexSE3Expmap *>(_vertices[1]);
+    //     g2o::SE3Quat T(vj->estimate());
+    //     g2o::VertexSBAPointXYZ* vi = static_cast<g2o::VertexSBAPointXYZ*>(_vertices[0]);
+    //     Eigen::Vector3d xyz = vi->estimate();
+    //     Eigen::Vector3d xyz_trans = T.map(xyz);
+
+    //     double x = xyz_trans[0];
+    //     double y = xyz_trans[1];
+    //     double z = xyz_trans[2];
+
+    //     auto projectJac = -pCamera->projectJac(xyz_trans);
+
+    //     _jacobianOplusXi =  projectJac * T.rotation().toRotationMatrix();
+
+    //     Eigen::Matrix<double,3,6> SE3deriv;
+    //     SE3deriv << 0.f, z,   -y, 1.f, 0.f, 0.f,
+    //             -z , 0.f, x, 0.f, 1.f, 0.f,
+    //             y ,  -x , 0.f, 0.f, 0.f, 1.f;
+
+    //     _jacobianOplusXj = projectJac * SE3deriv;
+    // }
+
+
     void EdgeSE3ProjectXYZ::linearizeOplus() {
         g2o::VertexSE3Expmap * vj = static_cast<g2o::VertexSE3Expmap *>(_vertices[1]);
         g2o::SE3Quat T(vj->estimate());
+
         g2o::VertexSBAPointXYZ* vi = static_cast<g2o::VertexSBAPointXYZ*>(_vertices[0]);
         Eigen::Vector3d xyz = vi->estimate();
         Eigen::Vector3d xyz_trans = T.map(xyz);
@@ -166,17 +191,23 @@ namespace ORB_SLAM3 {
         double y = xyz_trans[1];
         double z = xyz_trans[2];
 
-        auto projectJac = -pCamera->projectJac(xyz_trans);
+        // Force this to be a concrete matrix rather than a lazy expression:
+        Eigen::Matrix<double,2,3> projectJac = -pCamera->projectJac(xyz_trans);
 
-        _jacobianOplusXi =  projectJac * T.rotation().toRotationMatrix();
+        // Use .eval() so the product is computed right now, rather than referencing 
+        // projectJac & T.rotation() by pointer beyond their scope:
+        _jacobianOplusXi = (projectJac * T.rotation().toRotationMatrix()).eval();
 
         Eigen::Matrix<double,3,6> SE3deriv;
-        SE3deriv << 0.f, z,   -y, 1.f, 0.f, 0.f,
-                -z , 0.f, x, 0.f, 1.f, 0.f,
-                y ,  -x , 0.f, 0.f, 0.f, 1.f;
+        SE3deriv <<  0.0,  z,   -y,  1.0,  0.0,  0.0,
+                    -z  ,  0.0,  x,  0.0,  1.0,  0.0,
+                    y  , -x  ,  0.0, 0.0,  0.0,  1.0;
 
-        _jacobianOplusXj = projectJac * SE3deriv;
+        // Again, .eval() ensures the multiplication is fully evaluated into 
+        // a temporary, not referencing the local projectJac after we leave:
+        _jacobianOplusXj = (projectJac * SE3deriv).eval();
     }
+
 
 
     EdgeSE3ProjectXYZToBody::EdgeSE3ProjectXYZToBody() : BaseBinaryEdge<2, Eigen::Vector2d, g2o::VertexSBAPointXYZ, g2o::VertexSE3Expmap>() {

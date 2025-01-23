@@ -29,6 +29,7 @@ int main(int argc, char **argv)
     
     bool patient_data = false;
     bool use_encoder = false;
+    bool use_viewer = false;
     string patient_data_path = "";
     
     if (ini["RUN"].get("patient") == "true") {
@@ -40,11 +41,13 @@ int main(int argc, char **argv)
         use_encoder = true;
     }
 
+    if (ini["RUN"].get("viewer") == "true") {
+        use_viewer = true;
+    }
+
     string vocPath = ini["RUN"].get("vocabulary");
     string settingsPath = ini["RUN"].get("calibration");
     string videoPath = ini["RUN"].get("video");
-
-
 
     // Initialize video source either from camera or from video file
     VideoCapture cap;
@@ -52,14 +55,13 @@ int main(int argc, char **argv)
     cap.set(cv::CAP_PROP_BUFFERSIZE, 3); // Set buffer size to reduce delay
     cap.set(cv::CAP_PROP_FOURCC, cv::VideoWriter::fourcc('H', '2', '6', '4')); 
     
-
     if(!cap.isOpened())
     {
         cerr << "Failed to open video source" << endl;
         return -1;
     }
 
-    ORB_SLAM3::System SLAM(vocPath, settingsPath, ORB_SLAM3::System::MONOCULAR, true, patient_data, use_encoder);
+    ORB_SLAM3::System SLAM(vocPath, settingsPath, ORB_SLAM3::System::MONOCULAR, use_viewer, patient_data, use_encoder);
 
     cout << endl << "-------" << endl;
     cout << "Start processing camera input..." << endl;
@@ -76,13 +78,14 @@ int main(int argc, char **argv)
         chrono::duration<double> elapsed = currentTime - lastTime;
         if (elapsed >= desiredFrameDuration) {
             cap >> frame; // get a new frame from camera
+            // Check if it is the end of the video
             if(frame.empty())
             {
-                cerr << "Failed to capture image!" << endl;
+                cerr << "Failed to capture image or video ended" << endl;
                 break;
             }
             // Resize the frame manually
-            resize(frame, resized_frame, Size(640, 360), 0, 0, INTER_LINEAR);
+            resize(frame, resized_frame, Size(480, 480), 0, 0, INTER_LINEAR);
             
             double tframe = chrono::duration_cast<chrono::duration<double>>(chrono::steady_clock::now().time_since_epoch()).count();
 
