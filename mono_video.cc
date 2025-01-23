@@ -85,7 +85,7 @@ int main(int argc, char **argv)
                 break;
             }
             // Resize the frame manually
-            resize(frame, resized_frame, Size(480, 480), 0, 0, INTER_LINEAR);
+            resize(frame, resized_frame, Size(640, 360), 0, 0, INTER_LINEAR);
             
             double tframe = chrono::duration_cast<chrono::duration<double>>(chrono::steady_clock::now().time_since_epoch()).count();
 

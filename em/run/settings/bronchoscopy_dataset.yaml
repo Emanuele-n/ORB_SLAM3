@@ -14,16 +14,16 @@ Camera.width: 480
 # Camera1.fy: 448.768431364843
 
 # lung.yaml
-# Camera1.fx: 435.9655
-# Camera1.fy: 436.0708
-# Camera1.cx: 217.1750
-# Camera1.cy: 239.9629
+Camera1.fx: 435.9655
+Camera1.fy: 436.0708
+Camera1.cx: 217.1750
+Camera1.cy: 239.9629
 
-# new_lung.yaml (same as bronchoscopy.yaml)
-Camera1.fx: 447.679079249249
-Camera1.fy: 448.768431364843
-Camera1.cx: 252.560061902772
-Camera1.cy: 233.658637132913
+# new_lung.yaml (same as bronchoscopy.yaml and it doesn't work)
+# Camera1.fx: 447.679079249249
+# Camera1.fy: 448.768431364843
+# Camera1.cx: 252.560061902772
+# Camera1.cy: 233.658637132913
 
 Camera1.k1: 0.0237323472870419
 Camera1.k2: -0.320432607152857
