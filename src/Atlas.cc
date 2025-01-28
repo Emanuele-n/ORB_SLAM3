@@ -85,12 +85,12 @@ void Atlas::SetRefCenterline(string& refCenterlineFramesPath)
         std::string line;
         float x, y, z, tx, ty, tz, nx, ny, nz, bx, by, bz;
         char comma; // to consume the commas
-        Sophus::SE3f w_T_i; // Transformation from world to the i-th centerline point (written in the centerline data file)
-        Sophus::SE3f o_T_i; // Transformation from the first centerline point to the i-th point (to be found)
-        Sophus::SE3f w_T_o; // Transformation from world to the first centerline point (to transform from world to origin)
-        // World frame in this case is referred to the world where the CAD model is built and the centerline is extracted
-        // while the origin frame is the world frame in the viewer and SLAM system
-        // So the goal is to write the reference centerline in the origin frame
+        Sophus::SE3f o_T_ci; // Transformation from the cad origin (o-frame) to the i-th centerline point (written in the centerline data file)
+        Sophus::SE3f w_T_ci; // Transformation from the first centerline point (w-frame) to the i-th camera point (ci-frame) (to be found, corresponds to Twc in their notation)
+        Sophus::SE3f o_T_w; // Transformation from the cad origin (o-frame)  to the first centerline point 
+        
+        
+        // The goal is to write the reference centerline with respect to the SLAM world frame
         bool first = true;
 
         while (std::getline(file, line)) {
@@ -100,16 +100,16 @@ void Atlas::SetRefCenterline(string& refCenterlineFramesPath)
             if (iss >> x >> comma >> y >> comma >> z >> comma >> tx >> comma >> ty >> comma >> tz 
                     >> comma >> nx >> comma >> ny >> comma >> nz >> comma >> bx >> comma >> by >> comma >> bz) 
             {
-                Eigen::Vector3f w_p_i(x, y, z);
-                Eigen::Vector3f w_t_i(tx, ty, tz);
-                Eigen::Vector3f w_n_i(nx, ny, nz);
-                Eigen::Vector3f w_b_i(bx, by, bz);
+                Eigen::Vector3f o_p_ci(x, y, z);
+                Eigen::Vector3f o_t_ci(tx, ty, tz);
+                Eigen::Vector3f o_n_ci(nx, ny, nz);
+                Eigen::Vector3f o_b_ci(bx, by, bz);
 
                 // Construct rotation matrix as it is written in the file: t forward, n down, b left
                 Eigen::Matrix3f R;
-                R.col(0) = w_t_i;
-                R.col(1) = w_n_i;
-                R.col(2) = w_b_i;
+                R.col(0) = o_t_ci;
+                R.col(1) = o_n_ci;
+                R.col(2) = o_b_ci;
 
                 // Check determinant and adjust if necessary
                 if (R.determinant() < 0) {
@@ -129,15 +129,15 @@ void Atlas::SetRefCenterline(string& refCenterlineFramesPath)
 
                 // Find the transformation from world to the first centerline frame
                 if (first){
-                    w_T_o = Sophus::SE3f(R, w_p_i);
+                    o_T_w = Sophus::SE3f(R, o_p_ci);
                     first = false;
                 }
                 
-                // Compute w_T_i transformation as written in the centerline file
-                w_T_i = Sophus::SE3f(R, w_p_i);
+                // Compute o_T_ci transformation as written in the centerline file
+                o_T_ci = Sophus::SE3f(R, o_p_ci);
 
-                // Compute o_T_i transformation
-                o_T_i = w_T_o.inverse() * w_T_i;
+                // Compute w_T_ci transformation
+                w_T_ci = o_T_w.inverse() * o_T_ci;
 
                 // Rotate 90 degrees around n axis to match camera convention: 
                 // b forward, t right, n down -> z forward, x right, y down
@@ -149,12 +149,12 @@ void Atlas::SetRefCenterline(string& refCenterlineFramesPath)
                 Eigen::Matrix3f Ry_inv = Ry.transpose();
 
                 // Build the transformation to match the camera convention
-                o_T_i = Sophus::SE3f(Ry_inv, Eigen::Vector3f(0, 0, 0)) 
-                        * o_T_i 
+                w_T_ci = Sophus::SE3f(Ry_inv, Eigen::Vector3f(0, 0, 0)) 
+                        * w_T_ci 
                         * Sophus::SE3f(Ry, Eigen::Vector3f(0, 0, 0));
 
-                // Save the current o_T_i in currentBranchFrames
-                currentBranchFrames.push_back(o_T_i);
+                // Save the current w_T_ci in currentBranchFrames
+                currentBranchFrames.push_back(w_T_ci);
             }
         }
 
