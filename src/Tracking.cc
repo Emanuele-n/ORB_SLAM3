@@ -90,10 +90,10 @@ Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer,
         mINI::INIStructure ini;
         file.read(ini);
         mCenterlineFramesPath = ini["RUN"].get("patient_data");
-    }
 
-    if(mWithEncoder){
-        cout << "TODO implement encoder" << endl;
+        if(mWithEncoder){
+            mSimEncoderPath = ini["RUN"].get("sim_encoder");
+        }
     }
 
     initID = 0; lastID = 0;
@@ -1062,6 +1062,50 @@ Sophus::SE3f Tracking::GrabImageMonocular(const cv::Mat &im, const double &times
     return mCurrentFrame.GetPose();
 }
 
+
+double Tracking::GetSimEncoderData()
+{   
+    bool debug = false;
+    double simEncoderData = 0.0;
+    int currentFrameNumber = mpSystem->GetCurrentFrameNumber();
+    if (debug) cout << "Current frame number: " << currentFrameNumber << endl;
+
+    std::ifstream file(mSimEncoderPath);
+    if (!file.is_open()) {
+        std::cerr << "Failed to open " << mSimEncoderPath << std::endl;
+        return simEncoderData;
+    }
+
+    // Take the corresponding line
+    std::string line;
+    int lineIndex = -1;
+    getline(file, line); // Skip header
+    while (std::getline(file, line))
+    {
+        ++lineIndex;
+        if (lineIndex == currentFrameNumber)
+        {
+            std::stringstream ss(line);
+            std::string token;
+            std::vector<std::string> tokens;
+            while (std::getline(ss, token, ','))
+            {
+                tokens.push_back(token);
+            }
+            if (tokens.size() > 2)
+            {
+                simEncoderData = std::stod(tokens.back()) / 1000.0; // Convert to meters
+            }
+            break;
+        }
+    }
+
+    file.close();
+    if (debug) cout << "Simulated encoder data: " << simEncoderData << endl;
+    return simEncoderData;
+}
+
+
 void Tracking::FindCandidateFrame()
 {
     bool debug = false;
@@ -1115,9 +1159,19 @@ void Tracking::FindCandidateFrame()
         return;
     }
 
-    // Compute the curvilinear abscissa from the last pose to the origin on the trajectory
-    double s = mpAtlas->GetCurvilinearAbscissa(Tcw_pos_d);
-    // TODOE: if with encoder s is the encoder measurement
+    // Get the curvilinear abscissa
+    double s = 0.0;
+    if (mWithEncoder){
+        // If with encoder s is the encoder measurement
+        // Get the encoder measurement (TODOE: different in case is real encoder measurement or simulated)
+        s = GetSimEncoderData();
+
+    }
+    else{
+        // Compute the curvilinear abscissa from the last pose to the origin on the trajectory
+        s = mpAtlas->GetCurvilinearAbscissa(Tcw_pos_d);
+    }
+    
     if (debug) cout << "s: " << s << endl;
 
     if (s < 0.0005)

@@ -39,9 +39,9 @@ namespace ORB_SLAM3
 Verbose::eLevel Verbose::th = Verbose::VERBOSITY_NORMAL;
 
 System::System(const string &strVocFile, const string &strSettingsFile, const eSensor sensor,
-               const bool bUseViewer, const bool withPatientData, const bool withEncoder, const int initFr, const string &strSequence):
+               const bool bUseViewer, const bool withPatientData, const bool withEncoder, const int numFrames, const int initFr, const string &strSequence):
     mSensor(sensor), mpViewer(static_cast<Viewer*>(NULL)), mbReset(false), mbResetActiveMap(false),
-    mbActivateLocalizationMode(false), mbDeactivateLocalizationMode(false), mbShutDown(false), mWithPatientData(withPatientData), mWithEncoder(withEncoder)
+    mbActivateLocalizationMode(false), mbDeactivateLocalizationMode(false), mbShutDown(false), mWithPatientData(withPatientData), mWithEncoder(withEncoder), mNumFrames(numFrames)
 {
     // Output welcome message
     cout << endl <<
@@ -67,6 +67,10 @@ System::System(const string &strVocFile, const string &strSettingsFile, const eS
     {
         cout << "Patient data is enabled" << endl;
     }
+
+    cout << "Number of frames: " << mNumFrames << endl;
+    mCurrentFrameNumber = 0;
+    cout << "Current frame number: " << mCurrentFrameNumber << endl;
 
     //Check settings file
     cv::FileStorage fsSettings(strSettingsFile.c_str(), cv::FileStorage::READ);
@@ -238,7 +242,9 @@ System::System(const string &strVocFile, const string &strSettingsFile, const eS
 
 
 Sophus::SE3f System::TrackMonocular(const cv::Mat &im, const double &timestamp, string filename)
-{
+{   
+    IncreaseCurrentFrameNumber();
+    // cout << "Current frame number: " << GetCurrentFrameNumber() << endl;
 
     {
         unique_lock<mutex> lock(mMutexReset);
@@ -311,7 +317,17 @@ Sophus::SE3f System::TrackMonocular(const cv::Mat &im, const double &timestamp, 
     return Tcw;
 }
 
+void System::IncreaseCurrentFrameNumber()
+{   
+    std::unique_lock<std::mutex> lock(mMutexCurrentFrameNumber);
+    mCurrentFrameNumber++;
+}
 
+int System::GetCurrentFrameNumber()
+{
+    std::unique_lock<std::mutex> lock(mMutexCurrentFrameNumber);
+    return mCurrentFrameNumber;
+}
 
 void System::ActivateLocalizationMode()
 {

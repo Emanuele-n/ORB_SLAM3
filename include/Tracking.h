@@ -131,6 +131,7 @@ public:
     bool mWithPatientData;
     bool mWithEncoder;
     string mCenterlineFramesPath;
+    string mSimEncoderPath;
 
     // Input sensor
     int mSensor;
@@ -205,6 +206,9 @@ protected:
     std::mutex mMutexCandidateFrame;
     void FindCandidateFrame();
     void SetCandidateFrame(const Sophus::SE3f &candidateFrame);
+
+    // Get encoder data
+    double GetSimEncoderData();
 
     void CheckReplacedInLastFrame();
     bool TrackReferenceKeyFrame();

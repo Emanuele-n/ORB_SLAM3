@@ -244,43 +244,43 @@ void MapDrawer::DrawRefCenterline()
         }
         glEnd();
 
-        // Draw coordinate frames for ~10% of the points in this branch
-        glLineWidth(2.0f);
-        for (const auto& frame : branch)
-        {
-            // Extract a random number between 0 and 1
-            float random = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
+        // // Draw coordinate frames for ~10% of the points in this branch
+        // glLineWidth(2.0f);
+        // for (const auto& frame : branch)
+        // {
+        //     // Extract a random number between 0 and 1
+        //     float random = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
 
-            if (random < 0.1f)  // ~10% chance
-            {
-                Eigen::Vector3f pos = frame.translation();
-                Eigen::Matrix3f rot = frame.rotationMatrix();
+        //     if (random < 0.1f)  // ~10% chance
+        //     {
+        //         Eigen::Vector3f pos = frame.translation();
+        //         Eigen::Matrix3f rot = frame.rotationMatrix();
 
-                // Draw tangent vector (red)
-                glBegin(GL_LINES);
-                glColor3f(1.0f, 0.0f, 0.0f);
-                glVertex3f(pos[0], pos[1], pos[2]);
-                Eigen::Vector3f tangent = pos + 0.02f * rot.col(0);
-                glVertex3f(tangent[0], tangent[1], tangent[2]);
-                glEnd();
+        //         // Draw tangent vector (red)
+        //         glBegin(GL_LINES);
+        //         glColor3f(1.0f, 0.0f, 0.0f);
+        //         glVertex3f(pos[0], pos[1], pos[2]);
+        //         Eigen::Vector3f tangent = pos + 0.02f * rot.col(0);
+        //         glVertex3f(tangent[0], tangent[1], tangent[2]);
+        //         glEnd();
 
-                // Draw normal vector (green)
-                glBegin(GL_LINES);
-                glColor3f(0.0f, 1.0f, 0.0f);
-                glVertex3f(pos[0], pos[1], pos[2]);
-                Eigen::Vector3f normal = pos + 0.02f * rot.col(1);
-                glVertex3f(normal[0], normal[1], normal[2]);
-                glEnd();
+        //         // Draw normal vector (green)
+        //         glBegin(GL_LINES);
+        //         glColor3f(0.0f, 1.0f, 0.0f);
+        //         glVertex3f(pos[0], pos[1], pos[2]);
+        //         Eigen::Vector3f normal = pos + 0.02f * rot.col(1);
+        //         glVertex3f(normal[0], normal[1], normal[2]);
+        //         glEnd();
 
-                // Draw binormal vector (blue)
-                glBegin(GL_LINES);
-                glColor3f(0.0f, 0.0f, 1.0f);
-                glVertex3f(pos[0], pos[1], pos[2]);
-                Eigen::Vector3f binormal = pos + 0.02f * rot.col(2);
-                glVertex3f(binormal[0], binormal[1], binormal[2]);
-                glEnd();
-            }
-        }
+        //         // Draw binormal vector (blue)
+        //         glBegin(GL_LINES);
+        //         glColor3f(0.0f, 0.0f, 1.0f);
+        //         glVertex3f(pos[0], pos[1], pos[2]);
+        //         Eigen::Vector3f binormal = pos + 0.02f * rot.col(2);
+        //         glVertex3f(binormal[0], binormal[1], binormal[2]);
+        //         glEnd();
+        //     }
+        // }
     }
 }
 

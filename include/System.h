@@ -101,13 +101,16 @@ public:
 public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     // Initialize the SLAM system. It launches the Local Mapping, Loop Closing and Viewer threads.
-    System(const string &strVocFile, const string &strSettingsFile, const eSensor sensor, const bool bUseViewer = true, const bool withPatientData = false, const bool withEncoder = false, const int initFr = 0, const string &strSequence = std::string());
+    System(const string &strVocFile, const string &strSettingsFile, const eSensor sensor, const bool bUseViewer = true, const bool withPatientData = false, const bool withEncoder = false, const int numFrames = 0, const int initFr = 0, const string &strSequence = std::string());
 
     // Proccess the given monocular frame
     // Input images: RGB (CV_8UC3) or grayscale (CV_8U). RGB is converted to grayscale.
     // Returns the camera pose (empty if tracking fails).
     Sophus::SE3f TrackMonocular(const cv::Mat &im, const double &timestamp, string filename="");
 
+    // Frames counting
+    void IncreaseCurrentFrameNumber();
+    int GetCurrentFrameNumber();
 
     // This stops local mapping thread (map building) and performs only camera tracking.
     void ActivateLocalizationMode();
@@ -191,6 +194,11 @@ private:
 
     // Input sensor
     eSensor mSensor;
+
+    // Number of frames
+    int mNumFrames;
+    int mCurrentFrameNumber;
+    std::mutex mMutexCurrentFrameNumber;
 
     // ORB vocabulary used for place recognition and feature matching.
     ORBVocabulary* mpVocabulary;

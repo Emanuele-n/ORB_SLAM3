@@ -208,6 +208,8 @@ void Optimizer::BundleAdjustment(bool withPatientData, bool withEncoder, const s
         if(pKF->mnId>maxKFid)
             maxKFid=pKF->mnId;
         
+        // TEMP
+        withPatientData = false;
         if (withPatientData){
             // --- Find candidate frame for each keyframe and add the error term to the cost function ---
             if (debug) cout << "Optimizing with patient data: " << withPatientData << endl;

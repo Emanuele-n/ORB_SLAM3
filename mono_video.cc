@@ -61,38 +61,49 @@ int main(int argc, char **argv)
         return -1;
     }
 
-    ORB_SLAM3::System SLAM(vocPath, settingsPath, ORB_SLAM3::System::MONOCULAR, use_viewer, patient_data, use_encoder);
+    // Count the number of frames in the video
+    int numFrames = cap.get(cv::CAP_PROP_FRAME_COUNT);
+    int currentFrame = 0;
+
+    ORB_SLAM3::System SLAM(vocPath, settingsPath, ORB_SLAM3::System::MONOCULAR, use_viewer, patient_data, use_encoder, numFrames);
 
     cout << endl << "-------" << endl;
     cout << "Start processing camera input..." << endl;
 
-    // Desired frame rate (frames per second)
-    double desiredFPS = 15.0;
-    auto desiredFrameDuration = chrono::milliseconds(int(1000 / desiredFPS));
+    // // Desired frame rate (frames per second)
+    // double desiredFPS = 15.0;
+    // auto desiredFrameDuration = chrono::milliseconds(int(1000 / desiredFPS));
 
     Mat frame, resized_frame;
-    auto lastTime = chrono::high_resolution_clock::now();
+    // auto lastTime = chrono::high_resolution_clock::now();
     for(;;)
     {   
-        auto currentTime = chrono::high_resolution_clock::now();
-        chrono::duration<double> elapsed = currentTime - lastTime;
-        if (elapsed >= desiredFrameDuration) {
+        currentFrame++;
+        if (currentFrame == numFrames) {
+            cout << "End of video" << endl;
+            break;
+        }
+        
+        // auto currentTime = chrono::high_resolution_clock::now();
+        // chrono::duration<double> elapsed = currentTime - lastTime;
+        // if (elapsed >= desiredFrameDuration) {
             cap >> frame; // get a new frame from camera
             // Check if it is the end of the video
             if(frame.empty())
             {
-                cerr << "Failed to capture image or video ended" << endl;
+                cerr << "Failed to capture image" << endl;
                 break;
             }
             // Resize the frame manually
-            resize(frame, resized_frame, Size(640, 360), 0, 0, INTER_LINEAR);
+            // resize(frame, resized_frame, Size(640, 360), 0, 0, INTER_LINEAR);
             
             double tframe = chrono::duration_cast<chrono::duration<double>>(chrono::steady_clock::now().time_since_epoch()).count();
 
-            auto start = chrono::steady_clock::now();
-            Sophus::SE3f Tcw = SLAM.TrackMonocular(resized_frame, tframe);
-            auto end = chrono::steady_clock::now();
-            auto duration = chrono::duration_cast<chrono::milliseconds>(end - start);
+            // auto start = chrono::steady_clock::now();
+            // Sophus::SE3f Tcw = SLAM.TrackMonocular(resized_frame, tframe);
+            Sophus::SE3f Tcw = SLAM.TrackMonocular(frame, tframe);
+            // auto end = chrono::steady_clock::now();
+            // auto duration = chrono::duration_cast<chrono::milliseconds>(end - start);
             // cout << "TrackMonocular: " << duration.count() << " milliseconds" << endl;
             // Write duration to log.txt
             // ofstream logFile("log.txt", ios_base::app);
@@ -106,7 +117,7 @@ int main(int argc, char **argv)
 
             // Exit if ESC key is pressed
             if(waitKey(30) >= 0) break;
-        }
+        // }
     }
 
     // Stop all threads
