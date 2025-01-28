@@ -65,6 +65,8 @@ public:
     // Get the candidate frame on the reference centerline
     Sophus::SE3f GetCandidateFrame();
 
+    Atlas* GetAtlas();//TODOE: prob need mutex
+
     // Parse the config file
     bool ParseCamParamFile(cv::FileStorage &fSettings);
     bool ParseORBParamFile(cv::FileStorage &fSettings);

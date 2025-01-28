@@ -67,9 +67,7 @@ public:
     void RequestResetActiveMap(Map* pMap);
 
     // This function will run in a separate thread
-    bool mWithPatientData;
-    bool mWithEncoder;
-    void RunGlobalBundleAdjustment(Map* pActiveMap, unsigned long nLoopKF);
+    void RunGlobalBundleAdjustment(Tracking* tracking, Map* pActiveMap, unsigned long nLoopKF);
 
     bool isRunningGBA(){
         unique_lock<std::mutex> lock(mMutexGBA);
@@ -220,11 +218,7 @@ protected:
 
     // Fix scale in the stereo/RGB-D case
     bool mbFixScale;
-
-
     bool mnFullBAIdx;
-
-
 
     vector<double> vdPR_CurrentTime;
     vector<double> vdPR_MatchedTime;

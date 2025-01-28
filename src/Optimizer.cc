@@ -129,14 +129,14 @@ double getCurvilinearAbscissa(Eigen::Vector3d& Ow_d, const vector<KeyFrame *> &v
 }
 
 // --- Full BA ---
-void Optimizer::GlobalBundleAdjustment(bool withPatientData, bool withEncoder, const std::vector<std::vector<Sophus::SE3f>> &refCenterlineFrames, Map* pMap, int nIterations, bool* pbStopFlag, const unsigned long nLoopKF, const bool bRobust)
+void Optimizer::GlobalBundleAdjustment(Tracking* tracking, Map* pMap, int nIterations, bool* pbStopFlag, const unsigned long nLoopKF, const bool bRobust)
 {
     vector<KeyFrame*> vpKFs = pMap->GetAllKeyFrames();
     vector<MapPoint*> vpMP = pMap->GetAllMapPoints();
-    BundleAdjustment(withPatientData, withEncoder, refCenterlineFrames, vpKFs,vpMP,nIterations,pbStopFlag, nLoopKF, bRobust);
+    BundleAdjustment(tracking, vpKFs, vpMP, nIterations, pbStopFlag, nLoopKF, bRobust);
 }
 
-void Optimizer::BundleAdjustment(bool withPatientData, bool withEncoder, const std::vector<std::vector<Sophus::SE3f>> &refCenterlineFrames, const vector<KeyFrame *> &vpKFs, const vector<MapPoint *> &vpMP, int nIterations, bool* pbStopFlag, const unsigned long nLoopKF, const bool bRobust)
+void Optimizer::BundleAdjustment(Tracking* tracking, const vector<KeyFrame *> &vpKFs, const vector<MapPoint *> &vpMP, int nIterations, bool* pbStopFlag, const unsigned long nLoopKF, const bool bRobust)
 {   
     bool debug = false;
     vector<bool> vbNotIncludedMP;
@@ -208,189 +208,17 @@ void Optimizer::BundleAdjustment(bool withPatientData, bool withEncoder, const s
         if(pKF->mnId>maxKFid)
             maxKFid=pKF->mnId;
         
-        // TEMP
-        withPatientData = false;
+        bool withPatientData = tracking->mWithPatientData;
         if (withPatientData){
-            // --- Find candidate frame for each keyframe and add the error term to the cost function ---
-            if (debug) cout << "Optimizing with patient data: " << withPatientData << endl;
-            if (debug) cout << "Finding candidate frame" << endl;
-            Sophus::SE3f finalCandidateFrame;
+            // Get candidate frame for each keyframe
+            // TODOE this is wrong, the candidate frmae here should change for each frame
+            // Sophus::SE3f finalCandidateFrame = tracking->GetCandidateFrame().inverse();
 
-            // Check the current camera pose
-            if (debug) cout << "Tcw: " << endl;
-            if (debug) cout << Tcw.matrix() << endl;
+            // Search for the closests pose in the reference centerline from atlas
+            auto TcwInv = Tcw.inverse();
+            Sophus::SE3f finalCandidateFrame = tracking->GetAtlas()->GetClosestRefCenterlineFrame(TcwInv);
 
-            // Get camera position from the pose
-            Eigen::Vector3f Tcw_pos = Tcw.translation();
-            Eigen::Vector3d Tcw_pos_d = Tcw_pos.cast<double>();
-            if (debug) cout << "Tcw_pos_d: " << Tcw_pos_d << endl;
-
-            if (Tcw_pos_d.hasNaN()) {
-                std::cerr << "Invalid Tcw_pos_d received." << std::endl;
-                // return;
-            }
-
-            // Get the reference centerline frames
-            std::vector<std::vector<Sophus::SE3f>> allRefCenterlineFrames = refCenterlineFrames;
-            if (allRefCenterlineFrames.empty())
-            {
-                cout << "Reference centerline is empty in Optimizer" << endl;
-                // return;
-            }
-
-            // Check if all branches are empty
-            bool allEmpty = true;
-            for (auto &branchFrames : allRefCenterlineFrames)
-            {
-                if (!branchFrames.empty())
-                {
-                    allEmpty = false;
-                    break;
-                }
-            }
-            if (allEmpty)
-            {
-                std::cerr << "Reference centerline is empty in Optimizer" << std::endl;
-                // return;
-            }
-
-            // Compute curvilinear abscissa from the frame pose along the trajectory to the origin
-            double s = getCurvilinearAbscissa(Tcw_pos_d, vpKFs, pMap, withEncoder);
-            // TODOE: if with encoder s is the encoder measurement
-            if (debug) cout << "s: " << s << endl;
-
-            if (s < 0.0005)
-                {
-                    cout << "Curvilinear abscissa close to zero, setting first frame from reference centerline" << endl;
-                    // Return the first frame of the first branch (it's roughly the same for each branch)
-                    finalCandidateFrame = allRefCenterlineFrames[0][0];
-                    // return;
-                }
-
-            // To store the candidate frame for each branch
-            struct BranchCandidate {
-                Sophus::SE3f frame; // The candidate frame of the branch
-                double cf_dist;        // The distance from the candidate to the last pose
-                bool valid;            // If the candidate is valid
-            };
-            std::vector<BranchCandidate> branchCandidates(allRefCenterlineFrames.size(),
-                                                        {Sophus::SE3f(), std::numeric_limits<double>::max(), false});
-
-            // Loop over each branch and compute the candidate frame for each
-            for (size_t b = 0; b < allRefCenterlineFrames.size(); b++)
-            {
-                const auto &refCenterlineFrames = allRefCenterlineFrames[b];
-                if (refCenterlineFrames.empty())
-                {
-                    // Skip empty branch
-                    continue;
-                }
-
-                // We replicate the same debug prints you had for a single branch.
-                if (debug) cout << "Finding candidate frame on branch " << b << endl;
-
-                // Variables for the candidate frame
-                Sophus::SE3f candidateFrame; // Identity transformation
-                double minDist = std::numeric_limits<double>::max();
-                double s_i = 0.0;
-                bool candidateFound = false;
-
-                // Project the curvilinear abscissa onto the centerline of the branch
-                for (size_t i = 1; i < refCenterlineFrames.size(); i++)
-                {
-                    // Check if the underlying matrices are valid
-                    if (refCenterlineFrames[i].matrix().rows() != 4 || refCenterlineFrames[i].matrix().cols() != 4 ||
-                        refCenterlineFrames[i - 1].matrix().rows() != 4 || refCenterlineFrames[i - 1].matrix().cols() != 4)
-                    {
-                        std::cerr << "Invalid matrix size at index " << i << endl;
-                        continue;
-                    }
-
-                    if (!refCenterlineFrames[i].matrix().allFinite() || 
-                        !refCenterlineFrames[i - 1].matrix().allFinite())
-                    {
-                        std::cerr << "Invalid matrix data at index " << i << endl;
-                        continue;
-                    }
-
-                    Eigen::Vector3d p1 = refCenterlineFrames[i].translation().cast<double>();
-                    Eigen::Vector3d p2 = refCenterlineFrames[i - 1].translation().cast<double>();
-
-                    // Compute the distance between two consecutive points
-                    double dist = (p2 - p1).norm();
-
-                    // Add the distance to the current curvilinear abscissa
-                    s_i += dist;
-                    if (debug) cout << "s_i: " << s_i << endl;
-
-                    // Compute the difference between the current curvilinear abscissa and the real one and store the minimum
-                    double diff = abs(s - s_i);
-                    if (debug) cout << "diff: " << diff << endl;
-                    if (diff < minDist)
-                    {
-                        if (debug) cout << "Candidate frame updated" << endl;
-                        minDist = diff;
-                        candidateFrame = refCenterlineFrames[i];
-                        candidateFound = true;
-                    }
-                    // TODOE: implement early stop when the difference starts increasing
-                }
-
-                if (!candidateFound)
-                {
-                    cout << "No candidate frame found" << endl;
-
-                    // Set the first frame of the branch as the candidate (TODOE: find a better way)
-                    candidateFrame = refCenterlineFrames[0];
-
-                    // Store the candidate frame
-                    branchCandidates[b].frame = candidateFrame;
-                    branchCandidates[b].cf_dist = 1e9;
-                    branchCandidates[b].valid = false;
-                    continue;
-                }
-
-                // If we get here, we do have a valid candidate
-                branchCandidates[b].frame = candidateFrame;
-
-                // Compute the distance between the candidate frame and the last pose
-                Eigen::Vector3d candidateFrame_pos = candidateFrame.translation().cast<double>();
-                double candidateFrame_dist = (Tcw_pos_d - candidateFrame_pos).norm();
-                branchCandidates[b].cf_dist = candidateFrame_dist;
-                branchCandidates[b].valid = true;
-                
-            } // end for each branch
-
-            // Select the best candidate frame among all branches, based on the distance to the last pose
-            bool anyValid = false;
-            double globalMinDist = std::numeric_limits<double>::max();
-            size_t bestIndex = 0; // arbitrary
-
-            for (size_t b = 0; b < branchCandidates.size(); b++)
-            {
-                if (branchCandidates[b].cf_dist < globalMinDist && branchCandidates[b].valid)
-                {
-                    anyValid = true;
-                    globalMinDist = branchCandidates[b].cf_dist;
-                    bestIndex = b;
-                }
-            }
-
-            // If no valid candidate was found, pick the first frame of the first branch (TODOE: find a better way)
-            if (!anyValid)
-            {
-                cout << "No candidate frame found" << endl;
-                finalCandidateFrame = allRefCenterlineFrames[0][0];
-            }
-
-            // Get and set the best candidate frame
-            finalCandidateFrame = branchCandidates[bestIndex].frame;
-
-            // Take the inverse of the candidate frame
-            finalCandidateFrame = finalCandidateFrame.inverse();
-
-            // Add pose prior edge if prior exists
-            // Create Edge
+            // Add pose prior edge 
             EdgeSE3Prior* e = new EdgeSE3Prior(g2o::SE3Quat(finalCandidateFrame.unit_quaternion().cast<double>(), finalCandidateFrame.translation().cast<double>()));
 
             // Set vertex
@@ -442,7 +270,6 @@ void Optimizer::BundleAdjustment(bool withPatientData, bool withEncoder, const s
 
             edgeBarrier->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex*>(vSE3));
             optimizer.addEdge(edgeBarrier);
-            // --- End of candidate frame computation ---
         }
     }
 
@@ -1592,8 +1419,9 @@ void Optimizer::LocalBundleAdjustment(KeyFrame* pMainKF,vector<KeyFrame*> vpAdju
 // ---------------
 
 // --- Motion-only BA ---
-int Optimizer::PoseOptimization(Frame *pFrame, bool withPatientData, const Sophus::SE3f &priorPose)
+int Optimizer::PoseOptimization(Frame *pFrame, bool withPatientData, const Sophus::SE3f &priorPose_Tciw)
 {   
+    bool debug = true;
     // Solver initialization
     g2o::SparseOptimizer optimizer;
     g2o::BlockSolver_6_3::LinearSolverType * linearSolver;
@@ -1780,7 +1608,7 @@ int Optimizer::PoseOptimization(Frame *pFrame, bool withPatientData, const Sophu
 
     if (withPatientData) {
         // Create and set up the prior edge
-        g2o::SE3Quat T_prior_quat(priorPose.unit_quaternion().cast<double>(), priorPose.translation().cast<double>());
+        g2o::SE3Quat T_prior_quat(priorPose_Tciw.unit_quaternion().cast<double>(), priorPose_Tciw.translation().cast<double>());
         EdgeSE3Prior* edgePrior = new EdgeSE3Prior(T_prior_quat);
         edgePrior->setVertex(0, vSE3);
         edgePrior->setMeasurement(T_prior_quat);
@@ -1815,7 +1643,7 @@ int Optimizer::PoseOptimization(Frame *pFrame, bool withPatientData, const Sophu
         double distanceThreshold = std::stod(ini["CBF"].get("distanceThreshold"));
         double barrierWeight = std::stod(ini["CBF"].get("barrierWeight"));
 
-        g2o::SE3Quat T_candidate(priorPose.unit_quaternion().cast<double>(), priorPose.translation().cast<double>());
+        g2o::SE3Quat T_candidate(priorPose_Tciw.unit_quaternion().cast<double>(), priorPose_Tciw.translation().cast<double>());
 
         auto* edgeBarrier = new EdgeSE3Barrier(T_candidate,
                                             distanceThreshold,
@@ -1940,18 +1768,22 @@ int Optimizer::PoseOptimization(Frame *pFrame, bool withPatientData, const Sophu
 
     if (withPatientData) {
         // Print pose and prior pose
-        bool debug = false;
         if (debug) cout << "Pose: " << endl << pose.matrix() << endl;
-        if (debug) cout << "Prior pose: " << endl << priorPose.matrix() << endl;
+        if (debug) cout << "Prior pose: " << endl << priorPose_Tciw.matrix() << endl;
 
         // Compute error by explicitly casting to double
         Sophus::SE3d poseDouble(pose.unit_quaternion().cast<double>(), pose.translation().cast<double>());
-        Sophus::SE3d priorPoseDouble(priorPose.unit_quaternion().cast<double>(), priorPose.translation().cast<double>());
-        Eigen::Matrix<double, 6, 1> error = poseDouble.log() - priorPoseDouble.log();
+        Sophus::SE3d priorPose_TciwDouble(priorPose_Tciw.unit_quaternion().cast<double>(), priorPose_Tciw.translation().cast<double>());
+        Eigen::Matrix<double, 6, 1> error = poseDouble.log() - priorPose_TciwDouble.log();
 
         // Get the error norm
         double errorNorm = error.norm();
         if (debug) cout << "Error norm: " << endl << errorNorm << endl;
+
+        // Get only the translation error
+        Eigen::Vector3d translationError = error.head<3>();
+        double translationErrorNorm = translationError.norm();
+        if (debug) cout << "Translation error norm: " << endl << translationErrorNorm << endl;
     }
 
     return nInitialCorrespondences - nBad;

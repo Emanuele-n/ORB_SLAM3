@@ -36,7 +36,7 @@ LoopClosing::LoopClosing(Atlas *pAtlas, KeyFrameDatabase *pDB, ORBVocabulary *pV
     mbResetRequested(false), mbResetActiveMapRequested(false), mbFinishRequested(false), mbFinished(true), mpAtlas(pAtlas),
     mpKeyFrameDB(pDB), mpORBVocabulary(pVoc), mpMatchedKF(NULL), mbRunningGBA(false), mbFinishedGBA(true),
     mbStopGBA(false), mpThreadGBA(NULL), mbFixScale(bFixScale), mnFullBAIdx(0), mnLoopNumCoincidences(0), mnMergeNumCoincidences(0),
-    mbLoopDetected(false), mbMergeDetected(false), mnLoopNumNotFound(0), mnMergeNumNotFound(0), mbActiveLC(bActiveLC), mWithPatientData(withPatientData), mWithEncoder(withEncoder)
+    mbLoopDetected(false), mbMergeDetected(false), mnLoopNumNotFound(0), mnMergeNumNotFound(0), mbActiveLC(bActiveLC)
 {
     mnCovisibilityConsistencyTh = 3;
     mpLastCurrentKF = static_cast<KeyFrame*>(NULL);
@@ -1093,7 +1093,8 @@ void LoopClosing::CorrectLoop()
         mbStopGBA = false;
         mnCorrectionGBA = mnNumCorrection;
 
-        mpThreadGBA = new thread(&LoopClosing::RunGlobalBundleAdjustment, this, pLoopMap, mpCurrentKF->mnId);
+        // mpThreadGBA = new thread(&LoopClosing::RunGlobalBundleAdjustment, this, pLoopMap, mpCurrentKF->mnId);
+        mpThreadGBA = new thread(&LoopClosing::RunGlobalBundleAdjustment, this, this->mpTracker, pLoopMap, mpCurrentKF->mnId);
     }
 
     // Loop closed. Release Local Mapping.
@@ -1580,7 +1581,8 @@ void LoopClosing::MergeLocal()
         mbRunningGBA = true;
         mbFinishedGBA = false;
         mbStopGBA = false;
-        mpThreadGBA = new thread(&LoopClosing::RunGlobalBundleAdjustment,this, pMergeMap, mpCurrentKF->mnId);
+        // mpThreadGBA = new thread(&LoopClosing::RunGlobalBundleAdjustment,this, pMergeMap, mpCurrentKF->mnId);
+        mpThreadGBA = new thread(&LoopClosing::RunGlobalBundleAdjustment,this, this->mpTracker, pMergeMap, mpCurrentKF->mnId);
     }
 
     mpMergeMatchedKF->AddMergeEdge(mpCurrentKF);
@@ -1795,7 +1797,7 @@ void LoopClosing::ResetIfRequested()
     }
 }
 
-void LoopClosing::RunGlobalBundleAdjustment(Map* pActiveMap, unsigned long nLoopKF)
+void LoopClosing::RunGlobalBundleAdjustment(Tracking* tracking, Map* pActiveMap, unsigned long nLoopKF)
 {  
     Verbose::PrintMess("Starting Global Bundle Adjustment", Verbose::VERBOSITY_NORMAL);
 
@@ -1807,8 +1809,7 @@ void LoopClosing::RunGlobalBundleAdjustment(Map* pActiveMap, unsigned long nLoop
     vnGBAKFs.push_back(pActiveMap->GetAllKeyFrames().size());
     vnGBAMPs.push_back(pActiveMap->GetAllMapPoints().size());
 #endif
-    // Optimizer::GlobalBundleAdjustment(pActiveMap,10,&mbStopGBA,nLoopKF,false);
-    Optimizer::GlobalBundleAdjustment(mWithPatientData, mWithEncoder, mpAtlas->GetRefCenterlineFrames(), pActiveMap,10,&mbStopGBA,nLoopKF,false);
+    Optimizer::GlobalBundleAdjustment(tracking, pActiveMap,10,&mbStopGBA,nLoopKF,false);
 
 #ifdef REGISTER_TIMES
     std::chrono::steady_clock::time_point time_EndGBA = std::chrono::steady_clock::now();
@@ -1823,7 +1824,6 @@ void LoopClosing::RunGlobalBundleAdjustment(Map* pActiveMap, unsigned long nLoop
 #endif
 
     int idx =  mnFullBAIdx;
-    // Optimizer::GlobalBundleAdjustment(mpMap,10,&mbStopGBA,nLoopKF,false);
 
     // Update all MapPoints and KeyFrames
     // Local Mapping was active during BA, that means that there might be new keyframes

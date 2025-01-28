@@ -81,6 +81,7 @@ public:
     std::vector<std::vector<Sophus::SE3f>> GetRefCenterlineFrames();
     std::vector<std::vector<Sophus::SE3f>> mRefCenterlineFrames;
     std::mutex mMutexRefCenterlineFrames;
+    Sophus::SE3f GetClosestRefCenterlineFrame(Sophus::SE3f& Twc);
 
     // Curvilinear abscissa from the current position computed on the spanning tree
     double GetCurvilinearAbscissa(Eigen::Vector3d &Ow_d);

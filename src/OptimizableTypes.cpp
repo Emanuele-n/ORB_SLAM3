@@ -37,7 +37,6 @@ namespace ORB_SLAM3 {
     bool EdgeSE3Prior::write(std::ostream& os) const { return false; }
 
 
-
     bool EdgeSE3ProjectXYZOnlyPose::read(std::istream& is){
         for (int i=0; i<2; i++){
             is >> _measurement[i];
@@ -155,30 +154,6 @@ namespace ORB_SLAM3 {
         return os.good();
     }
 
-    // void EdgeSE3ProjectXYZ::linearizeOplus() {
-    //     g2o::VertexSE3Expmap * vj = static_cast<g2o::VertexSE3Expmap *>(_vertices[1]);
-    //     g2o::SE3Quat T(vj->estimate());
-    //     g2o::VertexSBAPointXYZ* vi = static_cast<g2o::VertexSBAPointXYZ*>(_vertices[0]);
-    //     Eigen::Vector3d xyz = vi->estimate();
-    //     Eigen::Vector3d xyz_trans = T.map(xyz);
-
-    //     double x = xyz_trans[0];
-    //     double y = xyz_trans[1];
-    //     double z = xyz_trans[2];
-
-    //     auto projectJac = -pCamera->projectJac(xyz_trans);
-
-    //     _jacobianOplusXi =  projectJac * T.rotation().toRotationMatrix();
-
-    //     Eigen::Matrix<double,3,6> SE3deriv;
-    //     SE3deriv << 0.f, z,   -y, 1.f, 0.f, 0.f,
-    //             -z , 0.f, x, 0.f, 1.f, 0.f,
-    //             y ,  -x , 0.f, 0.f, 0.f, 1.f;
-
-    //     _jacobianOplusXj = projectJac * SE3deriv;
-    // }
-
-
     void EdgeSE3ProjectXYZ::linearizeOplus() {
         g2o::VertexSE3Expmap * vj = static_cast<g2o::VertexSE3Expmap *>(_vertices[1]);
         g2o::SE3Quat T(vj->estimate());
@@ -207,7 +182,6 @@ namespace ORB_SLAM3 {
         // a temporary, not referencing the local projectJac after we leave:
         _jacobianOplusXj = (projectJac * SE3deriv).eval();
     }
-
 
 
     EdgeSE3ProjectXYZToBody::EdgeSE3ProjectXYZToBody() : BaseBinaryEdge<2, Eigen::Vector2d, g2o::VertexSBAPointXYZ, g2o::VertexSE3Expmap>() {
