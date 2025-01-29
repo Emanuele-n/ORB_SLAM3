@@ -1446,7 +1446,7 @@ void LoopClosing::MergeLocal()
     std::copy(spLocalWindowKFs.begin(), spLocalWindowKFs.end(), std::back_inserter(vpLocalCurrentWindowKFs));
     std::copy(spMergeConnectedKFs.begin(), spMergeConnectedKFs.end(), std::back_inserter(vpMergeConnectedKFs));
 
-    Optimizer::LocalBundleAdjustment(mpCurrentKF, vpLocalCurrentWindowKFs, vpMergeConnectedKFs,&bStop);
+    Optimizer::LocalBundleAdjustment(mpTracker, mpCurrentKF, vpLocalCurrentWindowKFs, vpMergeConnectedKFs,&bStop);
 
 #ifdef REGISTER_TIMES
     std::chrono::steady_clock::time_point time_EndWeldingBA = std::chrono::steady_clock::now();
@@ -1797,7 +1797,7 @@ void LoopClosing::ResetIfRequested()
     }
 }
 
-void LoopClosing::RunGlobalBundleAdjustment(Tracking* tracking, Map* pActiveMap, unsigned long nLoopKF)
+void LoopClosing::RunGlobalBundleAdjustment(Tracking* pTracking, Map* pActiveMap, unsigned long nLoopKF)
 {  
     Verbose::PrintMess("Starting Global Bundle Adjustment", Verbose::VERBOSITY_NORMAL);
 
@@ -1809,7 +1809,7 @@ void LoopClosing::RunGlobalBundleAdjustment(Tracking* tracking, Map* pActiveMap,
     vnGBAKFs.push_back(pActiveMap->GetAllKeyFrames().size());
     vnGBAMPs.push_back(pActiveMap->GetAllMapPoints().size());
 #endif
-    Optimizer::GlobalBundleAdjustment(tracking, pActiveMap,10,&mbStopGBA,nLoopKF,false);
+    Optimizer::GlobalBundleAdjustment(pTracking, pActiveMap,10,&mbStopGBA,nLoopKF,false);
 
 #ifdef REGISTER_TIMES
     std::chrono::steady_clock::time_point time_EndGBA = std::chrono::steady_clock::now();

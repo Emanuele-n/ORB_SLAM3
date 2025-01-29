@@ -56,87 +56,15 @@ bool sortByVal(const pair<MapPoint*, int> &a, const pair<MapPoint*, int> &b)
     return (a.second < b.second);
 }
 
-double getCurvilinearAbscissa(Eigen::Vector3d& Ow_d, const vector<KeyFrame *> &vpKFs, Map* pMap, bool withEncoder)
-{   
-    bool debug = false;
-    if (debug) cout << "Getting curvilinear abscissa" << endl;
-    if (debug) cout << "Camera center: " << Ow_d.transpose() << endl;
-    // Check if Ow_d is valid
-    if (Ow_d.hasNaN()) {
-        std::cerr << "Invalid Ow_d received." << std::endl;
-        return 0.0;
-    }
-
-    // Get all keyframes
-    if (debug) cout << "Got current map" << endl;
-    if(!pMap)
-    {
-        cout << "Current map is empty" << endl;
-        return 0.0;
-    }
-
-    if(vpKFs.empty())
-    {
-        cout << "No keyframes in the map" << endl;
-        return 0.0;
-    }
-
-    // Find the keyframe closest to current position
-    KeyFrame* closestKF = nullptr;
-    double minDist = std::numeric_limits<double>::max();
-    for(const auto& pKF : vpKFs) {
-        Eigen::Vector3f kfPos = pKF->GetCameraCenter();
-        double dist = (kfPos.cast<double>() - Ow_d).norm();
-        if(dist < minDist) {
-            minDist = dist;
-            closestKF = pKF;
-        }
-    }
-
-    if(!closestKF)
-    {
-        cout << "Closest keyframe not found" << endl;
-        return 0.0;
-    }
-    if (debug) cout << "Found closest key frame" << endl;
-
-    // Find path to origin through spanning tree
-    std::vector<KeyFrame*> path;
-    KeyFrame* current = closestKF;
-
-    // Follow parent pointers until we reach a keyframe with no parent (origin)
-    while(current) {
-        path.push_back(current);
-        current = current->GetParent();
-    }
-    if (debug) cout << "Done building path" << endl;
-
-    // Compute curvilinear abscissa by summing distances between consecutive keyframes
-    double s = 0.0;
-    for(int i = path.size()-1; i > 0; i--) {
-        Eigen::Vector3f pos1 = path[i]->GetCameraCenter();
-        Eigen::Vector3f pos2 = path[i-1]->GetCameraCenter();
-        s += (pos2 - pos1).norm();
-    }
-    if (debug) cout << "Done computing s" << endl;
-
-    // Add distance from closest keyframe to current position
-    s += minDist;
-
-    // TODOE: Reduce the total length to take into account the non smoothness of the path based on the number of points in the path
-
-    return s;
-}
-
 // --- Full BA ---
-void Optimizer::GlobalBundleAdjustment(Tracking* tracking, Map* pMap, int nIterations, bool* pbStopFlag, const unsigned long nLoopKF, const bool bRobust)
+void Optimizer::GlobalBundleAdjustment(Tracking* pTracking, Map* pMap, int nIterations, bool* pbStopFlag, const unsigned long nLoopKF, const bool bRobust)
 {
     vector<KeyFrame*> vpKFs = pMap->GetAllKeyFrames();
     vector<MapPoint*> vpMP = pMap->GetAllMapPoints();
-    BundleAdjustment(tracking, vpKFs, vpMP, nIterations, pbStopFlag, nLoopKF, bRobust);
+    BundleAdjustment(pTracking, vpKFs, vpMP, nIterations, pbStopFlag, nLoopKF, bRobust);
 }
 
-void Optimizer::BundleAdjustment(Tracking* tracking, const vector<KeyFrame *> &vpKFs, const vector<MapPoint *> &vpMP, int nIterations, bool* pbStopFlag, const unsigned long nLoopKF, const bool bRobust)
+void Optimizer::BundleAdjustment(Tracking* pTracking, const vector<KeyFrame *> &vpKFs, const vector<MapPoint *> &vpMP, int nIterations, bool* pbStopFlag, const unsigned long nLoopKF, const bool bRobust)
 {   
     bool debug = false;
     vector<bool> vbNotIncludedMP;
@@ -208,12 +136,12 @@ void Optimizer::BundleAdjustment(Tracking* tracking, const vector<KeyFrame *> &v
         if(pKF->mnId>maxKFid)
             maxKFid=pKF->mnId;
         
-        bool withPatientData = tracking->mWithPatientData;
+        bool withPatientData = pTracking->mWithPatientData;
         if (withPatientData){
             // Get candidate frame for each keyframe
             // Search for the closest pose in the reference centerline from atlas
             auto TcwInv = Tcw.inverse();
-            Sophus::SE3f finalCandidateFrame = tracking->GetAtlas()->GetClosestRefCenterlineFrame(TcwInv);
+            Sophus::SE3f finalCandidateFrame = pTracking->GetAtlas()->GetClosestRefCenterlineFrame(TcwInv);
 
             // Add pose prior edge 
             EdgeSE3Prior* e = new EdgeSE3Prior(g2o::SE3Quat(finalCandidateFrame.unit_quaternion().cast<double>(), finalCandidateFrame.translation().cast<double>()));
@@ -551,7 +479,7 @@ void Optimizer::BundleAdjustment(Tracking* tracking, const vector<KeyFrame *> &v
 // ---------------
 
 // --- Local BA ---
-void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag, Map* pMap, int& num_fixedKF, int& num_OptKF, int& num_MPs, int& num_edges)
+void Optimizer::LocalBundleAdjustment(Tracking* pTracking, KeyFrame *pKF, bool* pbStopFlag, Map* pMap, int& num_fixedKF, int& num_OptKF, int& num_MPs, int& num_edges)
 {
     // Local KeyFrames: First Breath Search from Current Keyframe
     list<KeyFrame*> lLocalKeyFrames;
@@ -626,11 +554,8 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag, Map* pMap
     // Setup optimizer
     g2o::SparseOptimizer optimizer;
     g2o::BlockSolver_6_3::LinearSolverType * linearSolver;
-
     linearSolver = new g2o::LinearSolverEigen<g2o::BlockSolver_6_3::PoseMatrixType>();
-
     g2o::BlockSolver_6_3 * solver_ptr = new g2o::BlockSolver_6_3(linearSolver);
-
     g2o::OptimizationAlgorithmLevenberg* solver = new g2o::OptimizationAlgorithmLevenberg(solver_ptr);
 
     optimizer.setAlgorithm(solver);
@@ -659,6 +584,68 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag, Map* pMap
             maxKFid=pKFi->mnId;
         // DEBUG LBA
         pCurrentMap->msOptKFs.insert(pKFi->mnId);
+
+        bool withPatientData = pTracking->mWithPatientData;
+        if (withPatientData){
+            // Get candidate frame for each keyframe
+            // Search for the closest pose in the reference centerline from atlas
+            auto TcwInv = Tcw.inverse();
+            Sophus::SE3f finalCandidateFrame = pTracking->GetAtlas()->GetClosestRefCenterlineFrame(TcwInv);
+
+            // Add pose prior edge 
+            EdgeSE3Prior* e = new EdgeSE3Prior(g2o::SE3Quat(finalCandidateFrame.unit_quaternion().cast<double>(), finalCandidateFrame.translation().cast<double>()));
+
+            // Set vertex
+            e->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex*>(vSE3));
+
+            // Set measurement
+            e->setMeasurement(g2o::SE3Quat(finalCandidateFrame.unit_quaternion().cast<double>(), finalCandidateFrame.translation().cast<double>()));
+
+            // Set information matrix
+            // Load optimization parameters from file
+            mINI::INIFile file(optParamsPath);
+            mINI::INIStructure ini;
+            file.read(ini);
+
+            // Read weights from ini file 
+            double wT = std::stod(ini["PRIOR_WEIGHTS"].get("wT_lba"));       // Matrix weight
+            double wx = std::stod(ini["PRIOR_WEIGHTS"].get("wx"));           // x translation weight  
+            double wy = std::stod(ini["PRIOR_WEIGHTS"].get("wy"));           // y translation weight
+            double wz = std::stod(ini["PRIOR_WEIGHTS"].get("wz"));           // z translation weight
+            double wroll = std::stod(ini["PRIOR_WEIGHTS"].get("wroll"));     // roll weight
+            double wpitch = std::stod(ini["PRIOR_WEIGHTS"].get("wpitch"));   // pitch weight
+            double wyaw = std::stod(ini["PRIOR_WEIGHTS"].get("wyaw"));       // yaw weight
+
+            // Create diagonal information matrix with weights
+            Eigen::Matrix<double,6,6> information = Eigen::Matrix<double,6,6>::Zero();
+            information.diagonal() << 
+                wT * wx,            // x translation
+                wT * wy,            // y translation 
+                wT * wz,            // z translation
+                wT * wroll,         // roll
+                wT * wpitch,        // pitch
+                wT * wyaw;          // yaw
+
+            e->setInformation(information);
+
+            // Add edge to optimizer
+            optimizer.addEdge(e);
+
+            // Add CBF edge
+            // Read barrier parameters from ini file
+            double distanceThreshold = std::stod(ini["CBF"].get("distanceThreshold"));
+            double barrierWeight = std::stod(ini["CBF"].get("barrierWeight"));
+
+            g2o::SE3Quat T_candidate(finalCandidateFrame.unit_quaternion().cast<double>(), finalCandidateFrame.translation().cast<double>());
+
+            auto* edgeBarrier = new EdgeSE3Barrier(T_candidate,
+                                                distanceThreshold,
+                                                barrierWeight,  // how strongly you want to push away from boundary
+                                                1e-3);          // epsilon
+
+            edgeBarrier->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex*>(vSE3));
+            optimizer.addEdge(edgeBarrier);
+        }
     }
     num_OptKF = lLocalKeyFrames.size();
 
@@ -939,7 +926,7 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag, Map* pMap
     pMap->IncreaseChangeIndex();
 }
 // --- Local BA (merge) ---
-void Optimizer::LocalBundleAdjustment(KeyFrame* pMainKF,vector<KeyFrame*> vpAdjustKF, vector<KeyFrame*> vpFixedKF, bool *pbStopFlag)
+void Optimizer::LocalBundleAdjustment(Tracking* pTracking, KeyFrame* pMainKF, vector<KeyFrame*> vpAdjustKF, vector<KeyFrame*> vpFixedKF, bool *pbStopFlag)
 {
     bool bShowImages = false;
 
@@ -1022,6 +1009,69 @@ void Optimizer::LocalBundleAdjustment(KeyFrame* pMainKF,vector<KeyFrame*> vpAdju
         optimizer.addVertex(vSE3);
         if(pKFi->mnId>maxKFid)
             maxKFid=pKFi->mnId;
+
+        bool withPatientData = pTracking->mWithPatientData;
+        if (withPatientData){
+            // Get candidate frame for each keyframe
+            // Search for the closest pose in the reference centerline from atlas
+            auto TcwInv = Tcw.inverse();
+            Sophus::SE3f finalCandidateFrame = pTracking->GetAtlas()->GetClosestRefCenterlineFrame(TcwInv);
+
+            // Add pose prior edge 
+            EdgeSE3Prior* e = new EdgeSE3Prior(g2o::SE3Quat(finalCandidateFrame.unit_quaternion().cast<double>(), finalCandidateFrame.translation().cast<double>()));
+
+            // Set vertex
+            e->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex*>(vSE3));
+
+            // Set measurement
+            e->setMeasurement(g2o::SE3Quat(finalCandidateFrame.unit_quaternion().cast<double>(), finalCandidateFrame.translation().cast<double>()));
+
+            // Set information matrix
+            // Load optimization parameters from file
+            mINI::INIFile file(optParamsPath);
+            mINI::INIStructure ini;
+            file.read(ini);
+
+            // Read weights from ini file 
+            double wT = std::stod(ini["PRIOR_WEIGHTS"].get("wT_lba"));       // Matrix weight
+            double wx = std::stod(ini["PRIOR_WEIGHTS"].get("wx"));           // x translation weight  
+            double wy = std::stod(ini["PRIOR_WEIGHTS"].get("wy"));           // y translation weight
+            double wz = std::stod(ini["PRIOR_WEIGHTS"].get("wz"));           // z translation weight
+            double wroll = std::stod(ini["PRIOR_WEIGHTS"].get("wroll"));     // roll weight
+            double wpitch = std::stod(ini["PRIOR_WEIGHTS"].get("wpitch"));   // pitch weight
+            double wyaw = std::stod(ini["PRIOR_WEIGHTS"].get("wyaw"));       // yaw weight
+
+            // Create diagonal information matrix with weights
+            Eigen::Matrix<double,6,6> information = Eigen::Matrix<double,6,6>::Zero();
+            information.diagonal() << 
+                wT * wx,            // x translation
+                wT * wy,            // y translation 
+                wT * wz,            // z translation
+                wT * wroll,         // roll
+                wT * wpitch,        // pitch
+                wT * wyaw;          // yaw
+
+            e->setInformation(information);
+
+            // Add edge to optimizer
+            optimizer.addEdge(e);
+
+            // Add CBF edge
+            // Read barrier parameters from ini file
+            double distanceThreshold = std::stod(ini["CBF"].get("distanceThreshold"));
+            double barrierWeight = std::stod(ini["CBF"].get("barrierWeight"));
+
+            g2o::SE3Quat T_candidate(finalCandidateFrame.unit_quaternion().cast<double>(), finalCandidateFrame.translation().cast<double>());
+
+            auto* edgeBarrier = new EdgeSE3Barrier(T_candidate,
+                                                distanceThreshold,
+                                                barrierWeight,  // how strongly you want to push away from boundary
+                                                1e-3);          // epsilon
+
+            edgeBarrier->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex*>(vSE3));
+            optimizer.addEdge(edgeBarrier);
+
+        }
 
         set<MapPoint*> spViewMPs = pKFi->GetMapPoints();
         for(MapPoint* pMPi : spViewMPs)

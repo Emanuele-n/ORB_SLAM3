@@ -67,7 +67,7 @@ public:
     void RequestResetActiveMap(Map* pMap);
 
     // This function will run in a separate thread
-    void RunGlobalBundleAdjustment(Tracking* tracking, Map* pActiveMap, unsigned long nLoopKF);
+    void RunGlobalBundleAdjustment(Tracking* pTracking, Map* pActiveMap, unsigned long nLoopKF);
 
     bool isRunningGBA(){
         unique_lock<std::mutex> lock(mMutexGBA);

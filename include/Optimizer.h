@@ -52,18 +52,18 @@ public:
     // Used in:
     //  - Tracking::Track() -> MonocularInitialization() -> CreateInitialMapMonocular()
     //  - LoopClosing::Run() -> RunGlobalBundleAdjustment()
-    void static GlobalBundleAdjustment(Tracking* tracking, Map* pMap, int nIterations=5, bool *pbStopFlag=NULL, const unsigned long nLoopKF=0, const bool bRobust = true);
-    void static BundleAdjustment(Tracking* tracking, const std::vector<KeyFrame*> &vpKF, const std::vector<MapPoint*> &vpMP, int nIterations = 5, bool *pbStopFlag=NULL, const unsigned long nLoopKF=0, const bool bRobust = true);
+    void static GlobalBundleAdjustment(Tracking* pTracking, Map* pMap, int nIterations=5, bool *pbStopFlag=NULL, const unsigned long nLoopKF=0, const bool bRobust = true);
+    void static BundleAdjustment(Tracking* pTracking, const std::vector<KeyFrame*> &vpKF, const std::vector<MapPoint*> &vpMP, int nIterations = 5, bool *pbStopFlag=NULL, const unsigned long nLoopKF=0, const bool bRobust = true);
 
     // Local Bundle Adjustment: (Local BA) find recent keyframes poses and map points seen in those keyframes
     // Used in:
     //  - LocalMapping::Run()
-    void static LocalBundleAdjustment(KeyFrame* pKF, bool *pbStopFlag, Map *pMap, int& num_fixedKF, int& num_OptKF, int& num_MPs, int& num_edges);
+    void static LocalBundleAdjustment(Tracking* pTracking, KeyFrame* pKF, bool *pbStopFlag, Map *pMap, int& num_fixedKF, int& num_OptKF, int& num_MPs, int& num_edges);
     
     // Local BA in welding area when two maps are merged
     // Used in:
     //  - LoopClosing::Run() -> MergeLocal()
-    void static LocalBundleAdjustment(KeyFrame* pMainKF, vector<KeyFrame*> vpAdjustKF, vector<KeyFrame*> vpFixedKF, bool *pbStopFlag);
+    void static LocalBundleAdjustment(Tracking* pTracking, KeyFrame* pMainKF, vector<KeyFrame*> vpAdjustKF, vector<KeyFrame*> vpFixedKF, bool *pbStopFlag);
 
     // Pose Optimization (Motion-only BA): find the current camera pose 
     // Used in:
