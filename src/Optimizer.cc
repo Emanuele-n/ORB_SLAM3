@@ -1765,6 +1765,8 @@ int Optimizer::PoseOptimization(Frame *pFrame, bool withPatientData, const Sophu
     g2o::SE3Quat SE3quat_recov = vSE3_recov->estimate();
     Sophus::SE3f pose(SE3quat_recov.rotation().cast<float>(), SE3quat_recov.translation().cast<float>());
     pFrame->SetPose(pose);
+    // Temp set pose to the candidate pose
+    // pFrame->SetPose(priorPose_Tciw);
 
     if (withPatientData) {
         // Print pose and prior pose
