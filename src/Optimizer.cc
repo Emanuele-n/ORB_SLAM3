@@ -211,10 +211,7 @@ void Optimizer::BundleAdjustment(Tracking* tracking, const vector<KeyFrame *> &v
         bool withPatientData = tracking->mWithPatientData;
         if (withPatientData){
             // Get candidate frame for each keyframe
-            // TODOE this is wrong, the candidate frmae here should change for each frame
-            // Sophus::SE3f finalCandidateFrame = tracking->GetCandidateFrame().inverse();
-
-            // Search for the closests pose in the reference centerline from atlas
+            // Search for the closest pose in the reference centerline from atlas
             auto TcwInv = Tcw.inverse();
             Sophus::SE3f finalCandidateFrame = tracking->GetAtlas()->GetClosestRefCenterlineFrame(TcwInv);
 
@@ -234,7 +231,7 @@ void Optimizer::BundleAdjustment(Tracking* tracking, const vector<KeyFrame *> &v
             file.read(ini);
 
             // Read weights from ini file 
-            double wT = std::stod(ini["PRIOR_WEIGHTS"].get("wT"));           // Matrix weight
+            double wT = std::stod(ini["PRIOR_WEIGHTS"].get("wT_gba"));       // Matrix weight
             double wx = std::stod(ini["PRIOR_WEIGHTS"].get("wx"));           // x translation weight  
             double wy = std::stod(ini["PRIOR_WEIGHTS"].get("wy"));           // y translation weight
             double wz = std::stod(ini["PRIOR_WEIGHTS"].get("wz"));           // z translation weight
@@ -1619,7 +1616,7 @@ int Optimizer::PoseOptimization(Frame *pFrame, bool withPatientData, const Sophu
         mINI::INIStructure ini;
         file.read(ini);
 
-        double wT = std::stod(ini["PRIOR_WEIGHTS"].get("wT"));           // Matrix weight
+        double wT = std::stod(ini["PRIOR_WEIGHTS"].get("wT_moba"));      // Matrix weight
         double wx = std::stod(ini["PRIOR_WEIGHTS"].get("wx"));           // x translation weight  
         double wy = std::stod(ini["PRIOR_WEIGHTS"].get("wy"));           // y translation weight
         double wz = std::stod(ini["PRIOR_WEIGHTS"].get("wz"));           // z translation weight
