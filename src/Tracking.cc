@@ -39,7 +39,6 @@ using namespace std;
 namespace ORB_SLAM3
 {
 
-
 Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer, MapDrawer *pMapDrawer, Atlas *pAtlas, KeyFrameDatabase* pKFDB, const string &strSettingPath, const int sensor, Settings* settings, const string &_nameSeq, const bool withPatientData, const bool withEncoder):
     mState(NO_IMAGES_YET), mSensor(sensor), mTrackedFr(0), mbStep(false),
     mbOnlyTracking(false), mbMapUpdated(false), mbVO(false), mpORBVocabulary(pVoc), mpKeyFrameDB(pKFDB),
@@ -1062,7 +1061,6 @@ Sophus::SE3f Tracking::GrabImageMonocular(const cv::Mat &im, const double &times
     return mCurrentFrame.GetPose();
 }
 
-
 double Tracking::GetSimEncoderData()
 {   
     bool debug = false;
@@ -1178,14 +1176,14 @@ void Tracking::FindCandidateFrame()
     
     if (debug) cout << "s: " << s << endl;
 
-    if (s < 0.0005)
-        {
-            cout << "Curvilinear abscissa close to zero, setting first frame from reference centerline" << endl;
-            // Return the first frame of the first branch (it's roughly the same for each branch)
-            finalCandidateFrame = allRefCenterlineFrames[0][0];
-            SetCandidateFrame(finalCandidateFrame);
-            return;
-        }
+    // if (s < 0.0005)
+    //     {
+    //         cout << "Curvilinear abscissa close to zero, setting first frame from reference centerline" << endl;
+    //         // Return the first frame of the first branch (it's roughly the same for each branch)
+    //         finalCandidateFrame = allRefCenterlineFrames[0][0];
+    //         SetCandidateFrame(finalCandidateFrame);
+    //         return;
+    //     }
 
     // To store the candidate frame for each branch
     struct BranchCandidate {
@@ -1906,7 +1904,7 @@ void Tracking::CreateInitialMapMonocular()
 
     if(medianDepth<0 || pKFcur->TrackedMapPoints(1)<50) // TODO Check, originally 100 tracks
     {
-        Verbose::PrintMess("Wrong initialization, reseting...", Verbose::VERBOSITY_QUIET);
+        Verbose::PrintMess("Wrong initialization, resetting...", Verbose::VERBOSITY_QUIET);
         mpSystem->ResetActiveMap();
         return;
     }

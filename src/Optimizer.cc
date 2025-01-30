@@ -19,7 +19,6 @@
 
 #include "Optimizer.h"
 
-
 #include <complex>
 
 #pragma GCC diagnostic push
@@ -480,7 +479,9 @@ void Optimizer::BundleAdjustment(Tracking* pTracking, const vector<KeyFrame *> &
 
 // --- Local BA ---
 void Optimizer::LocalBundleAdjustment(Tracking* pTracking, KeyFrame *pKF, bool* pbStopFlag, Map* pMap, int& num_fixedKF, int& num_OptKF, int& num_MPs, int& num_edges)
-{
+{   
+    bool debug = false;
+    if (debug) cout << "Starting Local BA" << endl;
     // Local KeyFrames: First Breath Search from Current Keyframe
     list<KeyFrame*> lLocalKeyFrames;
 
@@ -927,9 +928,9 @@ void Optimizer::LocalBundleAdjustment(Tracking* pTracking, KeyFrame *pKF, bool* 
 }
 // --- Local BA (merge) ---
 void Optimizer::LocalBundleAdjustment(Tracking* pTracking, KeyFrame* pMainKF, vector<KeyFrame*> vpAdjustKF, vector<KeyFrame*> vpFixedKF, bool *pbStopFlag)
-{
-    bool bShowImages = false;
-
+{   
+    bool debug = false;
+    if (debug) cout << "Starting Local BA (merge)" << endl;
     vector<MapPoint*> vpMPs;
 
     g2o::SparseOptimizer optimizer;
@@ -1468,7 +1469,7 @@ void Optimizer::LocalBundleAdjustment(Tracking* pTracking, KeyFrame* pMainKF, ve
 // --- Motion-only BA ---
 int Optimizer::PoseOptimization(Frame *pFrame, bool withPatientData, const Sophus::SE3f &priorPose_Tciw)
 {   
-    bool debug = true;
+    bool debug = false;
     // Solver initialization
     g2o::SparseOptimizer optimizer;
     g2o::BlockSolver_6_3::LinearSolverType * linearSolver;
@@ -1845,6 +1846,7 @@ void Optimizer::OptimizeEssentialGraph(Map* pMap, KeyFrame* pLoopKF, KeyFrame* p
                                        const LoopClosing::KeyFrameAndPose &CorrectedSim3,
                                        const map<KeyFrame *, set<KeyFrame *> > &LoopConnections, const bool &bFixScale)
 {   
+    cout << "OptimizeEssentialGraph" << endl;
     // Setup optimizer
     g2o::SparseOptimizer optimizer;
     optimizer.setVerbose(false);
@@ -2116,6 +2118,7 @@ void Optimizer::OptimizeEssentialGraph(Map* pMap, KeyFrame* pLoopKF, KeyFrame* p
 void Optimizer::OptimizeEssentialGraph(KeyFrame* pCurKF, vector<KeyFrame*> &vpFixedKFs, vector<KeyFrame*> &vpFixedCorrectedKFs,
                                        vector<KeyFrame*> &vpNonFixedKFs, vector<MapPoint*> &vpNonCorrectedMPs)
 {
+    cout << "OptimizeEssentialGraph" << endl;
     Verbose::PrintMess("Opt_Essential: There are " + to_string(vpFixedKFs.size()) + " KFs fixed in the merged map", Verbose::VERBOSITY_DEBUG);
     Verbose::PrintMess("Opt_Essential: There are " + to_string(vpFixedCorrectedKFs.size()) + " KFs fixed in the old map", Verbose::VERBOSITY_DEBUG);
     Verbose::PrintMess("Opt_Essential: There are " + to_string(vpNonFixedKFs.size()) + " KFs non-fixed in the merged map", Verbose::VERBOSITY_DEBUG);
@@ -2452,6 +2455,7 @@ void Optimizer::OptimizeEssentialGraph(KeyFrame* pCurKF, vector<KeyFrame*> &vpFi
 int Optimizer::OptimizeSim3(KeyFrame *pKF1, KeyFrame *pKF2, vector<MapPoint *> &vpMatches1, g2o::Sim3 &g2oS12, const float th2,
                             const bool bFixScale, Eigen::Matrix<double,7,7> &mAcumHessian, const bool bAllPoints)
 {
+    cout << "OptimizeSim3" << endl;
     g2o::SparseOptimizer optimizer;
     g2o::BlockSolverX::LinearSolverType * linearSolver;
 

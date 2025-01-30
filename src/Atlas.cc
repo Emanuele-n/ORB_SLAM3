@@ -84,14 +84,14 @@ void Atlas::SetRefCenterline(string& refCenterlineFramesPath)
     // Clear previous frames
     mRefCenterlineFrames.clear();
 
-    bool isDebug = false;
+    bool isDebug = true;
 
     int branchIndex = 1;
     while (true)
     {
         // Build the full filename: e.g., <input_folder>/1.txt, b2.txt, etc.
         std::string filePath = refCenterlineFramesPath + "/b" + std::to_string(branchIndex) + ".txt";
-        if (isDebug) cout << "Reading centerline file: " << filePath << endl;
+        if (isDebug) cout << "Reading centerline file from Atlas: " << filePath << endl;
         
         // Try to open the file
         std::ifstream file(filePath);

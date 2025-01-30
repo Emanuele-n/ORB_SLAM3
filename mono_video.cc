@@ -48,6 +48,7 @@ int main(int argc, char **argv)
     string vocPath = ini["RUN"].get("vocabulary");
     string settingsPath = ini["RUN"].get("calibration");
     string videoPath = ini["RUN"].get("video");
+    string logsPath = ini["RUN"].get("logs");
 
     // Initialize video source either from camera or from video file
     VideoCapture cap;
@@ -64,6 +65,9 @@ int main(int argc, char **argv)
     // Count the number of frames in the video
     int numFrames = cap.get(cv::CAP_PROP_FRAME_COUNT);
     int currentFrame = 0;
+
+    // Vector to store the camera poses
+    vector<Sophus::SE3f> trajectory;
 
     ORB_SLAM3::System SLAM(vocPath, settingsPath, ORB_SLAM3::System::MONOCULAR, use_viewer, patient_data, use_encoder, numFrames);
 
@@ -102,6 +106,7 @@ int main(int argc, char **argv)
             // auto start = chrono::steady_clock::now();
             // Sophus::SE3f Tcw = SLAM.TrackMonocular(resized_frame, tframe);
             Sophus::SE3f Tcw = SLAM.TrackMonocular(frame, tframe);
+            trajectory.push_back(Tcw);
             // auto end = chrono::steady_clock::now();
             // auto duration = chrono::duration_cast<chrono::milliseconds>(end - start);
             // cout << "TrackMonocular: " << duration.count() << " milliseconds" << endl;
@@ -123,8 +128,29 @@ int main(int argc, char **argv)
     // Stop all threads
     SLAM.Shutdown();
 
-    // Save camera trajectory
-    // SLAM.SaveKeyFrameTrajectoryTUM("em/logs/KeyFrameTrajectory.txt");
+    // Save the camera trajectory (invert all poses)
+    std::string videoFileName = videoPath.substr(videoPath.find_last_of("/\\") + 1);
+    size_t dotPos = videoFileName.find_last_of(".");
+    std::string baseName = (dotPos == std::string::npos) ? videoFileName : videoFileName.substr(0, dotPos);
+    std::string outFilename = logsPath + "/trajectory_" + baseName;
+    ofstream f;
+    f.open(outFilename.c_str());
+    f << fixed;
+
+    for(size_t i=0; i<trajectory.size(); i++)
+    {
+        Sophus::SE3f Twc = trajectory[i].inverse();
+        Eigen::Matrix3f Rwc = Twc.rotationMatrix();
+        Eigen::Vector3f twc = Twc.translation();
+
+        f << setprecision(9)
+        << twc(0) << ", " << twc(1) << ", " << twc(2) << ", "
+        << Rwc(0,0) << ", " << Rwc(0,1) << ", " << Rwc(0,2) << ", "
+        << Rwc(1,0) << ", " << Rwc(1,1) << ", " << Rwc(1,2) << ", "
+        << Rwc(2,0) << ", " << Rwc(2,1) << ", " << Rwc(2,2) << endl;
+    }
+    cout << "Camera trajectory saved to " << outFilename << endl;
+    f.close();
 
     return 0;
 }

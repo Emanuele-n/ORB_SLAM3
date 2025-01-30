@@ -284,19 +284,19 @@ void MapDrawer::DrawRefCenterline()
     }
 }
 
-void MapDrawer::DrawCandidateFrame(Sophus::SE3f Tfw)
+void MapDrawer::DrawCandidateFrame(Sophus::SE3f Tciw)
 {
     // Draw the candidate frame
     glPointSize(10.0f);
     glBegin(GL_POINTS);
     glColor3f(1.0f, 0.0f, 0.0f);
-    Eigen::Vector3f pos = Tfw.translation();
+    Eigen::Vector3f pos = Tciw.translation();
     glVertex3f(pos[0], pos[1], pos[2]);
     glEnd();
 
     // Draw the coordinate frame
     glLineWidth(2.0f);
-    Eigen::Matrix3f rot = Tfw.rotationMatrix();
+    Eigen::Matrix3f rot = Tciw.rotationMatrix();
 
     // Draw tangent vector (red)
     glBegin(GL_LINES);
@@ -327,6 +327,7 @@ void MapDrawer::DrawCandidateFrame(Sophus::SE3f Tfw)
 
 void MapDrawer::SetRefCenterline(string& refCenterlineFramesPath)
 {
+    bool debug = false;
     // Protect with mutex
     unique_lock<mutex> lock(mMutexRefCenterlineFrames);
 
@@ -338,12 +339,12 @@ void MapDrawer::SetRefCenterline(string& refCenterlineFramesPath)
     {
         // Build the full filename: e.g., <input_folder>/1.txt, b2.txt, etc.
         std::string filePath = refCenterlineFramesPath + "/b" + std::to_string(branchIndex) + ".txt";
-        cout << "Reading centerline file: " << filePath << endl;
+        if (debug) cout << "Reading centerline file in MapDrawer: " << filePath << endl;
         
         // Try to open the file
         std::ifstream file(filePath);
         if (!file.is_open()) {
-            std::cerr << "No more centerline files found after index " << branchIndex << ". Stopping." << std::endl;
+            if (debug) std::cout << "No more centerline files found after index " << branchIndex << ". Stopping." << std::endl;
             break;
         }
 
@@ -433,7 +434,7 @@ void MapDrawer::SetRefCenterline(string& refCenterlineFramesPath)
         // Now add this branch’s frames to the main container
         mRefCenterlineFrames.push_back(currentBranchFrames);
 
-        std::cout << "Set reference centerline for branch " << branchIndex 
+        if (debug) std::cout << "Set reference centerline for branch " << branchIndex 
                   << " in MapDrawer with " << currentBranchFrames.size() << " frames" 
                   << std::endl;
 
@@ -442,7 +443,7 @@ void MapDrawer::SetRefCenterline(string& refCenterlineFramesPath)
     }
 
     // Optional: You can print how many total branches got loaded
-    std::cout << "Total branches loaded: " << mRefCenterlineFrames.size() << std::endl;
+    if (debug) std::cout << "Total branches loaded: " << mRefCenterlineFrames.size() << std::endl;
 }
 
 void MapDrawer::DrawTrajCenterline()
