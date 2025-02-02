@@ -77,7 +77,17 @@ KeyFrame::KeyFrame(Frame &F, Map *pMap, KeyFrameDatabase *pKFDB):
     }
     SetPose(F.GetPose());
 
+    // If with encoder set the value
+    if(F.mWithEncoder){
+        SetEncoderMeasure(F.GetEncoderMeasure());
+    }
+
     mnOriginMapId = pMap->GetId();
+}
+
+void KeyFrame::SetEncoderMeasure(const double &encoder) {
+    mEncoder = encoder;
+    mWithEncoder = true;
 }
 
 void KeyFrame::ComputeBoW()

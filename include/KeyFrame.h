@@ -148,6 +148,13 @@ public:
     // Pose functions
     void SetPose(const Sophus::SE3f &Tcw);
 
+    // Set encoder measure
+    void SetEncoderMeasure(const double &encoder);
+
+    // Encoder measure
+    double mEncoder;
+    bool mWithEncoder = false;
+
     Sophus::SE3f GetPose();
 
     Sophus::SE3f GetPoseInverse();
@@ -223,6 +230,10 @@ public:
 
     static bool lId(KeyFrame* pKF1, KeyFrame* pKF2){
         return pKF1->mnId<pKF2->mnId;
+    }
+
+    inline double GetEncoderMeasure() const {
+        return mEncoder;
     }
 
     Map* GetMap();

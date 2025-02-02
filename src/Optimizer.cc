@@ -71,12 +71,26 @@ void Optimizer::BundleAdjustment(Tracking* pTracking, const vector<KeyFrame *> &
 
     Map* pMap = vpKFs[0]->GetMap();
 
+    // Check if we are using patient data and encoder
+    bool withPatientData = pTracking->mWithPatientData;
+    bool useEncoderScale = pTracking->mWithEncoder; 
+
+    // Setup optimizer
     g2o::SparseOptimizer optimizer;
-    g2o::BlockSolver_6_3::LinearSolverType * linearSolver;
-
-    linearSolver = new g2o::LinearSolverEigen<g2o::BlockSolver_6_3::PoseMatrixType>();
-
-    g2o::BlockSolver_6_3 * solver_ptr = new g2o::BlockSolver_6_3(linearSolver);
+    g2o::Solver* solver_ptr;
+    
+    if (useEncoderScale)
+    {
+        // If encoder is used, need to optimize also 1-dim vertices
+        auto* linearSolver = new g2o::LinearSolverEigen<g2o::BlockSolverX::PoseMatrixType>();
+        solver_ptr = new g2o::BlockSolverX(linearSolver);
+    }
+    else
+    {
+        // If encoder is not used
+        auto* linearSolver = new g2o::LinearSolverEigen<g2o::BlockSolver_6_3::PoseMatrixType>();
+        solver_ptr = new g2o::BlockSolver_6_3(linearSolver);
+    }
 
     g2o::OptimizationAlgorithmLevenberg* solver = new g2o::OptimizationAlgorithmLevenberg(solver_ptr);
     optimizer.setAlgorithm(solver);
@@ -117,6 +131,7 @@ void Optimizer::BundleAdjustment(Tracking* pTracking, const vector<KeyFrame *> &
     vpMapPointEdgeStereo.reserve(nExpectedSize);
 
 
+
     // Set KeyFrame vertices
     for(size_t i=0; i<vpKFs.size(); i++)
     {
@@ -135,7 +150,7 @@ void Optimizer::BundleAdjustment(Tracking* pTracking, const vector<KeyFrame *> &
         if(pKF->mnId>maxKFid)
             maxKFid=pKF->mnId;
         
-        bool withPatientData = pTracking->mWithPatientData;
+        
         if (withPatientData){
             // Get candidate frame for each keyframe
             // Search for the closest pose in the reference centerline from atlas
@@ -194,6 +209,61 @@ void Optimizer::BundleAdjustment(Tracking* pTracking, const vector<KeyFrame *> &
 
             edgeBarrier->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex*>(vSE3));
             optimizer.addEdge(edgeBarrier);
+
+        }
+    }
+
+    // If encoder is used, add a scale vertex and edges
+    VertexScale* vScale = nullptr;
+    if(useEncoderScale && withPatientData)
+    {
+        // Create a global scale vertex.
+        vScale = new VertexScale();
+        // Use an ID that does not conflict; here we add an offset.
+        int scaleVertexId = maxKFid + 100000;
+        vScale->setId(scaleVertexId);
+        vScale->setEstimate(1.0); // initial guess
+        vScale->setFixed(false);
+        optimizer.addVertex(vScale);
+
+        // We assume that each keyframe has an encoder measure; sort keyframes by increasing ID
+        vector<KeyFrame*> sortedKFs = vpKFs;
+        sort(sortedKFs.begin(), sortedKFs.end(), [](KeyFrame* a, KeyFrame* b) {
+            return a->mnId < b->mnId;
+        });
+
+        // For each consecutive pair, add an edge constraining the (scaled) translation difference
+        for(size_t i = 1; i < sortedKFs.size(); i++)
+        {
+            KeyFrame* pKF_prev = sortedKFs[i-1];
+            KeyFrame* pKF_curr = sortedKFs[i];
+            // Get the encoder measures (in meters)
+            double d_prev = pKF_prev->GetEncoderMeasure();
+            double d_curr = pKF_curr->GetEncoderMeasure();
+            double measuredDistance = fabs(d_curr - d_prev);
+            if(measuredDistance < 1e-6)
+                continue;
+
+            // Create an edge that ties the relative translation (times scale) to measuredDistance.
+            EdgeEncoderDistance* eEnc = new EdgeEncoderDistance();
+            eEnc->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(pKF_prev->mnId)));
+            eEnc->setVertex(1, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(pKF_curr->mnId)));
+            eEnc->setVertex(2, vScale);
+            eEnc->setMeasurement(measuredDistance);
+            
+            // Read weights from ini file
+            mINI::INIFile file(optParamsPath);
+            mINI::INIStructure ini;
+            file.read(ini);
+
+            double w_encoder = std::stod(ini["PRIOR_WEIGHTS"].get("w_encoder")); // encoder distance weight
+            
+            // // Suppose the encoder standard deviation is 0.05 m (TODOE: for real time use of encoder)
+            // double sigma = 0.05;
+            // eEnc->setInformation(Eigen::Matrix<double,1,1>::Identity() / (sigma * sigma));
+
+            eEnc->setInformation(Eigen::Matrix<double,1,1>::Identity() * w_encoder);
+            optimizer.addEdge(eEnc);
         }
     }
 
@@ -552,13 +622,28 @@ void Optimizer::LocalBundleAdjustment(Tracking* pTracking, KeyFrame *pKF, bool* 
         return;
     }
 
+    // Check if we are using patient data and encoder
+    bool withPatientData = pTracking->mWithPatientData;
+    bool useEncoderScale = pTracking->mWithEncoder; 
+
     // Setup optimizer
     g2o::SparseOptimizer optimizer;
-    g2o::BlockSolver_6_3::LinearSolverType * linearSolver;
-    linearSolver = new g2o::LinearSolverEigen<g2o::BlockSolver_6_3::PoseMatrixType>();
-    g2o::BlockSolver_6_3 * solver_ptr = new g2o::BlockSolver_6_3(linearSolver);
-    g2o::OptimizationAlgorithmLevenberg* solver = new g2o::OptimizationAlgorithmLevenberg(solver_ptr);
+    g2o::Solver* solver_ptr;
+    
+    if (useEncoderScale)
+    {
+        // If encoder is used, need to optimize also 1-dim vertices
+        auto* linearSolver = new g2o::LinearSolverEigen<g2o::BlockSolverX::PoseMatrixType>();
+        solver_ptr = new g2o::BlockSolverX(linearSolver);
+    }
+    else
+    {
+        // If encoder is not used
+        auto* linearSolver = new g2o::LinearSolverEigen<g2o::BlockSolver_6_3::PoseMatrixType>();
+        solver_ptr = new g2o::BlockSolver_6_3(linearSolver);
+    }
 
+    g2o::OptimizationAlgorithmLevenberg* solver = new g2o::OptimizationAlgorithmLevenberg(solver_ptr);
     optimizer.setAlgorithm(solver);
     optimizer.setVerbose(false);
 
@@ -586,7 +671,6 @@ void Optimizer::LocalBundleAdjustment(Tracking* pTracking, KeyFrame *pKF, bool* 
         // DEBUG LBA
         pCurrentMap->msOptKFs.insert(pKFi->mnId);
 
-        bool withPatientData = pTracking->mWithPatientData;
         if (withPatientData){
             // Get candidate frame for each keyframe
             // Search for the closest pose in the reference centerline from atlas
@@ -664,6 +748,60 @@ void Optimizer::LocalBundleAdjustment(Tracking* pTracking, KeyFrame *pKF, bool* 
             maxKFid=pKFi->mnId;
         // DEBUG LBA
         pCurrentMap->msFixedKFs.insert(pKFi->mnId);
+    }
+
+    // If encoder is used, add a scale vertex and edges
+    VertexScale* vScale = nullptr;
+    if(useEncoderScale && withPatientData)
+    {
+        // Create a global scale vertex.
+        vScale = new VertexScale();
+        // Use an ID that does not conflict; here we add an offset.
+        int scaleVertexId = maxKFid + 100000;
+        vScale->setId(scaleVertexId);
+        vScale->setEstimate(1.0); // initial guess
+        vScale->setFixed(false);
+        optimizer.addVertex(vScale);
+
+        // We assume that each keyframe has an encoder measure; sort keyframes by increasing ID
+        vector<KeyFrame*> sortedKFs(lLocalKeyFrames.begin(), lLocalKeyFrames.end());
+        sort(sortedKFs.begin(), sortedKFs.end(), [](KeyFrame* a, KeyFrame* b) {
+            return a->mnId < b->mnId;
+        });
+
+        // For each consecutive pair, add an edge constraining the (scaled) translation difference
+        for(size_t i = 1; i < sortedKFs.size(); i++)
+        {
+            KeyFrame* pKF_prev = sortedKFs[i-1];
+            KeyFrame* pKF_curr = sortedKFs[i];
+            // Get the encoder measures (in meters)
+            double d_prev = pKF_prev->GetEncoderMeasure();
+            double d_curr = pKF_curr->GetEncoderMeasure();
+            double measuredDistance = fabs(d_curr - d_prev);
+            if(measuredDistance < 1e-6)
+                continue;
+
+            // Create an edge that ties the relative translation (times scale) to measuredDistance.
+            EdgeEncoderDistance* eEnc = new EdgeEncoderDistance();
+            eEnc->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(pKF_prev->mnId)));
+            eEnc->setVertex(1, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(pKF_curr->mnId)));
+            eEnc->setVertex(2, vScale);
+            eEnc->setMeasurement(measuredDistance);
+
+            // Read weights from ini file
+            mINI::INIFile file(optParamsPath);
+            mINI::INIStructure ini;
+            file.read(ini);
+
+            double w_encoder = std::stod(ini["PRIOR_WEIGHTS"].get("w_encoder")); // encoder distance weight
+            
+            // // Suppose the encoder standard deviation is 0.05 m (TODOE: for real time use of encoder)
+            // double sigma = 0.05;
+            // eEnc->setInformation(Eigen::Matrix<double,1,1>::Identity() / (sigma * sigma));
+
+            eEnc->setInformation(Eigen::Matrix<double,1,1>::Identity() * w_encoder);
+            optimizer.addEdge(eEnc);
+        }
     }
 
     // Set MapPoint vertices
@@ -933,16 +1071,29 @@ void Optimizer::LocalBundleAdjustment(Tracking* pTracking, KeyFrame* pMainKF, ve
     if (debug) cout << "Starting Local BA (merge)" << endl;
     vector<MapPoint*> vpMPs;
 
+    // Check if we are using patient data and encoder
+    bool withPatientData = pTracking->mWithPatientData;
+    bool useEncoderScale = pTracking->mWithEncoder; 
+
+    // Setup optimizer
     g2o::SparseOptimizer optimizer;
-    g2o::BlockSolver_6_3::LinearSolverType * linearSolver;
-
-    linearSolver = new g2o::LinearSolverEigen<g2o::BlockSolver_6_3::PoseMatrixType>();
-
-    g2o::BlockSolver_6_3 * solver_ptr = new g2o::BlockSolver_6_3(linearSolver);
+    g2o::Solver* solver_ptr;
+    
+    if (useEncoderScale)
+    {
+        // If encoder is used, need to optimize also 1-dim vertices
+        auto* linearSolver = new g2o::LinearSolverEigen<g2o::BlockSolverX::PoseMatrixType>();
+        solver_ptr = new g2o::BlockSolverX(linearSolver);
+    }
+    else
+    {
+        // If encoder is not used
+        auto* linearSolver = new g2o::LinearSolverEigen<g2o::BlockSolver_6_3::PoseMatrixType>();
+        solver_ptr = new g2o::BlockSolver_6_3(linearSolver);
+    }
 
     g2o::OptimizationAlgorithmLevenberg* solver = new g2o::OptimizationAlgorithmLevenberg(solver_ptr);
     optimizer.setAlgorithm(solver);
-
     optimizer.setVerbose(false);
 
     if(pbStopFlag)
@@ -1011,7 +1162,6 @@ void Optimizer::LocalBundleAdjustment(Tracking* pTracking, KeyFrame* pMainKF, ve
         if(pKFi->mnId>maxKFid)
             maxKFid=pKFi->mnId;
 
-        bool withPatientData = pTracking->mWithPatientData;
         if (withPatientData){
             // Get candidate frame for each keyframe
             // Search for the closest pose in the reference centerline from atlas
@@ -1113,6 +1263,61 @@ void Optimizer::LocalBundleAdjustment(Tracking* pTracking, KeyFrame* pMainKF, ve
 
     vector<MapPoint*> vpMapPointEdgeStereo;
     vpMapPointEdgeStereo.reserve(nExpectedSize);
+
+
+    // If encoder is used, add a scale vertex and edges
+    VertexScale* vScale = nullptr;
+    if(useEncoderScale && withPatientData)
+    {
+        // Create a global scale vertex.
+        vScale = new VertexScale();
+        // Use an ID that does not conflict; here we add an offset.
+        int scaleVertexId = maxKFid + 100000;
+        vScale->setId(scaleVertexId);
+        vScale->setEstimate(1.0); // initial guess
+        vScale->setFixed(false);
+        optimizer.addVertex(vScale);
+
+        // We assume that each keyframe has an encoder measure; sort keyframes by increasing ID
+        vector<KeyFrame*> sortedKFs = vpAdjustKF;
+        sort(sortedKFs.begin(), sortedKFs.end(), [](KeyFrame* a, KeyFrame* b) {
+            return a->mnId < b->mnId;
+        });
+
+        // For each consecutive pair, add an edge constraining the (scaled) translation difference
+        for(size_t i = 1; i < sortedKFs.size(); i++)
+        {
+            KeyFrame* pKF_prev = sortedKFs[i-1];
+            KeyFrame* pKF_curr = sortedKFs[i];
+            // Get the encoder measures (in meters)
+            double d_prev = pKF_prev->GetEncoderMeasure();
+            double d_curr = pKF_curr->GetEncoderMeasure();
+            double measuredDistance = fabs(d_curr - d_prev);
+            if(measuredDistance < 1e-6)
+                continue;
+
+            // Create an edge that ties the relative translation (times scale) to measuredDistance.
+            EdgeEncoderDistance* eEnc = new EdgeEncoderDistance();
+            eEnc->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(pKF_prev->mnId)));
+            eEnc->setVertex(1, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(pKF_curr->mnId)));
+            eEnc->setVertex(2, vScale);
+            eEnc->setMeasurement(measuredDistance);
+
+            // Read weights from ini file
+            mINI::INIFile file(optParamsPath);
+            mINI::INIStructure ini;
+            file.read(ini);
+
+            double w_encoder = std::stod(ini["PRIOR_WEIGHTS"].get("w_encoder")); // encoder distance weight
+            
+            // // Suppose the encoder standard deviation is 0.05 m (TODOE: for real time use of encoder)
+            // double sigma = 0.05;
+            // eEnc->setInformation(Eigen::Matrix<double,1,1>::Identity() / (sigma * sigma));
+
+            eEnc->setInformation(Eigen::Matrix<double,1,1>::Identity() * w_encoder);
+            optimizer.addEdge(eEnc);
+        }
+    }
 
     const float thHuber2D = sqrt(5.99);
     const float thHuber3D = sqrt(7.815);
@@ -1470,13 +1675,30 @@ void Optimizer::LocalBundleAdjustment(Tracking* pTracking, KeyFrame* pMainKF, ve
 int Optimizer::PoseOptimization(Frame *pFrame, bool withPatientData, const Sophus::SE3f &priorPose_Tciw)
 {   
     bool debug = false;
-    // Solver initialization
+
+    // Check if we are using patient data and encoder
+    bool useEncoderScale = withPatientData;
+
+    // Setup optimizer
     g2o::SparseOptimizer optimizer;
-    g2o::BlockSolver_6_3::LinearSolverType * linearSolver;
-    linearSolver = new g2o::LinearSolverDense<g2o::BlockSolver_6_3::PoseMatrixType>();
-    g2o::BlockSolver_6_3 * solver_ptr = new g2o::BlockSolver_6_3(linearSolver);
+    g2o::Solver* solver_ptr;
+    
+    if (useEncoderScale)
+    {
+        // If encoder is used, need to optimize also 1-dim vertices
+        auto* linearSolver = new g2o::LinearSolverEigen<g2o::BlockSolverX::PoseMatrixType>();
+        solver_ptr = new g2o::BlockSolverX(linearSolver);
+    }
+    else
+    {
+        // If encoder is not used
+        auto* linearSolver = new g2o::LinearSolverEigen<g2o::BlockSolver_6_3::PoseMatrixType>();
+        solver_ptr = new g2o::BlockSolver_6_3(linearSolver);
+    }
+
     g2o::OptimizationAlgorithmLevenberg* solver = new g2o::OptimizationAlgorithmLevenberg(solver_ptr);
     optimizer.setAlgorithm(solver);
+    optimizer.setVerbose(false);
 
     int nInitialCorrespondences = 0;
 

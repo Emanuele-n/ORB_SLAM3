@@ -49,6 +49,7 @@ int main(int argc, char **argv)
     string settingsPath = ini["RUN"].get("calibration");
     string videoPath = ini["RUN"].get("video");
     string logsPath = ini["RUN"].get("logs");
+    string encoderPath = ini["RUN"].get("sim_encoder");
 
     // Initialize video source either from camera or from video file
     VideoCapture cap;
@@ -66,9 +67,6 @@ int main(int argc, char **argv)
     int numFrames = cap.get(cv::CAP_PROP_FRAME_COUNT);
     int currentFrame = 0;
 
-    // Vector to store the camera poses
-    vector<Sophus::SE3f> trajectory;
-
     ORB_SLAM3::System SLAM(vocPath, settingsPath, ORB_SLAM3::System::MONOCULAR, use_viewer, patient_data, use_encoder, numFrames);
 
     cout << endl << "-------" << endl;
@@ -78,7 +76,20 @@ int main(int argc, char **argv)
     // double desiredFPS = 15.0;
     // auto desiredFrameDuration = chrono::milliseconds(int(1000 / desiredFPS));
 
+    // Open the encoder CSV file
+    ifstream encoderFile(encoderPath);
+    if (!encoderFile.is_open() && use_encoder) {
+        cerr << "Failed to open encoder data file" << endl;
+        return -1;
+    }
+
+    // Skip the header line
+    string header;
+    getline(encoderFile, header);
+
     Mat frame, resized_frame;
+    string line;
+    float encoder_value;
     // auto lastTime = chrono::high_resolution_clock::now();
     for(;;)
     {   
@@ -98,15 +109,38 @@ int main(int argc, char **argv)
                 cerr << "Failed to capture image" << endl;
                 break;
             }
+
+            // Check frame size
+            // cout << "Frame size: " << frame.size() << endl;
+
             // Resize the frame manually
             // resize(frame, resized_frame, Size(640, 360), 0, 0, INTER_LINEAR);
             
             double tframe = chrono::duration_cast<chrono::duration<double>>(chrono::steady_clock::now().time_since_epoch()).count();
 
+            // Read encoder value from CSV
+            if (use_encoder){
+                if (getline(encoderFile, line)) {
+                    stringstream ss(line);
+                    string value;
+                    // Get last column (assuming it's comma-separated)
+                    while (getline(ss, value, ',')) {
+                        encoder_value = stof(value);
+                    }
+                } else {
+                    cout << "No encoder data" << endl;
+                    encoder_value = 0.0f;
+                }
+            }
+
             // auto start = chrono::steady_clock::now();
             // Sophus::SE3f Tcw = SLAM.TrackMonocular(resized_frame, tframe);
-            Sophus::SE3f Tcw = SLAM.TrackMonocular(frame, tframe);
-            trajectory.push_back(Tcw);
+            Sophus::SE3f Tcw;
+            if (use_encoder) {
+                Tcw = SLAM.TrackMonocularWithPatient(frame, encoder_value, tframe);
+            } else {
+                Tcw = SLAM.TrackMonocular(frame, tframe);
+            }
             // auto end = chrono::steady_clock::now();
             // auto duration = chrono::duration_cast<chrono::milliseconds>(end - start);
             // cout << "TrackMonocular: " << duration.count() << " milliseconds" << endl;
@@ -127,30 +161,12 @@ int main(int argc, char **argv)
 
     // Stop all threads
     SLAM.Shutdown();
-
-    // Save the camera trajectory (invert all poses)
-    std::string videoFileName = videoPath.substr(videoPath.find_last_of("/\\") + 1);
-    size_t dotPos = videoFileName.find_last_of(".");
-    std::string baseName = (dotPos == std::string::npos) ? videoFileName : videoFileName.substr(0, dotPos);
-    std::string outFilename = logsPath + "/trajectory_" + baseName;
-    ofstream f;
-    f.open(outFilename.c_str());
-    f << fixed;
-
-    for(size_t i=0; i<trajectory.size(); i++)
-    {
-        Sophus::SE3f Twc = trajectory[i].inverse();
-        Eigen::Matrix3f Rwc = Twc.rotationMatrix();
-        Eigen::Vector3f twc = Twc.translation();
-
-        f << setprecision(9)
-        << twc(0) << ", " << twc(1) << ", " << twc(2) << ", "
-        << Rwc(0,0) << ", " << Rwc(0,1) << ", " << Rwc(0,2) << ", "
-        << Rwc(1,0) << ", " << Rwc(1,1) << ", " << Rwc(1,2) << ", "
-        << Rwc(2,0) << ", " << Rwc(2,1) << ", " << Rwc(2,2) << endl;
+    if (encoderFile.is_open()) {
+        encoderFile.close();
     }
-    cout << "Camera trajectory saved to " << outFilename << endl;
-    f.close();
-
     return 0;
 }
+
+
+
+  

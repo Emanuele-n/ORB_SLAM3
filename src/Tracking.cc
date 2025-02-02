@@ -1061,6 +1061,58 @@ Sophus::SE3f Tracking::GrabImageMonocular(const cv::Mat &im, const double &times
     return mCurrentFrame.GetPose();
 }
 
+Sophus::SE3f Tracking::GrabImageMonocularWithPatient(const cv::Mat &im, const double &encoder, const double &timestamp, string filename)
+{       
+    // cout << "Encoder: " << encoder << endl;
+    auto start = chrono::steady_clock::now();
+    mImGray = im;
+    if(mImGray.channels()==3)
+    {
+        if(mbRGB)
+            cvtColor(mImGray,mImGray,cv::COLOR_RGB2GRAY);
+        else
+            cvtColor(mImGray,mImGray,cv::COLOR_BGR2GRAY);
+    }
+    else if(mImGray.channels()==4)
+    {
+        if(mbRGB)
+            cvtColor(mImGray,mImGray,cv::COLOR_RGBA2GRAY);
+        else
+            cvtColor(mImGray,mImGray,cv::COLOR_BGRA2GRAY);
+    }
+
+    if (mSensor == System::MONOCULAR)
+    {
+        if(mState==NOT_INITIALIZED || mState==NO_IMAGES_YET ||(lastID - initID) < mMaxFrames)
+            mCurrentFrame = Frame(mImGray, encoder, timestamp,mpIniORBextractor,mpORBVocabulary,mpCamera,mDistCoef,mbf,mThDepth);
+        else
+            mCurrentFrame = Frame(mImGray, encoder, timestamp,mpORBextractorLeft,mpORBVocabulary,mpCamera,mDistCoef,mbf,mThDepth);
+    }
+
+    if (mState==NO_IMAGES_YET)
+        t0=timestamp;
+
+    mCurrentFrame.mNameFile = filename;
+    mCurrentFrame.mnDataset = mnNumDataset;
+
+#ifdef REGISTER_TIMES
+    vdORBExtract_ms.push_back(mCurrentFrame.mTimeORB_Ext);
+#endif
+
+    lastID = mCurrentFrame.mnId;
+
+    auto end = chrono::steady_clock::now();
+    auto duration = chrono::duration_cast<chrono::milliseconds>(end - start);
+
+    auto start2 = chrono::steady_clock::now();
+    Track();
+    auto end2 = chrono::steady_clock::now();
+    auto duration2 = chrono::duration_cast<chrono::milliseconds>(end2 - start2);
+    // cout << "Tracking: " << duration2.count() << " milliseconds" << endl;
+
+    return mCurrentFrame.GetPose();
+}
+
 double Tracking::GetSimEncoderData()
 {   
     bool debug = false;
@@ -1485,7 +1537,7 @@ void Tracking::Track()
                     if (pCurrentMap->KeyFramesInMap()<10)
                     {
                         mpSystem->ResetActiveMap();
-                        Verbose::PrintMess("Reseting current map...", Verbose::VERBOSITY_NORMAL);
+                        Verbose::PrintMess("Resetting current map...", Verbose::VERBOSITY_NORMAL);
                     }else
                         CreateMapInAtlas();
 

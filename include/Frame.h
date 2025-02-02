@@ -59,6 +59,9 @@ public:
     // Constructor for Monocular cameras.
     Frame(const cv::Mat &imGray, const double &timeStamp, ORBextractor* extractor,ORBVocabulary* voc, GeometricCamera* pCamera, cv::Mat &distCoef, const float &bf, const float &thDepth, Frame* pPrevF = static_cast<Frame*>(NULL));
 
+    // Constructor for Monocular with patient data (encoder measurements)
+    Frame(const cv::Mat &imGray, const double &encoder, const double &timeStamp, ORBextractor* extractor,ORBVocabulary* voc, GeometricCamera* pCamera, cv::Mat &distCoef, const float &bf, const float &thDepth, Frame* pPrevF = static_cast<Frame*>(NULL));
+
     // Extract ORB on the image. 0 for left image and 1 for right image.
     void ExtractORB(int flag, const cv::Mat &im, const int x0, const int x1);
 
@@ -67,6 +70,9 @@ public:
 
     // Set the camera pose
     void SetPose(const Sophus::SE3<float> &Tcw);
+
+    // Set encoder measure
+    void SetEncoderMeasure(const double &encoder);
 
     Sophus::SE3f GetRelativePoseTrl();
     Sophus::SE3f GetRelativePoseTlr();
@@ -121,6 +127,10 @@ public:
         return mbHasPose;
     }
 
+    inline double GetEncoderMeasure() const {
+        return mEncoder;
+    }
+
 
 private:
     //Sophus/Eigen migration
@@ -143,6 +153,10 @@ public:
 
     // Feature extractor. The right is used only in the stereo case.
     ORBextractor* mpORBextractorLeft, *mpORBextractorRight;
+
+    // Encoder measure
+    double mEncoder;
+    bool mWithEncoder = false;
 
     // Frame timestamp.
     double mTimeStamp;

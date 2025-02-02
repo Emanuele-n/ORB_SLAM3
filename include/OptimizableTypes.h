@@ -23,6 +23,8 @@
 #include <Thirdparty/g2o/g2o/types/types_six_dof_expmap.h>
 #include <Thirdparty/g2o/g2o/types/sim3.h>
 #include "Thirdparty/g2o/g2o/types/se3quat.h"
+#include "Thirdparty/g2o/g2o/core/base_vertex.h"
+#include "Thirdparty/g2o/g2o/core/base_multi_edge.h" 
 
 #include <Eigen/Geometry>
 #include <include/CameraModels/GeometricCamera.h>
@@ -30,6 +32,86 @@
 
 namespace ORB_SLAM3 {
 
+/**
+ * VertexScale:
+ *  - A single-parameter vertex representing a global scale factor \alpha.
+ */
+class VertexScale : public g2o::BaseVertex<1, double> {
+public:
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
+    VertexScale() {}
+
+    virtual bool read(std::istream& is) override { return true; }
+    virtual bool write(std::ostream& os) const override { return true; }
+
+    virtual void setToOriginImpl() override {
+        // Set the scale to 1
+        _estimate = 1.0;
+    }
+
+    virtual void oplusImpl(const double* update) override {
+        // Add the update to the scale
+        _estimate += update[0];
+    }
+};
+
+/**
+ * EdgeEncoderDistance:
+ *  - A multi-edge connecting 3 vertices:
+ *       (0) KeyFrame i -> g2o::VertexSE3Expmap
+ *       (1) KeyFrame j -> g2o::VertexSE3Expmap
+ *       (2) The global scale vertex -> VertexScale
+ *
+ * The measurement is a single double: the encoder distance in meters.
+ * The error is:   error = alpha * ||t_j - t_i|| - (encoder_distance)
+ */
+class EdgeEncoderDistance : public g2o::BaseMultiEdge<1, double> {
+public:
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
+    EdgeEncoderDistance() {
+        // 3 vertices in this multi-edge:
+        //   0 -> g2o::VertexSE3Expmap for KeyFrame i
+        //   1 -> g2o::VertexSE3Expmap for KeyFrame j
+        //   2 -> VertexScale
+        resize(3);
+    }
+
+    // error = alpha * dist(i,j) - measured_distance
+    virtual void computeError() override {
+        const auto* vSE3_i = dynamic_cast<const g2o::VertexSE3Expmap*>(_vertices[0]);
+        const auto* vSE3_j = dynamic_cast<const g2o::VertexSE3Expmap*>(_vertices[1]);
+        const auto* vScale = dynamic_cast<const VertexScale*>(_vertices[2]);
+        if(!vSE3_i || !vSE3_j || !vScale) {
+            std::cerr << "[EdgeEncoderDistance] computeError(): dynamic_cast failed!" << std::endl;
+            _error[0] = 0.0;
+            return;
+        }
+
+        // Get the translation from each KeyFrame
+        Eigen::Vector3d t_i = vSE3_i->estimate().translation();
+        Eigen::Vector3d t_j = vSE3_j->estimate().translation();
+        double dist_ij = (t_j - t_i).norm();  // SLAM distance
+
+        double alpha = vScale->estimate();   // The scale factor
+        double measured = _measurement;      // The encoder distance
+
+        _error[0] = alpha * dist_ij - measured;
+    }
+
+    virtual bool read(std::istream& is) override {
+        // read one double into _measurement
+        is >> _measurement;
+        return true;
+    }
+
+    virtual bool write(std::ostream& os) const override {
+        // write the measurement
+        os << _measurement << " ";
+        return os.good();
+    }
+};
 
 class EdgeSE3Barrier : public g2o::BaseUnaryEdge<1, double, g2o::VertexSE3Expmap>
 {
