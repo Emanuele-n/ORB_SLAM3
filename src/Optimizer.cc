@@ -220,7 +220,7 @@ void Optimizer::BundleAdjustment(Tracking* pTracking, const vector<KeyFrame *> &
         // Create a global scale vertex.
         vScale = new VertexScale();
         // Use an ID that does not conflict; here we add an offset.
-        int scaleVertexId = maxKFid + 100000;
+        int scaleVertexId = maxKFid + 10000000;
         vScale->setId(scaleVertexId);
         vScale->setEstimate(1.0); // initial guess
         vScale->setFixed(false);
@@ -757,7 +757,7 @@ void Optimizer::LocalBundleAdjustment(Tracking* pTracking, KeyFrame *pKF, bool* 
         // Create a global scale vertex.
         vScale = new VertexScale();
         // Use an ID that does not conflict; here we add an offset.
-        int scaleVertexId = maxKFid + 100000;
+        int scaleVertexId = maxKFid + 10000000;
         vScale->setId(scaleVertexId);
         vScale->setEstimate(1.0); // initial guess
         vScale->setFixed(false);
@@ -1063,6 +1063,7 @@ void Optimizer::LocalBundleAdjustment(Tracking* pTracking, KeyFrame *pKF, bool* 
     }
 
     pMap->IncreaseChangeIndex();
+
 }
 // --- Local BA (merge) ---
 void Optimizer::LocalBundleAdjustment(Tracking* pTracking, KeyFrame* pMainKF, vector<KeyFrame*> vpAdjustKF, vector<KeyFrame*> vpFixedKF, bool *pbStopFlag)
@@ -1272,7 +1273,7 @@ void Optimizer::LocalBundleAdjustment(Tracking* pTracking, KeyFrame* pMainKF, ve
         // Create a global scale vertex.
         vScale = new VertexScale();
         // Use an ID that does not conflict; here we add an offset.
-        int scaleVertexId = maxKFid + 100000;
+        int scaleVertexId = maxKFid + 10000000;
         vScale->setId(scaleVertexId);
         vScale->setEstimate(1.0); // initial guess
         vScale->setFixed(false);
@@ -1676,25 +1677,11 @@ int Optimizer::PoseOptimization(Frame *pFrame, bool withPatientData, const Sophu
 {   
     bool debug = false;
 
-    // Check if we are using patient data and encoder
-    bool useEncoderScale = withPatientData;
-
     // Setup optimizer
     g2o::SparseOptimizer optimizer;
     g2o::Solver* solver_ptr;
-    
-    if (useEncoderScale)
-    {
-        // If encoder is used, need to optimize also 1-dim vertices
-        auto* linearSolver = new g2o::LinearSolverEigen<g2o::BlockSolverX::PoseMatrixType>();
-        solver_ptr = new g2o::BlockSolverX(linearSolver);
-    }
-    else
-    {
-        // If encoder is not used
-        auto* linearSolver = new g2o::LinearSolverEigen<g2o::BlockSolver_6_3::PoseMatrixType>();
-        solver_ptr = new g2o::BlockSolver_6_3(linearSolver);
-    }
+    auto* linearSolver = new g2o::LinearSolverEigen<g2o::BlockSolver_6_3::PoseMatrixType>();
+    solver_ptr = new g2o::BlockSolver_6_3(linearSolver);
 
     g2o::OptimizationAlgorithmLevenberg* solver = new g2o::OptimizationAlgorithmLevenberg(solver_ptr);
     optimizer.setAlgorithm(solver);
@@ -1876,52 +1863,53 @@ int Optimizer::PoseOptimization(Frame *pFrame, bool withPatientData, const Sophu
     if(nInitialCorrespondences<3)
         return 0;
 
-    if (withPatientData) {
-        // Create and set up the prior edge
-        g2o::SE3Quat T_prior_quat(priorPose_Tciw.unit_quaternion().cast<double>(), priorPose_Tciw.translation().cast<double>());
-        EdgeSE3Prior* edgePrior = new EdgeSE3Prior(T_prior_quat);
-        edgePrior->setVertex(0, vSE3);
-        edgePrior->setMeasurement(T_prior_quat);
+    
+    // if (withPatientData) {
+    //     // Create and set up the prior edge
+    //     g2o::SE3Quat T_prior_quat(priorPose_Tciw.unit_quaternion().cast<double>(), priorPose_Tciw.translation().cast<double>());
+    //     EdgeSE3Prior* edgePrior = new EdgeSE3Prior(T_prior_quat);
+    //     edgePrior->setVertex(0, vSE3);
+    //     edgePrior->setMeasurement(T_prior_quat);
 
-        // Set higher weights for translation (x,y,z) and lower weights for rotation
-        // Read weights from ini file
-        mINI::INIFile file(optParamsPath);
-        mINI::INIStructure ini;
-        file.read(ini);
+    //     // Set higher weights for translation (x,y,z) and lower weights for rotation
+    //     // Read weights from ini file
+    //     mINI::INIFile file(optParamsPath);
+    //     mINI::INIStructure ini;
+    //     file.read(ini);
 
-        double wT = std::stod(ini["PRIOR_WEIGHTS"].get("wT_moba"));      // Matrix weight
-        double wx = std::stod(ini["PRIOR_WEIGHTS"].get("wx"));           // x translation weight  
-        double wy = std::stod(ini["PRIOR_WEIGHTS"].get("wy"));           // y translation weight
-        double wz = std::stod(ini["PRIOR_WEIGHTS"].get("wz"));           // z translation weight
-        double wroll = std::stod(ini["PRIOR_WEIGHTS"].get("wroll"));     // roll weight
-        double wpitch = std::stod(ini["PRIOR_WEIGHTS"].get("wpitch"));   // pitch weight
-        double wyaw = std::stod(ini["PRIOR_WEIGHTS"].get("wyaw"));       // yaw weight
+    //     double wT = std::stod(ini["PRIOR_WEIGHTS"].get("wT_moba"));      // Matrix weight
+    //     double wx = std::stod(ini["PRIOR_WEIGHTS"].get("wx"));           // x translation weight  
+    //     double wy = std::stod(ini["PRIOR_WEIGHTS"].get("wy"));           // y translation weight
+    //     double wz = std::stod(ini["PRIOR_WEIGHTS"].get("wz"));           // z translation weight
+    //     double wroll = std::stod(ini["PRIOR_WEIGHTS"].get("wroll"));     // roll weight
+    //     double wpitch = std::stod(ini["PRIOR_WEIGHTS"].get("wpitch"));   // pitch weight
+    //     double wyaw = std::stod(ini["PRIOR_WEIGHTS"].get("wyaw"));       // yaw weight
 
-        // Create diagonal information matrix with weights
-        Eigen::Matrix<double,6,6> information = Eigen::Matrix<double,6,6>::Zero();
-        information.diagonal() << 
-            wT * wx,            // x translation
-            wT * wy,            // y translation 
-            wT * wz,            // z translation
-            wT * wroll,         // roll
-            wT * wpitch,        // pitch
-            wT * wyaw;          // yaw
-        edgePrior->setInformation(information);
-        optimizer.addEdge(edgePrior);
+    //     // Create diagonal information matrix with weights
+    //     Eigen::Matrix<double,6,6> information = Eigen::Matrix<double,6,6>::Zero();
+    //     information.diagonal() << 
+    //         wT * wx,            // x translation
+    //         wT * wy,            // y translation 
+    //         wT * wz,            // z translation
+    //         wT * wroll,         // roll
+    //         wT * wpitch,        // pitch
+    //         wT * wyaw;          // yaw
+    //     edgePrior->setInformation(information);
+    //     optimizer.addEdge(edgePrior);
 
-        // Add CBF edge
-        double distanceThreshold = std::stod(ini["CBF"].get("distanceThreshold"));
-        double barrierWeight = std::stod(ini["CBF"].get("barrierWeight"));
+    //     // Add CBF edge
+    //     double distanceThreshold = std::stod(ini["CBF"].get("distanceThreshold"));
+    //     double barrierWeight = std::stod(ini["CBF"].get("barrierWeight"));
 
-        g2o::SE3Quat T_candidate(priorPose_Tciw.unit_quaternion().cast<double>(), priorPose_Tciw.translation().cast<double>());
+    //     g2o::SE3Quat T_candidate(priorPose_Tciw.unit_quaternion().cast<double>(), priorPose_Tciw.translation().cast<double>());
 
-        auto* edgeBarrier = new EdgeSE3Barrier(T_candidate,
-                                            distanceThreshold,
-                                            barrierWeight,  // how strongly you want to push away from boundary
-                                            1e-3);          // epsilon
-        edgeBarrier->setVertex(0, vSE3);
-        optimizer.addEdge(edgeBarrier);
-    }
+    //     auto* edgeBarrier = new EdgeSE3Barrier(T_candidate,
+    //                                         distanceThreshold,
+    //                                         barrierWeight,  // how strongly you want to push away from boundary
+    //                                         1e-3);          // epsilon
+    //     edgeBarrier->setVertex(0, vSE3);
+    //     optimizer.addEdge(edgeBarrier);
+    // }
 
     // We perform 4 optimizations, after each optimization we classify observation as inlier/outlier
     // At the next optimization, outliers are not included, but at the end they can be classified as inliers again.

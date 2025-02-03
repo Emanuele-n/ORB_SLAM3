@@ -56,22 +56,39 @@ Atlas::~Atlas()
 
 Sophus::SE3f Atlas::GetClosestRefCenterlineFrame(Sophus::SE3f& Twc)
 {
+    bool debug = true;
     // Protect with mutex
     unique_lock<mutex> lock(mMutexRefCenterlineFrames);
+
+    if (debug) cout << "GetClosestRefCenterlineFrame: Looking for closest frame" << endl;
+    if (debug) cout << "Input Twc translation: " << Twc.translation().transpose() << endl;
 
     // Find the closest frame in the reference centerline
     float minDist = std::numeric_limits<float>::max();
     Sophus::SE3f closestFrame;
 
+    int branchIdx = 0;
     for (const auto& branch : mRefCenterlineFrames) {
+        if (debug) cout << "Checking branch " << branchIdx << " with " << branch.size() << " frames" << endl;
+        
+        int frameIdx = 0;
         for (const auto& frame : branch) {
             float dist = (frame.translation() - Twc.translation()).norm();
             if (dist < minDist) {
                 minDist = dist;
                 closestFrame = frame;
+                if (debug) cout << "New closest frame found at branch " << branchIdx 
+                     << ", frame " << frameIdx 
+                     << ", dist: " << dist 
+                     << ", translation: " << frame.translation().transpose() << endl;
             }
+            frameIdx++;
         }
+        branchIdx++;
     }
+
+    if (debug) cout << "Final closest frame translation: " << closestFrame.translation().transpose() 
+         << " with distance: " << minDist << endl;
 
     return closestFrame;
 }

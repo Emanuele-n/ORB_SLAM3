@@ -449,8 +449,6 @@ void System::Shutdown()
         mbShutDown = true;
     }
 
-    cout << "Shutdown" << endl;
-
     if (mpLocalMapper){
         mpLocalMapper->RequestFinish();
     }
@@ -478,6 +476,8 @@ void System::Shutdown()
         }
         usleep(5000);
     }
+
+    cout << "Shutdown" << endl;
 
     if(!mStrSaveAtlasToFile.empty())
     {

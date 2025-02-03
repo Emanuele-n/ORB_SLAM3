@@ -158,9 +158,13 @@ int main(int argc, char **argv)
             if(waitKey(30) >= 0) break;
         // }
     }
+    // Save camera trajectory
+    string videoName = videoPath.substr(videoPath.find_last_of("/\\") + 1);
+    SLAM.SaveKeyFrameTrajectoryTUM(logsPath + "/" + videoName + "trajectory.txt");
 
     // Stop all threads
     SLAM.Shutdown();
+
     if (encoderFile.is_open()) {
         encoderFile.close();
     }
