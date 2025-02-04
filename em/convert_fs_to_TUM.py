@@ -19,40 +19,73 @@ def convert_fs_to_tum(input_file, output_file):
 
     with open(input_file, "r") as fin, open(output_file, "w") as fout:
         lines = fin.readlines()
+        first = True
+        o_T_w = None
 
         for i, line in enumerate(lines):
             # Each line has 12 floats: px, py, pz, Tx, Ty, Tz, Nx, Ny, Nz, Bx, By, Bz
             vals = line.strip().split(",")
             if len(vals) != 12:
-                # You might have lines with trailing spaces, or empty lines. Handle them gracefully.
                 continue
 
             # Parse floats
-            px, py, pz = map(float, vals[0:3])
-            px = px / 1000.0
-            py = py / 1000.0
-            pz = pz / 1000.0
-            Tx, Ty, Tz = map(float, vals[3:6])
-            Nx, Ny, Nz = map(float, vals[6:9])
-            Bx, By, Bz = map(float, vals[9:12])
+            x, y, z = map(float, vals[0:3])
+            x = x / 1000.0
+            y = y / 1000.0
+            z = z / 1000.0
+            tx, ty, tz = map(float, vals[3:6])
+            nx, ny, nz = map(float, vals[6:9])
+            bx, by, bz = map(float, vals[9:12])
 
-            # Build the rotation matrix (columns are T, N, B)
-            # R = [ [Tx Nx Bx],
-            #       [Ty Ny By],
-            #       [Tz Nz Bz] ]
-            rot_mat = np.array([[Tx, Nx, Bx], [Ty, Ny, By], [Tz, Nz, Bz]])
+            # Build rotation matrix as in file: t forward, n down, b left
+            rot_matrix = np.array([[tx, nx, bx], [ty, ny, by], [tz, nz, bz]])
 
-            # Convert rotation matrix to quaternion (qx, qy, qz, qw)
-            # Note: scipy's as_quat() returns [qx, qy, qz, qw].
-            rot = R.from_matrix(rot_mat)
+            # Check determinant and adjust if necessary
+            if np.linalg.det(rot_matrix) < 0:
+                print("Determinant is negative. Adjusting rotation matrix.")
+                rot_matrix[:, 2] *= -1.0
+
+            # Verify orthogonality
+            RtR = rot_matrix.T @ rot_matrix
+            I = np.eye(3)
+            error = RtR - I
+            max_error = np.abs(error).max()
+            if max_error > 1e-6:
+                print(f"Rotation matrix not orthogonal enough. Max error: {max_error}")
+                continue
+
+            # Handle first frame
+            if first:
+                o_T_w = np.eye(4)
+                o_T_w[:3, :3] = rot_matrix
+                o_T_w[:3, 3] = [x, y, z]
+                first = False
+
+            # Build o_T_ci
+            o_T_ci = np.eye(4)
+            o_T_ci[:3, :3] = rot_matrix
+            o_T_ci[:3, 3] = [x, y, z]
+
+            # Compute w_T_ci = (o_T_w)^-1 * o_T_ci
+            o_T_w_inv = np.linalg.inv(o_T_w)
+            w_T_ci = o_T_w_inv @ o_T_ci
+
+            # Rotate 90 degrees around n axis
+            Ry = np.array([[0, 0, 1], [0, 1, 0], [-1, 0, 0]])
+            Ry_inv = Ry.T
+
+            # Apply rotation correction
+            R_new = Ry_inv @ w_T_ci[:3, :3] @ Ry
+            t_new = w_T_ci[:3, 3]
+
+            # Convert to quaternion
+            rot = R.from_matrix(R_new.astype(np.float64))
             qx, qy, qz, qw = rot.as_quat()
 
-            # In TUM format:  time tx ty tz qx qy qz qw
-            # We can use the line index as the "timestamp" or any other scheme you prefer.
-            timestamp = float(i)  # or e.g. i * 0.01, etc.
-
+            # Write TUM format: timestamp tx ty tz qx qy qz qw
+            timestamp = float(i)
             fout.write(
-                f"{timestamp:.6f} {px:.6f} {py:.6f} {pz:.6f} {qx:.6f} {qy:.6f} {qz:.6f} {qw:.6f}\n"
+                f"{timestamp:.6f} {t_new[0]:.6f} {t_new[1]:.6f} {t_new[2]:.6f} {qx:.6f} {qy:.6f} {qz:.6f} {qw:.6f}\n"
             )
 
 
