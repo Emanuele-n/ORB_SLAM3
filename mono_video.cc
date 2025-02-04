@@ -67,6 +67,9 @@ int main(int argc, char **argv)
     int numFrames = cap.get(cv::CAP_PROP_FRAME_COUNT);
     int currentFrame = 0;
 
+    // Vector to store the camera poses and timestamps
+    vector<pair<Sophus::SE3f, double>> trajectory;
+
     ORB_SLAM3::System SLAM(vocPath, settingsPath, ORB_SLAM3::System::MONOCULAR, use_viewer, patient_data, use_encoder, numFrames);
 
     cout << endl << "-------" << endl;
@@ -141,6 +144,7 @@ int main(int argc, char **argv)
             } else {
                 Tcw = SLAM.TrackMonocular(frame, tframe);
             }
+            trajectory.push_back(make_pair(Tcw, tframe));
             // auto end = chrono::steady_clock::now();
             // auto duration = chrono::duration_cast<chrono::milliseconds>(end - start);
             // cout << "TrackMonocular: " << duration.count() << " milliseconds" << endl;
@@ -160,7 +164,28 @@ int main(int argc, char **argv)
     }
     // Save camera trajectory
     string videoName = videoPath.substr(videoPath.find_last_of("/\\") + 1);
-    SLAM.SaveKeyFrameTrajectoryTUM(logsPath + "/" + videoName + "trajectory.txt");
+    videoName = videoName.substr(0, videoName.find_last_of("."));
+    string trajectoryPath = logsPath + "/" + videoName + "_trajectory.txt";
+    ofstream trajectoryFile(trajectoryPath);
+    if (trajectoryFile.is_open()) {
+        for (const auto& pose : trajectory) {
+            Eigen::Matrix<float,3,1> translation = pose.first.translation();
+            Eigen::Quaternionf q(pose.first.rotationMatrix());
+            trajectoryFile << std::fixed << std::setprecision(6)
+                          << pose.second << " "
+                          << translation.x() << " "
+                          << translation.y() << " "
+                          << translation.z() << " "
+                          << q.x() << " "
+                          << q.y() << " "
+                          << q.z() << " "
+                          << q.w() << std::endl;
+        }
+        trajectoryFile.close();
+        cout << "Camera trajectory saved to " << trajectoryPath << endl;
+    } else {
+        cerr << "Unable to open trajectory file" << endl;
+    }
 
     // Stop all threads
     SLAM.Shutdown();
