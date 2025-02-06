@@ -605,7 +605,7 @@ void Optimizer::BundleAdjustment(Tracking* pTracking, const vector<KeyFrame *> &
 // --- Local BA ---
 void Optimizer::LocalBundleAdjustment(Tracking* pTracking, KeyFrame *pKF, bool* pbStopFlag, Map* pMap, int& num_fixedKF, int& num_OptKF, int& num_MPs, int& num_edges)
 {   
-    bool debug = true;
+    bool debug = false;
     if (debug) cout << "Starting Local BA" << endl;
     // Local KeyFrames: First Breath Search from Current Keyframe
     list<KeyFrame*> lLocalKeyFrames;

@@ -39,8 +39,4 @@ This is received by the navigation.py
 - change parameters to avoid tracking lost and initialization: 
 increase the number of features detected and decrease the threshold of ORBmatcher (ORBextractor.nFeature, ORBextractor.scaleFactor, ORBextractor.nLevels, ORBextractor.iniThFAST, and ORBextractor.minThFAST) ([issue](https://github.com/UZ-SLAMLab/ORB_SLAM3/issues/863), [issue](https://github.com/UZ-SLAMLab/ORB_SLAM3/issues/757), [issue](https://github.com/UZ-SLAMLab/ORB_SLAM3/issues/736))
 
-- include encoder data to track linear advancement of the robot
-
-- test with known map and perform localization only
-
 - try without loop closure since it should be used inside lungs ( [issue](https://github.com/UZ-SLAMLab/ORB_SLAM3/issues/802))

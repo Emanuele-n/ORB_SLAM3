@@ -2431,7 +2431,16 @@ bool Tracking::Relocalization()
 
     if(vpCandidateKFs.empty()) {
         Verbose::PrintMess("There are not candidates", Verbose::VERBOSITY_NORMAL);
-        return false;
+
+        // Try relocalize from candidate pose from encoder info
+        if (mWithPatientData && mWithEncoder)
+        {
+            return RelocalizationFromEncoder();
+        }
+        else
+        {
+            return false;
+        }
     }
 
     const int nKFs = vpCandidateKFs.size();
@@ -2581,7 +2590,15 @@ bool Tracking::Relocalization()
 
     if(!bMatch)
     {
-        return false;
+        // Try relocalize from candidate pose from encoder info
+        if (mWithPatientData && mWithEncoder)
+        {
+            return RelocalizationFromEncoder();
+        }
+        else
+        {
+            return false;
+        }
     }
     else
     {
@@ -2590,6 +2607,90 @@ bool Tracking::Relocalization()
         return true;
     }
 
+}
+
+bool Tracking::RelocalizationFromEncoder()
+{
+    // 1) Obtain the encoder measure from the current Frame (whatever accessor you use):
+    double encoderMeasure = mCurrentFrame.GetEncoderMeasure(); 
+    // If your Frame stores it differently, adapt as needed.
+
+    // 2) Query the Atlas for a candidate pose on the reference centerline
+    Sophus::SE3f candidatePose = mpAtlas->FindCandidateFromEncoder(encoderMeasure);
+    // Check if the returned pose is valid; for instance, if the function returns
+    // an identity if none found, or has a separate 'valid' flag, etc.
+    // We'll do a simple check:
+    if (candidatePose.matrix().isIdentity(1e-8))
+    {
+        Verbose::PrintMess("RelocalizationFromEncoder: no valid pose from centerline", Verbose::VERBOSITY_NORMAL);
+        return false;
+    }
+
+    // 3) Set that candidate pose as the initial guess:
+    mCurrentFrame.SetPose(candidatePose);
+
+    // 4) Gather a set of map points to try projecting. For simplicity,
+    //    let's take all the map points in the current map:
+    Map* pMap = mpAtlas->GetCurrentMap();
+    if(!pMap)
+    {
+        Verbose::PrintMess("RelocalizationFromEncoder: invalid map", Verbose::VERBOSITY_NORMAL);
+        return false;
+    }
+
+    vector<MapPoint*> vpAllMPs = pMap->GetAllMapPoints();
+    // Filter out bad points
+    vector<MapPoint*> vpCandidateMPs; 
+    vpCandidateMPs.reserve(vpAllMPs.size());
+    for(MapPoint* pMP : vpAllMPs)
+    {
+        if(!pMP) continue;
+        if(!pMP->isBad())
+            vpCandidateMPs.push_back(pMP);
+    }
+
+    // 5) Search correspondences by projection
+    //    We'll use something like the ORBmatcher::SearchByProjection
+    //    which expects a rough camera pose already set in mCurrentFrame:
+    ORBmatcher matcher(0.9, true); // adjust parameters as desired
+
+    // We can keep track of matched points in "SearchByProjection".
+    set<MapPoint*> sAlreadyFound;  // or pass empty if we have no pre‐matched points
+    const int searchRadius = 100;   // Coarse or fine, depending on your guess accuracy, the higher the easier
+    const int maxMatches   = 1500;  // a cap for the matching, for instance, to avoid too many outliers
+
+    int nMatches = matcher.SearchByProjection(
+        mCurrentFrame,            // The Frame for which to do matching
+        vpCandidateMPs,           // The set of MPs we want to project
+        searchRadius, maxMatches, // Some thresholds
+        false                     // optionally the “mbFarPoints / mThFarPoints” logic
+    );
+
+    // 6) We do a pose optimization on that initial guess + correspondences
+    int nInliers = Optimizer::PoseOptimization(&mCurrentFrame, this);
+
+    // Optionally discard outliers from mCurrentFrame.mvpMapPoints[i]
+    //    for(int i=0; i<mCurrentFrame.N; i++)
+    //        if(mCurrentFrame.mvbOutlier[i])
+    //            mCurrentFrame.mvpMapPoints[i] = nullptr;
+
+    // 7) Check if inliers are enough
+    int inlierThreshold = 1; // the lower the easier
+    if(nInliers >= inlierThreshold)
+    {
+        // If we succeed, we can say that we are now relocalized
+        mnLastRelocFrameId = mCurrentFrame.mnId;
+        Verbose::PrintMess("RelocalizationFromEncoder: success with " 
+                           + to_string(nInliers) + " inliers", Verbose::VERBOSITY_NORMAL);
+        return true;
+    }
+    else
+    {
+        // If still too few inliers, we fail
+        Verbose::PrintMess("RelocalizationFromEncoder: insufficient inliers (" 
+                           + to_string(nInliers) + ")", Verbose::VERBOSITY_NORMAL);
+        return false;
+    }
 }
 
 void Tracking::Reset(bool bLocMap)

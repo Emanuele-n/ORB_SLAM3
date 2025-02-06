@@ -206,6 +206,7 @@ protected:
     void UpdateLastFrame();
     bool TrackWithMotionModel();
     bool Relocalization();
+    bool RelocalizationFromEncoder();
 
     void UpdateLocalMap();
     void UpdateLocalPoints();
