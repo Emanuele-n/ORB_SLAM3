@@ -306,10 +306,10 @@ void Viewer::Run()
             mpMapDrawer->DrawCameraTrajectory();
         if(menuShowOrigin)
             mpMapDrawer->DrawOrigin();
-        if(menuShowRefCenterline && mpMapDrawer->CheckInitialized())
-            mpMapDrawer->DrawRefCenterline();
-            Sophus::SE3f candidateFrame = mpTracker->GetCandidateFrame();
-            mpMapDrawer->DrawCandidateFrame(candidateFrame);
+        // if(menuShowRefCenterline && mpMapDrawer->CheckInitialized())
+        //     mpMapDrawer->DrawRefCenterline();
+        //     Sophus::SE3f candidateFrame = mpTracker->GetCandidateFrame();
+        //     mpMapDrawer->DrawCandidateFrame(candidateFrame);
         if(menuShowTrajCenterline && mpMapDrawer->CheckInitialized())
             mpMapDrawer->DrawTrajCenterline();
         if(menuShowKeyFrames || menuShowGraph || menuShowOptLba)

@@ -44,7 +44,7 @@ Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer,
     mbOnlyTracking(false), mbMapUpdated(false), mbVO(false), mpORBVocabulary(pVoc), mpKeyFrameDB(pKFDB),
     mbReadyToInitializate(false), mpSystem(pSys), mpViewer(NULL), bStepByStep(false),
     mpFrameDrawer(pFrameDrawer), mpMapDrawer(pMapDrawer), mpAtlas(pAtlas), mnLastRelocFrameId(0), time_recently_lost(5.0),
-    mnInitialFrameId(0), mbCreatedMap(false), mnFirstFrameId(0), mpCamera2(nullptr), mWithPatientData(withPatientData), mWithEncoder(withEncoder), mCandidateFrame(Sophus::SE3f())
+    mnInitialFrameId(0), mbCreatedMap(false), mnFirstFrameId(0), mpCamera2(nullptr), mWithPatientData(withPatientData), mWithEncoder(withEncoder) 
 {
     // Load camera parameters from settings file
     if(settings){
@@ -1113,262 +1113,9 @@ Sophus::SE3f Tracking::GrabImageMonocularWithPatient(const cv::Mat &im, const do
     return mCurrentFrame.GetPose();
 }
 
-double Tracking::GetSimEncoderData()
-{   
-    bool debug = false;
-    double simEncoderData = 0.0;
-    int currentFrameNumber = mpSystem->GetCurrentFrameNumber();
-    if (debug) cout << "Current frame number: " << currentFrameNumber << endl;
-
-    std::ifstream file(mSimEncoderPath);
-    if (!file.is_open()) {
-        std::cerr << "Failed to open " << mSimEncoderPath << std::endl;
-        return simEncoderData;
-    }
-
-    // Take the corresponding line
-    std::string line;
-    int lineIndex = -1;
-    getline(file, line); // Skip header
-    while (std::getline(file, line))
-    {
-        ++lineIndex;
-        if (lineIndex == currentFrameNumber)
-        {
-            std::stringstream ss(line);
-            std::string token;
-            std::vector<std::string> tokens;
-            while (std::getline(ss, token, ','))
-            {
-                tokens.push_back(token);
-            }
-            if (tokens.size() > 2)
-            {
-                simEncoderData = std::stod(tokens.back()) / 1000.0; // Convert to meters
-            }
-            break;
-        }
-    }
-
-    file.close();
-    if (debug) cout << "Simulated encoder data: " << simEncoderData << endl;
-    return simEncoderData;
-}
-
 Atlas* Tracking::GetAtlas()
 {
     return mpAtlas;
-}
-
-void Tracking::FindCandidateFrame()
-{
-    bool debug = false;
-    if (debug) cout << "Finding candidate frame" << endl;
-    Sophus::SE3f finalCandidateFrame;
-
-    // Get the current camera pose
-    Sophus::SE3f Tcw = mLastFrame.GetPose();
-    if (Tcw.matrix().rows() != 4 || Tcw.matrix().cols() != 4) {
-        std::cerr << "Invalid Tcw matrix size." << std::endl;
-        SetCandidateFrame(finalCandidateFrame);
-        return;
-    }
-    if (debug) cout << "Tcw: " << endl;
-    if (debug) cout << Tcw.matrix() << endl;
-
-    // Get camera position from the pose
-    Eigen::Vector3f Tcw_pos = Tcw.translation();
-    Eigen::Vector3d Tcw_pos_d = Tcw_pos.cast<double>();
-    if (debug) cout << "Tcw_pos_d: " << Tcw_pos_d << endl;
-
-    if (Tcw_pos_d.hasNaN()) {
-        std::cerr << "Invalid Tcw_pos_d received." << std::endl;
-        SetCandidateFrame(finalCandidateFrame);
-        return;
-    }
-
-    // Get the reference centerline frames
-    std::vector<std::vector<Sophus::SE3f>> allRefCenterlineFrames = mpAtlas->GetRefCenterlineFrames();
-    if (allRefCenterlineFrames.empty())
-    {
-        cout << "Reference centerline is empty in Tracking" << endl;
-        SetCandidateFrame(finalCandidateFrame);
-        return;
-    }
-
-    // Check if all branches are empty
-    bool allEmpty = true;
-    for (auto &branchFrames : allRefCenterlineFrames)
-    {
-        if (!branchFrames.empty())
-        {
-            allEmpty = false;
-            break;
-        }
-    }
-    if (allEmpty)
-    {
-        std::cerr << "Reference centerline is empty in Tracking" << std::endl;
-        SetCandidateFrame(finalCandidateFrame);
-        return;
-    }
-
-    // Get the curvilinear abscissa
-    double s = 0.0;
-    if (mWithEncoder){
-        // If with encoder s is the encoder measurement
-        // Get the encoder measurement (TODOE: different in case is real encoder measurement or simulated)
-        s = GetSimEncoderData();
-
-    }
-    else{
-        // Compute the curvilinear abscissa from the last pose to the origin on the trajectory
-        s = mpAtlas->GetCurvilinearAbscissa(Tcw_pos_d);
-    }
-    
-    if (debug) cout << "s: " << s << endl;
-
-    // if (s < 0.0005)
-    //     {
-    //         cout << "Curvilinear abscissa close to zero, setting first frame from reference centerline" << endl;
-    //         // Return the first frame of the first branch (it's roughly the same for each branch)
-    //         finalCandidateFrame = allRefCenterlineFrames[0][0];
-    //         SetCandidateFrame(finalCandidateFrame);
-    //         return;
-    //     }
-
-    // To store the candidate frame for each branch
-    struct BranchCandidate {
-        Sophus::SE3f frame; // The candidate frame of the branch
-        double cf_dist;        // The distance from the candidate to the last pose
-        bool valid;            // If the candidate is valid
-    };
-    std::vector<BranchCandidate> branchCandidates(allRefCenterlineFrames.size(),
-                                                  {Sophus::SE3f(), std::numeric_limits<double>::max(), false});
-
-    // Loop over each branch and compute the candidate frame for each
-    for (size_t b = 0; b < allRefCenterlineFrames.size(); b++)
-    {
-        const auto &refCenterlineFrames = allRefCenterlineFrames[b];
-        if (refCenterlineFrames.empty())
-        {
-            // Skip empty branch
-            continue;
-        }
-
-        // We replicate the same debug prints you had for a single branch.
-        if (debug) cout << "Finding candidate frame on branch " << b << endl;
-
-        // Variables for the candidate frame
-        Sophus::SE3f candidateFrame; // Identity transformation
-        double minDist = std::numeric_limits<double>::max();
-        double s_i = 0.0;
-        bool candidateFound = false;
-
-        // Project the curvilinear abscissa onto the centerline of the branch
-        for (size_t i = 1; i < refCenterlineFrames.size(); i++)
-        {
-            // Check if the underlying matrices are valid
-            if (refCenterlineFrames[i].matrix().rows() != 4 || refCenterlineFrames[i].matrix().cols() != 4 ||
-                refCenterlineFrames[i - 1].matrix().rows() != 4 || refCenterlineFrames[i - 1].matrix().cols() != 4)
-            {
-                std::cerr << "Invalid matrix size at index " << i << endl;
-                continue;
-            }
-
-            if (!refCenterlineFrames[i].matrix().allFinite() || 
-                !refCenterlineFrames[i - 1].matrix().allFinite())
-            {
-                std::cerr << "Invalid matrix data at index " << i << endl;
-                continue;
-            }
-
-            Eigen::Vector3d p1 = refCenterlineFrames[i].translation().cast<double>();
-            Eigen::Vector3d p2 = refCenterlineFrames[i - 1].translation().cast<double>();
-
-            // Compute the distance between two consecutive points
-            double dist = (p2 - p1).norm();
-
-            // Add the distance to the current curvilinear abscissa
-            s_i += dist;
-            if (debug) cout << "s_i: " << s_i << endl;
-
-            // Compute the difference between the current curvilinear abscissa and the real one and store the minimum
-            double diff = abs(s - s_i);
-            if (debug) cout << "diff: " << diff << endl;
-            if (diff < minDist)
-            {
-                if (debug) cout << "Candidate frame updated" << endl;
-                minDist = diff;
-                candidateFrame = refCenterlineFrames[i];
-                candidateFound = true;
-            }
-            // TODOE: implement early stop when the difference starts increasing
-        }
-
-        if (!candidateFound)
-        {
-            cout << "No candidate frame found" << endl;
-
-            // Set the first frame of the branch as the candidate (TODOE: find a better way)
-            candidateFrame = refCenterlineFrames[0];
-
-            // Store the candidate frame
-            branchCandidates[b].frame = candidateFrame;
-            branchCandidates[b].cf_dist = 1e9;
-            branchCandidates[b].valid = false;
-            continue;
-        }
-
-        // If we get here, we do have a valid candidate
-        branchCandidates[b].frame = candidateFrame;
-
-        // Compute the distance between the candidate frame and the last pose
-        Eigen::Vector3d candidateFrame_pos = candidateFrame.translation().cast<double>();
-        double candidateFrame_dist = (Tcw_pos_d - candidateFrame_pos).norm();
-        branchCandidates[b].cf_dist = candidateFrame_dist;
-        branchCandidates[b].valid = true;
-        
-    } // end for each branch
-
-    // Select the best candidate frame among all branches, based on the distance to the last pose
-    bool anyValid = false;
-    double globalMinDist = std::numeric_limits<double>::max();
-    size_t bestIndex = 0; // arbitrary
-
-    for (size_t b = 0; b < branchCandidates.size(); b++)
-    {
-        if (branchCandidates[b].cf_dist < globalMinDist && branchCandidates[b].valid)
-        {
-            anyValid = true;
-            globalMinDist = branchCandidates[b].cf_dist;
-            bestIndex = b;
-        }
-    }
-
-    // If no valid candidate was found, pick the first frame of the first branch (TODOE: find a better way)
-    if (!anyValid)
-    {
-        cout << "No candidate frame found" << endl;
-        finalCandidateFrame = allRefCenterlineFrames[0][0];
-    }
-
-    // Get and set the best candidate frame
-    finalCandidateFrame = branchCandidates[bestIndex].frame;
-    SetCandidateFrame(finalCandidateFrame);
-    return;
-}
-
-void Tracking::SetCandidateFrame(const Sophus::SE3f &candidateFrame)
-{
-    std::unique_lock<std::mutex> lock(mMutexCandidateFrame);
-    mCandidateFrame = candidateFrame;
-}
-
-Sophus::SE3f Tracking::GetCandidateFrame()
-{
-    std::unique_lock<std::mutex> lock(mMutexCandidateFrame);
-    return mCandidateFrame;
 }
 
 void Tracking::Track()
@@ -1454,16 +1201,6 @@ void Tracking::Track()
     {
         // System is initialized. Track Frame.
         bool bOK;
-
-        if (mWithPatientData){
-            // Find candidate frame
-            FindCandidateFrame();
-        }
-
-        // Get candidate frame for debugging
-        // Sophus::SE3f candidateFrame = GetCandidateFrame();
-        // cout << "Candidate frame: " << endl;
-        // cout << candidateFrame << endl;
 
 #ifdef REGISTER_TIMES
         std::chrono::steady_clock::time_point time_StartPosePred = std::chrono::steady_clock::now();
@@ -1877,18 +1614,10 @@ void Tracking::MonocularInitialization()
                 // Draw the centerline
                 mpMapDrawer->SetInitialized(mvIniP3D, Tcw, mCenterlineFramesPath);
                 cout << "Set MapDrawer initialized: " << mCenterlineFramesPath << endl;
-
-                // Obtain the transformation of the first centerline point
-                // if encoder is used at the base of the robot it returns the transformation 
-                // from the first centerline point to the estimated current point by using the encoder value as curvilinear abscissa
-                // else the first centerline frame is set coincident with the origin of the world frame, so the transformation is the identity Sophus::SE3f()
-                // Sophus::SE3f T_centerline_first_point = GetCenterlineFirstPointPose();
             }
 
             // Set Frame Poses
             mInitialFrame.SetPose(Sophus::SE3f());
-            // // Set the initial frame pose to the centerline first point pose
-            // mInitialFrame.SetPose(T_centerline_first_point);
             mCurrentFrame.SetPose(Tcw);
 
             CreateInitialMapMonocular();
@@ -2092,8 +1821,7 @@ bool Tracking::TrackReferenceKeyFrame()
 
     // cout << " TrackReferenceKeyFrame mLastFrame.mTcw:  " << mLastFrame.mTcw << endl;
     // EMA: new pose optimization with the reference frame
-    const Sophus::SE3f priorPose_Tciw = GetCandidateFrame().inverse();
-    Optimizer::PoseOptimization(&mCurrentFrame, mWithPatientData, priorPose_Tciw);
+    Optimizer::PoseOptimization(&mCurrentFrame, this);
 
     // Discard outliers
     int nmatchesMap = 0;
@@ -2240,8 +1968,7 @@ bool Tracking::TrackWithMotionModel()
 
     // Optimize frame pose with all matches
     // EMA: new pose optimization with the reference frame
-    const Sophus::SE3f priorPose_Tciw = GetCandidateFrame().inverse();
-    Optimizer::PoseOptimization(&mCurrentFrame, mWithPatientData, priorPose_Tciw);
+    Optimizer::PoseOptimization(&mCurrentFrame, this);
 
     // Discard outliers
     int nmatchesMap = 0;
@@ -2300,8 +2027,7 @@ bool Tracking::TrackLocalMap()
 
     int inliers;
     // EMA: new pose optimization with the reference frame
-    const Sophus::SE3f priorPose_Tciw = GetCandidateFrame().inverse();
-    Optimizer::PoseOptimization(&mCurrentFrame, mWithPatientData, priorPose_Tciw);
+    Optimizer::PoseOptimization(&mCurrentFrame, this);
 
     aux1 = 0, aux2 = 0;
     for(int i=0; i<mCurrentFrame.N; i++)
@@ -2799,8 +2525,7 @@ bool Tracking::Relocalization()
                 }
 
                 // EMA: new pose optimization with the reference frame
-                const Sophus::SE3f priorPose_Tciw = GetCandidateFrame().inverse();
-                int nGood = Optimizer::PoseOptimization(&mCurrentFrame, mWithPatientData, priorPose_Tciw);
+                int nGood = Optimizer::PoseOptimization(&mCurrentFrame, this);
 
                 if(nGood<10)
                     continue;
@@ -2817,8 +2542,7 @@ bool Tracking::Relocalization()
                     if(nadditional+nGood>=50)
                     {
                         // EMA: new pose optimization with the reference frame
-                        const Sophus::SE3f priorPose_Tciw = GetCandidateFrame().inverse();
-                        nGood = Optimizer::PoseOptimization(&mCurrentFrame, mWithPatientData, priorPose_Tciw);
+                        nGood = Optimizer::PoseOptimization(&mCurrentFrame, this);
 
                         // If many inliers but still not enough, search by projection again in a narrower window
                         // the camera has been already optimized with many points
@@ -2834,8 +2558,7 @@ bool Tracking::Relocalization()
                             if(nGood+nadditional>=50)
                             {
                                 // EMA: new pose optimization with the reference frame
-                                const Sophus::SE3f priorPose_Tciw = GetCandidateFrame().inverse();
-                                nGood = Optimizer::PoseOptimization(&mCurrentFrame, mWithPatientData, priorPose_Tciw);
+                                nGood = Optimizer::PoseOptimization(&mCurrentFrame, this);
 
                                 for(int io =0; io<mCurrentFrame.N; io++)
                                     if(mCurrentFrame.mvbOutlier[io])

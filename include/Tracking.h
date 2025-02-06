@@ -62,9 +62,6 @@ public:
 
     ~Tracking();
 
-    // Get the candidate frame on the reference centerline
-    Sophus::SE3f GetCandidateFrame();
-
     Atlas* GetAtlas();//TODOE: prob need mutex
 
     // Parse the config file
@@ -203,15 +200,6 @@ protected:
     // Map initialization for monocular
     void MonocularInitialization();
     void CreateInitialMapMonocular();
-
-    // Candidate frame on the reference centerline
-    Sophus::SE3f mCandidateFrame;
-    std::mutex mMutexCandidateFrame;
-    void FindCandidateFrame();
-    void SetCandidateFrame(const Sophus::SE3f &candidateFrame);
-
-    // Get encoder data
-    double GetSimEncoderData();
 
     void CheckReplacedInLastFrame();
     bool TrackReferenceKeyFrame();

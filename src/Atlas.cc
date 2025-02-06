@@ -93,6 +93,137 @@ Sophus::SE3f Atlas::GetClosestRefCenterlineFrame(Sophus::SE3f& Twc)
     return closestFrame;
 }
 
+Sophus::SE3f Atlas::FindCandidateFromEncoder(double s){
+    
+    // TODOE: better multibranch support
+    bool debug = false;
+    if (debug) cout << "Finding candidate frame from encoder mesure: " << s << endl;
+    Sophus::SE3f finalCandidateFrame;
+
+    // Get the reference centerline frames
+    std::vector<std::vector<Sophus::SE3f>> allRefCenterlineFrames = GetRefCenterlineFrames();
+    if (allRefCenterlineFrames.empty())
+    {
+        cerr << "Reference centerline is empty in Atlas" << endl;
+        return finalCandidateFrame;
+    }
+
+    // Check if all branches are empty
+    bool allEmpty = true;
+    for (auto &branchFrames : allRefCenterlineFrames)
+    {
+        if (!branchFrames.empty())
+        {
+            allEmpty = false;
+            break;
+        }
+    }
+    if (allEmpty)
+    {
+        std::cerr << "Reference centerline is empty in Atlas" << std::endl;
+        return finalCandidateFrame;
+    }
+
+    // To store the candidate frame for each branch
+    struct BranchCandidate {
+        Sophus::SE3f frame; // The candidate frame of the branch
+        bool valid;            // If the candidate is valid
+    };
+    std::vector<BranchCandidate> branchCandidates(allRefCenterlineFrames.size(),
+                                                  {Sophus::SE3f(), false});
+
+    // Loop over each branch and compute the candidate frame for each
+    for (size_t b = 0; b < allRefCenterlineFrames.size(); b++)
+    {
+        const auto &refCenterlineFrames = allRefCenterlineFrames[b];
+        if (refCenterlineFrames.empty())
+        {
+            // Skip empty branch
+            continue;
+        }
+
+        // We replicate the same debug prints you had for a single branch.
+        if (debug) cout << "Finding candidate frame on branch " << b << endl;
+
+        // Variables for the candidate frame
+        Sophus::SE3f candidateFrame; // Identity transformation
+        double minDist = std::numeric_limits<double>::max();
+        double s_i = 0.0;
+        bool candidateFound = false;
+
+        // Project the curvilinear abscissa onto the centerline of the branch
+        for (size_t i = 1; i < refCenterlineFrames.size(); i++)
+        {
+            // Check if the underlying matrices are valid
+            if (refCenterlineFrames[i].matrix().rows() != 4 || refCenterlineFrames[i].matrix().cols() != 4 ||
+                refCenterlineFrames[i - 1].matrix().rows() != 4 || refCenterlineFrames[i - 1].matrix().cols() != 4)
+            {
+                std::cerr << "Invalid matrix size at index " << i << endl;
+                continue;
+            }
+
+            if (!refCenterlineFrames[i].matrix().allFinite() || 
+                !refCenterlineFrames[i - 1].matrix().allFinite())
+            {
+                std::cerr << "Invalid matrix data at index " << i << endl;
+                continue;
+            }
+
+            Eigen::Vector3d p1 = refCenterlineFrames[i].translation().cast<double>();
+            Eigen::Vector3d p2 = refCenterlineFrames[i - 1].translation().cast<double>();
+
+            // Compute the distance between two consecutive points
+            double dist = (p2 - p1).norm();
+
+            // Add the distance to the current curvilinear abscissa
+            s_i += dist;
+
+            // Compute the difference between the current curvilinear abscissa and the real one and store the minimum
+            double diff = abs(s - s_i);
+            if (diff < minDist)
+            {
+                minDist = diff;
+                candidateFrame = refCenterlineFrames[i];
+                candidateFound = true;
+            }
+            // TODOE: implement early stop when the difference starts increasing
+        }
+
+        if (!candidateFound)
+        {
+            cout << "No candidate frame found" << endl;
+
+            // Set the first frame of the branch as the candidate (TODOE: find a better way)
+            candidateFrame = refCenterlineFrames[0];
+
+            // Store the candidate frame
+            branchCandidates[b].frame = candidateFrame;
+            branchCandidates[b].valid = false;
+            continue;
+        }
+
+        // If we get here, we do have a valid candidate
+        branchCandidates[b].frame = candidateFrame;
+        branchCandidates[b].valid = true;
+        
+    } // end for each branch
+
+    // Select the best candidate frame among all branches, based on the distance to the last pose
+    bool anyValid = true;
+    size_t bestIndex = 0; // TODOE: for now only a single branch
+
+    // If no valid candidate was found, pick the first frame of the first branch (TODOE: find a better way)
+    if (!anyValid)
+    {
+        cout << "No candidate frame found" << endl;
+        finalCandidateFrame = allRefCenterlineFrames[0][0];
+    }
+
+    // Get and set the best candidate frame
+    finalCandidateFrame = branchCandidates[bestIndex].frame;
+    return finalCandidateFrame;
+}
+
 void Atlas::SetRefCenterline(string& refCenterlineFramesPath)
 {   
     // Protect with mutex

@@ -151,11 +151,14 @@ void Optimizer::BundleAdjustment(Tracking* pTracking, const vector<KeyFrame *> &
             maxKFid=pKF->mnId;
         
         
-        if (withPatientData){
+        if (withPatientData && useEncoderScale){
             // Get candidate frame for each keyframe
-            // Search for the closest pose in the reference centerline from atlas
-            auto TcwInv = Tcw.inverse();
-            Sophus::SE3f finalCandidateFrame = pTracking->GetAtlas()->GetClosestRefCenterlineFrame(TcwInv);
+            Sophus::SE3f finalCandidateFrame;
+            // Get encoder measure for the keyframe
+            double encoderMeasure = pKF->GetEncoderMeasure();
+
+            // Find the candidate frame projecting the encoder measure onto the reference centerline
+            finalCandidateFrame = pTracking->GetAtlas()->FindCandidateFromEncoder(encoderMeasure);
 
             // Add pose prior edge 
             EdgeSE3Prior* e = new EdgeSE3Prior(g2o::SE3Quat(finalCandidateFrame.unit_quaternion().cast<double>(), finalCandidateFrame.translation().cast<double>()));
@@ -544,13 +547,65 @@ void Optimizer::BundleAdjustment(Tracking* pTracking, const vector<KeyFrame *> &
             pMP->mnBAGlobalForKF = nLoopKF;
         }
     }
+
+    // If encoder measure is used, scale all keyframes and map points
+    if(useEncoderScale && withPatientData)
+    {
+        // Get the scale
+        double scale = vScale->estimate();
+        // Scale all keyframes
+        for(size_t i=0; i<vpKFs.size(); i++)
+        {
+            KeyFrame* pKF = vpKFs[i];
+            if(pKF->isBad())
+            {
+                continue;
+            }
+            Sophus::SE3f pose = pKF->GetPose();
+            pose.translation() *= scale;
+            pKF->SetPose(pose);
+        }
+        // Scale all map points
+        for(size_t i=0; i<vpMP.size(); i++)
+        {
+            MapPoint* pMP = vpMP[i];
+            if(pMP->isBad())
+            {
+                continue;
+            }
+            pMP->SetWorldPos(pMP->GetWorldPos() * scale);
+        }
+    }
+
+    // Print the measured distance between keyframes vs the optimized distance for each pair of keyframe
+    if(useEncoderScale && withPatientData)
+    {
+        for(size_t i = 1; i < vpKFs.size(); i++)
+        {
+            KeyFrame* pKF_prev = vpKFs[i-1];
+            KeyFrame* pKF_curr = vpKFs[i];
+            // Get the encoder measures (in meters)
+            double d_prev = pKF_prev->GetEncoderMeasure();
+            double d_curr = pKF_curr->GetEncoderMeasure();
+            double measuredDistance = fabs(d_curr - d_prev);
+            if(measuredDistance < 1e-6)
+                continue;
+
+            // Get the optimized distance
+            Sophus::SE3f pose_prev = pKF_prev->GetPose();
+            Sophus::SE3f pose_curr = pKF_curr->GetPose();
+            double optimizedDistance = (pose_curr.translation() - pose_prev.translation()).norm();
+            if (debug) cout << "Measured distance: " << measuredDistance << ", optimized distance: " << optimizedDistance << endl;
+            if (debug) cout << "Error: " << fabs(measuredDistance - optimizedDistance) << endl;
+        }
+    }
 }
 // ---------------
 
 // --- Local BA ---
 void Optimizer::LocalBundleAdjustment(Tracking* pTracking, KeyFrame *pKF, bool* pbStopFlag, Map* pMap, int& num_fixedKF, int& num_OptKF, int& num_MPs, int& num_edges)
 {   
-    bool debug = false;
+    bool debug = true;
     if (debug) cout << "Starting Local BA" << endl;
     // Local KeyFrames: First Breath Search from Current Keyframe
     list<KeyFrame*> lLocalKeyFrames;
@@ -671,11 +726,14 @@ void Optimizer::LocalBundleAdjustment(Tracking* pTracking, KeyFrame *pKF, bool* 
         // DEBUG LBA
         pCurrentMap->msOptKFs.insert(pKFi->mnId);
 
-        if (withPatientData){
+        if (withPatientData && useEncoderScale){
             // Get candidate frame for each keyframe
-            // Search for the closest pose in the reference centerline from atlas
-            auto TcwInv = Tcw.inverse();
-            Sophus::SE3f finalCandidateFrame = pTracking->GetAtlas()->GetClosestRefCenterlineFrame(TcwInv);
+            Sophus::SE3f finalCandidateFrame;
+            // Get encoder measure for the keyframe
+            double encoderMeasure = pKF->GetEncoderMeasure();
+
+            // Find the candidate frame projecting the encoder measure onto the reference centerline
+            finalCandidateFrame = pTracking->GetAtlas()->FindCandidateFromEncoder(encoderMeasure);
 
             // Add pose prior edge 
             EdgeSE3Prior* e = new EdgeSE3Prior(g2o::SE3Quat(finalCandidateFrame.unit_quaternion().cast<double>(), finalCandidateFrame.translation().cast<double>()));
@@ -1062,13 +1120,65 @@ void Optimizer::LocalBundleAdjustment(Tracking* pTracking, KeyFrame *pKF, bool* 
         pMP->UpdateNormalAndDepth();
     }
 
+    // If encoder measure is used, scale all keyframes and map points
+    if(useEncoderScale && withPatientData)
+    {
+        // Get the scale
+        double scale = vScale->estimate();
+        // Scale all keyframes
+        for(list<KeyFrame*>::iterator lit=lLocalKeyFrames.begin(), lend=lLocalKeyFrames.end(); lit!=lend; lit++)
+        {
+            KeyFrame* pKF = *lit;
+            Sophus::SE3f pose = pKF->GetPose();
+            pose.translation() *= scale;
+            pKF->SetPose(pose);
+        }
+        // Scale all map points
+        for(list<MapPoint*>::iterator lit=lLocalMapPoints.begin(), lend=lLocalMapPoints.end(); lit!=lend; lit++)
+        {
+            MapPoint* pMP = *lit;
+            pMP->SetWorldPos(pMP->GetWorldPos() * scale);
+        }
+    }
+
+    // Print the measured distance between keyframes vs the optimized distance for each pair of keyframe
+    if(useEncoderScale && withPatientData)
+    {
+        vector<KeyFrame*> sortedKFs(lLocalKeyFrames.begin(), lLocalKeyFrames.end());
+        sort(sortedKFs.begin(), sortedKFs.end(), [](KeyFrame* a, KeyFrame* b) {
+            return a->mnId < b->mnId;
+        });
+
+        // For each consecutive pair, add an edge constraining the (scaled) translation difference
+        for(size_t i = 1; i < sortedKFs.size(); i++)
+        {
+            KeyFrame* pKF_prev = sortedKFs[i-1];
+            KeyFrame* pKF_curr = sortedKFs[i];
+            // Get the encoder measures (in meters)
+            double d_prev = pKF_prev->GetEncoderMeasure();
+            double d_curr = pKF_curr->GetEncoderMeasure();
+            double measuredDistance = fabs(d_curr - d_prev);
+            if(measuredDistance < 1e-6)
+                continue;
+
+            // Get the optimized distance
+            Sophus::SE3f pose_prev = pKF_prev->GetPose();
+            Sophus::SE3f pose_curr = pKF_curr->GetPose();
+            double optimizedDistance = (pose_curr.translation() - pose_prev.translation()).norm();
+
+            // Print the measured distance and the optimized distance
+            if (debug) cout << "Measured distance: " << measuredDistance << " Optimized distance: " << optimizedDistance << endl;
+            if (debug) cout << "Error: " << fabs(measuredDistance - optimizedDistance) << endl;
+        }
+    }
+
     pMap->IncreaseChangeIndex();
 
 }
 // --- Local BA (merge) ---
 void Optimizer::LocalBundleAdjustment(Tracking* pTracking, KeyFrame* pMainKF, vector<KeyFrame*> vpAdjustKF, vector<KeyFrame*> vpFixedKF, bool *pbStopFlag)
 {   
-    bool debug = false;
+    bool debug = true;
     if (debug) cout << "Starting Local BA (merge)" << endl;
     vector<MapPoint*> vpMPs;
 
@@ -1163,12 +1273,15 @@ void Optimizer::LocalBundleAdjustment(Tracking* pTracking, KeyFrame* pMainKF, ve
         if(pKFi->mnId>maxKFid)
             maxKFid=pKFi->mnId;
 
-        if (withPatientData){
+        if (withPatientData && useEncoderScale){
             // Get candidate frame for each keyframe
-            // Search for the closest pose in the reference centerline from atlas
-            auto TcwInv = Tcw.inverse();
-            Sophus::SE3f finalCandidateFrame = pTracking->GetAtlas()->GetClosestRefCenterlineFrame(TcwInv);
+            Sophus::SE3f finalCandidateFrame;
 
+            // Get encoder measure for the keyframe
+            double encoderMeasure = pKFi->GetEncoderMeasure();
+
+            // Find the candidate frame projecting the encoder measure onto the reference centerline
+            finalCandidateFrame = pTracking->GetAtlas()->FindCandidateFromEncoder(encoderMeasure);
             // Add pose prior edge 
             EdgeSE3Prior* e = new EdgeSE3Prior(g2o::SE3Quat(finalCandidateFrame.unit_quaternion().cast<double>(), finalCandidateFrame.translation().cast<double>()));
 
@@ -1669,11 +1782,30 @@ void Optimizer::LocalBundleAdjustment(Tracking* pTracking, KeyFrame* pMainKF, ve
         pMPi->UpdateNormalAndDepth();
 
     }
+
+    // If encoder measure is used, scale all keyframes and map points
+    if(useEncoderScale && withPatientData)
+    {
+        // Get the scale
+        double scale = vScale->estimate();
+        // Scale all keyframes
+        for(KeyFrame* pKF : vpAdjustKF)
+        {
+            Sophus::SE3f pose = pKF->GetPose();
+            pose.translation() *= scale;
+            pKF->SetPose(pose);
+        }
+        // Scale all map points
+        for(MapPoint* pMP : vpMPs)
+        {
+            pMP->SetWorldPos(pMP->GetWorldPos() * scale);
+        }
+    }
 }
 // ---------------
 
 // --- Motion-only BA ---
-int Optimizer::PoseOptimization(Frame *pFrame, bool withPatientData, const Sophus::SE3f &priorPose_Tciw)
+int Optimizer::PoseOptimization(Frame *pFrame, Tracking* pTracking)
 {   
     bool debug = false;
 
@@ -2026,25 +2158,25 @@ int Optimizer::PoseOptimization(Frame *pFrame, bool withPatientData, const Sophu
     // Temp set pose to the candidate pose
     // pFrame->SetPose(priorPose_Tciw);
 
-    if (withPatientData) {
-        // Print pose and prior pose
-        if (debug) cout << "Pose: " << endl << pose.matrix() << endl;
-        if (debug) cout << "Prior pose: " << endl << priorPose_Tciw.matrix() << endl;
+    // if (withPatientData) {
+    //     // Print pose and prior pose
+    //     if (debug) cout << "Pose: " << endl << pose.matrix() << endl;
+    //     if (debug) cout << "Prior pose: " << endl << priorPose_Tciw.matrix() << endl;
 
-        // Compute error by explicitly casting to double
-        Sophus::SE3d poseDouble(pose.unit_quaternion().cast<double>(), pose.translation().cast<double>());
-        Sophus::SE3d priorPose_TciwDouble(priorPose_Tciw.unit_quaternion().cast<double>(), priorPose_Tciw.translation().cast<double>());
-        Eigen::Matrix<double, 6, 1> error = poseDouble.log() - priorPose_TciwDouble.log();
+    //     // Compute error by explicitly casting to double
+    //     Sophus::SE3d poseDouble(pose.unit_quaternion().cast<double>(), pose.translation().cast<double>());
+    //     Sophus::SE3d priorPose_TciwDouble(priorPose_Tciw.unit_quaternion().cast<double>(), priorPose_Tciw.translation().cast<double>());
+    //     Eigen::Matrix<double, 6, 1> error = poseDouble.log() - priorPose_TciwDouble.log();
 
-        // Get the error norm
-        double errorNorm = error.norm();
-        if (debug) cout << "Error norm: " << endl << errorNorm << endl;
+    //     // Get the error norm
+    //     double errorNorm = error.norm();
+    //     if (debug) cout << "Error norm: " << endl << errorNorm << endl;
 
-        // Get only the translation error
-        Eigen::Vector3d translationError = error.head<3>();
-        double translationErrorNorm = translationError.norm();
-        if (debug) cout << "Translation error norm: " << endl << translationErrorNorm << endl;
-    }
+    //     // Get only the translation error
+    //     Eigen::Vector3d translationError = error.head<3>();
+    //     double translationErrorNorm = translationError.norm();
+    //     if (debug) cout << "Translation error norm: " << endl << translationErrorNorm << endl;
+    // }
 
     return nInitialCorrespondences - nBad;
 }
