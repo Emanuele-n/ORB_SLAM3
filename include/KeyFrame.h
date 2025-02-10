@@ -154,6 +154,7 @@ public:
     // Encoder measure
     double mEncoder;
     bool mWithEncoder = false;
+    std::mutex mEncoderMutex;
 
     Sophus::SE3f GetPose();
 
@@ -232,9 +233,7 @@ public:
         return pKF1->mnId<pKF2->mnId;
     }
 
-    inline double GetEncoderMeasure() const {
-        return mEncoder;
-    }
+    double GetEncoderMeasure();
 
     Map* GetMap();
     void UpdateMap(Map* pMap);

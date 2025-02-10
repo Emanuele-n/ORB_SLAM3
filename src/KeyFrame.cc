@@ -90,6 +90,11 @@ void KeyFrame::SetEncoderMeasure(const double &encoder) {
     mWithEncoder = true;
 }
 
+double KeyFrame::GetEncoderMeasure() {
+    unique_lock<mutex> lock(mEncoderMutex); 
+    return mEncoder;
+}
+
 void KeyFrame::ComputeBoW()
 {
     if(mBowVec.empty() || mFeatVec.empty())

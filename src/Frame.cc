@@ -80,6 +80,10 @@ Frame::Frame(const Frame &frame)
     if(frame.mbHasPose)
         SetPose(frame.GetPose());
 
+    if (frame.mWithEncoder){
+        SetEncoderMeasure(frame.GetEncoderMeasure());
+    }
+
     mmProjectPoints = frame.mmProjectPoints;
     mmMatchedInImage = frame.mmMatchedInImage;
 
