@@ -97,6 +97,7 @@ Sophus::SE3f Atlas::FindCandidateFromEncoder(double s){
     
     // TODOE: better multibranch support
     bool debug = false;
+
     if (debug) cout << "Finding candidate frame from encoder mesure: " << s << endl;
     Sophus::SE3f finalCandidateFrame;
 
@@ -474,7 +475,24 @@ void Atlas::SetViewer(Viewer* pViewer)
 void Atlas::AddKeyFrame(KeyFrame* pKF)
 {
     Map* pMapKF = pKF->GetMap();
-    pMapKF->AddKeyFrame(pKF);
+
+    // If a new map is created (in addition to the initial one, basically if track lost),
+    // and there are no keyframes in the map, add the keyframe and set the pose from the candidate,
+    // and the encoder is used
+    // This should glue the new map to the reference centerline
+    // if (CountMaps() >= 1 && pMapKF->KeyFramesInMap() == 0 && pKF->mWithEncoder){
+    if (pKF->mWithEncoder){
+        cout << "Adding keyframe to map with prior" << endl;
+        double encoderMeasure = pKF->GetEncoderMeasure();
+        Sophus::SE3f Twci = FindCandidateFromEncoder(encoderMeasure);
+        Sophus::SE3f candidatePose = Twci.inverse();
+        pMapKF->AddKeyFrameFromCandidate(pKF, candidatePose);
+    }
+    else{
+        cout << "Adding keyframe to map without prior" << endl;
+        pMapKF->AddKeyFrame(pKF);
+    }
+
 }
 
 void Atlas::AddMapPoint(MapPoint* pMP)

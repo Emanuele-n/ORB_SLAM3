@@ -91,6 +91,7 @@ void Optimizer::BundleAdjustment(Tracking* pTracking, const vector<KeyFrame *> &
         auto* linearSolver = new g2o::LinearSolverEigen<g2o::BlockSolver_6_3::PoseMatrixType>();
         solver_ptr = new g2o::BlockSolver_6_3(linearSolver);
     }
+    if (debug) cout << "Solver created" << endl;
 
     g2o::OptimizationAlgorithmLevenberg* solver = new g2o::OptimizationAlgorithmLevenberg(solver_ptr);
     optimizer.setAlgorithm(solver);
@@ -130,7 +131,7 @@ void Optimizer::BundleAdjustment(Tracking* pTracking, const vector<KeyFrame *> &
     vector<MapPoint*> vpMapPointEdgeStereo;
     vpMapPointEdgeStereo.reserve(nExpectedSize);
 
-
+    if (debug) cout << "Setting up vertices and edges" << endl;
 
     // Set KeyFrame vertices
     for(size_t i=0; i<vpKFs.size(); i++)
@@ -152,13 +153,17 @@ void Optimizer::BundleAdjustment(Tracking* pTracking, const vector<KeyFrame *> &
         
         
         if (withPatientData && useEncoderScale){
+            if (debug) cout << "Setting up encoder scale vertices" << endl;
             // Get candidate frame for each keyframe
             Sophus::SE3f finalCandidateFrame;
             // Get encoder measure for the keyframe
             double encoderMeasure = pKF->GetEncoderMeasure();
+            if (debug) cout << "Encoder measure: " << encoderMeasure << endl;
 
             // Find the candidate frame projecting the encoder measure onto the reference centerline
-            finalCandidateFrame = pTracking->GetAtlas()->FindCandidateFromEncoder(encoderMeasure);
+            Sophus::SE3f Twci = pTracking->GetAtlas()->FindCandidateFromEncoder(encoderMeasure);
+            finalCandidateFrame = Twci.inverse();
+            if (debug) cout << "Final candidate frame: " << finalCandidateFrame.matrix() << endl;
 
             // Add pose prior edge 
             EdgeSE3Prior* e = new EdgeSE3Prior(g2o::SE3Quat(finalCandidateFrame.unit_quaternion().cast<double>(), finalCandidateFrame.translation().cast<double>()));
@@ -215,11 +220,12 @@ void Optimizer::BundleAdjustment(Tracking* pTracking, const vector<KeyFrame *> &
 
         }
     }
-
+    if (debug) cout << "Keyframe vertices set" << endl;
     // If encoder is used, add a scale vertex and edges
     VertexScale* vScale = nullptr;
     if(useEncoderScale && withPatientData)
-    {
+    {   
+        if (debug) cout << "Adding encoder scale vertex" << endl;
         // Create a global scale vertex.
         vScale = new VertexScale();
         // Use an ID that does not conflict; here we add an offset.
@@ -268,8 +274,9 @@ void Optimizer::BundleAdjustment(Tracking* pTracking, const vector<KeyFrame *> &
             eEnc->setInformation(Eigen::Matrix<double,1,1>::Identity() * w_encoder);
             optimizer.addEdge(eEnc);
         }
+        if (debug) cout << "Encoder scale edges set" << endl;
     }
-
+    
     const float thHuber2D = sqrt(5.99);
     const float thHuber3D = sqrt(7.815);
 
@@ -419,6 +426,7 @@ void Optimizer::BundleAdjustment(Tracking* pTracking, const vector<KeyFrame *> &
             vbNotIncludedMP[i]=false;
         }
     }
+    if (debug) cout << "MapPoint vertices set" << endl;
 
     // Optimize!
     optimizer.setVerbose(false);
@@ -547,13 +555,14 @@ void Optimizer::BundleAdjustment(Tracking* pTracking, const vector<KeyFrame *> &
             pMP->mnBAGlobalForKF = nLoopKF;
         }
     }
-
     // If encoder measure is used, scale all keyframes and map points
     if(useEncoderScale && withPatientData)
-    {
+    {   
+        cout << "Optimizing scale" << endl;
         // Get the scale
         double scale = vScale->estimate();
         // Scale all keyframes
+        cout << "Scale: " << scale << endl;
         for(size_t i=0; i<vpKFs.size(); i++)
         {
             KeyFrame* pKF = vpKFs[i];
@@ -565,6 +574,7 @@ void Optimizer::BundleAdjustment(Tracking* pTracking, const vector<KeyFrame *> &
             pose.translation() *= scale;
             pKF->SetPose(pose);
         }
+        cout << "Scaled KFs" << endl;
         // Scale all map points
         for(size_t i=0; i<vpMP.size(); i++)
         {
@@ -575,11 +585,12 @@ void Optimizer::BundleAdjustment(Tracking* pTracking, const vector<KeyFrame *> &
             }
             pMP->SetWorldPos(pMP->GetWorldPos() * scale);
         }
+        cout << "Scaled MPs" << endl;
     }
 
     // Print the measured distance between keyframes vs the optimized distance for each pair of keyframe
     if(useEncoderScale && withPatientData)
-    {
+    {   
         for(size_t i = 1; i < vpKFs.size(); i++)
         {
             KeyFrame* pKF_prev = vpKFs[i-1];
@@ -733,7 +744,8 @@ void Optimizer::LocalBundleAdjustment(Tracking* pTracking, KeyFrame *pKF, bool* 
             double encoderMeasure = pKF->GetEncoderMeasure();
 
             // Find the candidate frame projecting the encoder measure onto the reference centerline
-            finalCandidateFrame = pTracking->GetAtlas()->FindCandidateFromEncoder(encoderMeasure);
+            Sophus::SE3f Twci = pTracking->GetAtlas()->FindCandidateFromEncoder(encoderMeasure);
+            finalCandidateFrame = Twci.inverse();
 
             // Add pose prior edge 
             EdgeSE3Prior* e = new EdgeSE3Prior(g2o::SE3Quat(finalCandidateFrame.unit_quaternion().cast<double>(), finalCandidateFrame.translation().cast<double>()));
@@ -1281,7 +1293,9 @@ void Optimizer::LocalBundleAdjustment(Tracking* pTracking, KeyFrame* pMainKF, ve
             double encoderMeasure = pKFi->GetEncoderMeasure();
 
             // Find the candidate frame projecting the encoder measure onto the reference centerline
-            finalCandidateFrame = pTracking->GetAtlas()->FindCandidateFromEncoder(encoderMeasure);
+            Sophus::SE3f Twci = pTracking->GetAtlas()->FindCandidateFromEncoder(encoderMeasure);
+            finalCandidateFrame = Twci.inverse();
+
             // Add pose prior edge 
             EdgeSE3Prior* e = new EdgeSE3Prior(g2o::SE3Quat(finalCandidateFrame.unit_quaternion().cast<double>(), finalCandidateFrame.translation().cast<double>()));
 

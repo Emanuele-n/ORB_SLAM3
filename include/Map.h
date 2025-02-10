@@ -69,6 +69,7 @@ public:
     ~Map();
 
     void AddKeyFrame(KeyFrame* pKF);
+    void AddKeyFrameFromCandidate(KeyFrame* pKF, Sophus::SE3f& CandidatePose);
     void AddMapPoint(MapPoint* pMP);
     void EraseMapPoint(MapPoint* pMP);
     void EraseKeyFrame(KeyFrame* pKF);

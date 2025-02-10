@@ -1630,14 +1630,20 @@ void Tracking::CreateInitialMapMonocular()
 {
     // Create KeyFrames
     KeyFrame* pKFini = new KeyFrame(mInitialFrame,mpAtlas->GetCurrentMap(),mpKeyFrameDB);
+    // Check if pKFini is with encoder
+    double iniEncoder = pKFini->GetEncoderMeasure();
+    cout << "Encoder in pKFini: " << iniEncoder << endl;
     KeyFrame* pKFcur = new KeyFrame(mCurrentFrame,mpAtlas->GetCurrentMap(),mpKeyFrameDB);
 
     pKFini->ComputeBoW();
     pKFcur->ComputeBoW();
 
     // Insert KFs in the map
+    cout << "Inserting pKFini and pKFcur in the map" << endl;
     mpAtlas->AddKeyFrame(pKFini);
+    cout << "pKFini inserted" << endl;
     mpAtlas->AddKeyFrame(pKFcur);
+    cout << "pKFcur inserted" << endl;
 
     for(size_t i=0; i<mvIniMatches.size();i++)
     {
@@ -1676,8 +1682,10 @@ void Tracking::CreateInitialMapMonocular()
 
     // Bundle Adjustment
     Verbose::PrintMess("New Map created with " + to_string(mpAtlas->MapPointsInMap()) + " points", Verbose::VERBOSITY_QUIET);
+    cout << "Starting Global Bundle Adjustment" << endl;
     Optimizer::GlobalBundleAdjustment(this, mpAtlas->GetCurrentMap(),20);
     // ----- IV. AUTOMATIC MAP INITIALIZATION ends here -----
+    cout << "End Global Bundle Adjustment" << endl;
 
     float medianDepth = pKFini->ComputeSceneMedianDepth(2);
     float invMedianDepth;
@@ -1694,6 +1702,7 @@ void Tracking::CreateInitialMapMonocular()
     Sophus::SE3f Tc2w = pKFcur->GetPose();
     Tc2w.translation() *= invMedianDepth;
     pKFcur->SetPose(Tc2w);
+    cout << "Scale initial baseline" << endl;
 
     // Scale points
     vector<MapPoint*> vpAllMapPoints = pKFini->GetMapPointMatches();
@@ -1706,6 +1715,7 @@ void Tracking::CreateInitialMapMonocular()
             pMP->UpdateNormalAndDepth();
         }
     }
+    cout << "Scale points" << endl;
 
     mpLocalMapper->InsertKeyFrame(pKFini);
     mpLocalMapper->InsertKeyFrame(pKFcur);
@@ -1743,6 +1753,7 @@ void Tracking::CreateInitialMapMonocular()
     mState=OK;
 
     initID = pKFcur->mnId;
+    cout << "Initialization done" << endl;
 }
 
 void Tracking::CreateMapInAtlas()
@@ -2616,7 +2627,8 @@ bool Tracking::RelocalizationFromEncoder()
     // If your Frame stores it differently, adapt as needed.
 
     // 2) Query the Atlas for a candidate pose on the reference centerline
-    Sophus::SE3f candidatePose = mpAtlas->FindCandidateFromEncoder(encoderMeasure);
+    Sophus::SE3f Twci = mpAtlas->FindCandidateFromEncoder(encoderMeasure);
+    Sophus::SE3f candidatePose = Twci.inverse();
     // Check if the returned pose is valid; for instance, if the function returns
     // an identity if none found, or has a separate 'valid' flag, etc.
     // We'll do a simple check:

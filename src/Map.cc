@@ -61,6 +61,7 @@ void Map::AddKeyFrame(KeyFrame *pKF)
 {
     unique_lock<mutex> lock(mMutexMap);
     if(mspKeyFrames.empty()){
+        cout << "New Map with no prior pose" << endl;
         cout << "First KF:" << pKF->mnId << "; Map init KF:" << mnInitKFid << endl;
         mnInitKFid = pKF->mnId;
         mpKFinitial = pKF;
@@ -76,6 +77,30 @@ void Map::AddKeyFrame(KeyFrame *pKF)
         mpKFlowerID = pKF;
     }
 }
+
+void Map::AddKeyFrameFromCandidate(KeyFrame *pKF, Sophus::SE3f &candidatePose)
+{
+    unique_lock<mutex> lock(mMutexMap);
+    if(mspKeyFrames.empty()){
+        cout << "New Map with prior pose" << endl;
+        cout << "First KF:" << pKF->mnId << "; Map init KF:" << mnInitKFid << endl;
+        pKF->SetPose(candidatePose);
+        cout << "Set pose from encoder: " << candidatePose.matrix() << endl; 
+        mnInitKFid = pKF->mnId;
+        mpKFinitial = pKF;
+        mpKFlowerID = pKF;
+    }
+    mspKeyFrames.insert(pKF);
+    if(pKF->mnId>mnMaxKFid)
+    {
+        mnMaxKFid=pKF->mnId;
+    }
+    if(pKF->mnId<mpKFlowerID->mnId)
+    {
+        mpKFlowerID = pKF;
+    }
+}
+
 
 void Map::AddMapPoint(MapPoint *pMP)
 {
