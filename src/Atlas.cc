@@ -481,20 +481,103 @@ void Atlas::AddKeyFrame(KeyFrame* pKF)
     // and the encoder is used
     // This should glue the new map to the reference centerline
     // if (CountMaps() >= 1 && pMapKF->KeyFramesInMap() == 0 && pKF->mWithEncoder){
-    if (pKF->mWithEncoder){
-        cout << "Adding keyframe to map with prior" << endl;
-        double encoderMeasure = pKF->GetEncoderMeasure();
-        Sophus::SE3f Twci = FindCandidateFromEncoder(encoderMeasure);
-        Sophus::SE3f candidatePose = Twci.inverse();
-        pMapKF->AddKeyFrameFromCandidate(pKF, candidatePose);
-    }
-    else{
-        cout << "Adding keyframe to map without prior" << endl;
+    // if (pKF->mWithEncoder){
+    //     double encoderMeasure = pKF->GetEncoderMeasure();
+    //     Sophus::SE3f Twci = FindCandidateFromEncoder(encoderMeasure);
+    //     Sophus::SE3f candidatePose = Twci.inverse();
+    //     pMapKF->AddKeyFrameFromCandidate(pKF, candidatePose);
+    // }
+    // else{
         pMapKF->AddKeyFrame(pKF);
-    }
+    // }
 
 }
 
+void Atlas::MergeMapsFromCandidates()
+{
+    // Get all maps: new map and previous map
+    vector<Map*> vMaps = GetAllMaps();
+    if(vMaps.size() < 2){
+        cout << "Not enough maps to merge" << endl;
+        return;
+    }
+    cout << "Merging maps" << endl;
+    
+    Map* pNewMap = vMaps.back();
+    Map* pOldMap = vMaps[vMaps.size()-2];
+
+    // Get the first keyframe of the new map.
+    KeyFrame* pFirstKF = pNewMap->GetOriginKF();
+    if(!pFirstKF){
+        cout << "No origin keyframe in new map" << endl;
+        return;
+    }
+
+    cout << "First keyframe of new map: " << pFirstKF << endl;
+        
+    // Compute candidate pose from encoder data (candidate is in pOldMap coordinates)
+    double encoderMeasure = pFirstKF->GetEncoderMeasure();
+    Sophus::SE3f Twci = FindCandidateFromEncoder(encoderMeasure);
+    Sophus::SE3f candidatePose = Twci.inverse();    
+    cout << "Candidate pose from encoder: " << candidatePose.matrix() << endl;
+
+    // Compute transformation to warp new map into previous map coordinates:
+    // T_ref = candidatePose * (T_new_first)⁻¹
+    Sophus::SE3f T_new_first = pFirstKF->GetPose();
+    Sophus::SE3f T_ref = candidatePose * T_new_first.inverse();
+    cout << "Transformation to warp new map into previous map: " << T_ref.matrix() << endl;
+
+    // ----- Update keyframe poses -----
+    cout << "Updating keyframe poses" << endl;
+    vector<KeyFrame*> vNewKFs = pNewMap->GetAllKeyFrames();
+    for(auto pKF : vNewKFs)
+    {
+        // Backup current pose (if needed later)
+        pKF->mTcwBefMerge = pKF->GetPose();
+
+        // Apply the transformation: correct the pose in the pOldMap reference system.
+        Sophus::SE3f correctedPose = T_ref * pKF->GetPose();
+        pKF->SetPose(correctedPose);
+
+        // Update map membership: remove from new map and add to old map.
+        pKF->UpdateMap(pOldMap);
+        pOldMap->AddKeyFrame(pKF);
+    }
+    cout << "Keyframe poses updated" << endl;
+    
+    // ----- Update map point positions -----
+    cout << "Updating map point positions" << endl;
+    vector<MapPoint*> vNewMPs = pNewMap->GetAllMapPoints();
+    for(auto pMP : vNewMPs)
+    {
+        // Get current world position, transform and update it.
+        Eigen::Vector3f currentPos = pMP->GetWorldPos();
+        Eigen::Vector3f correctedPos = T_ref * currentPos;
+        pMP->SetWorldPos(correctedPos);
+
+        // Update map membership for the map point.
+        pMP->UpdateMap(pOldMap);
+        pOldMap->AddMapPoint(pMP);
+    }
+    cout << "Map point positions updated" << endl;
+
+    // // ----- Optionally: run a local bundle adjustment to refine the merged states -----
+    // bool bStop = false;
+    // vector<KeyFrame*> vOldKFs = pOldMap->GetAllKeyFrames();
+    // Optimizer::LocalBundleAdjustment(mpTracker, pFirstKF, vOldKFs, vOldKFs, &bStop);
+
+    // Mark the new map as merged and clear its memory.
+    pNewMap->SetStoredMap();
+    mspMaps.erase(pNewMap);
+    delete pNewMap;
+
+    // Set the merged (old) map as the current map.
+    ChangeMap(pOldMap);
+    
+    // Remove any maps previously marked as bad.
+    RemoveBadMaps();
+    cout << "New map merged and deleted" << endl;
+}
 void Atlas::AddMapPoint(MapPoint* pMP)
 {
     Map* pMapMP = pMP->GetMap();

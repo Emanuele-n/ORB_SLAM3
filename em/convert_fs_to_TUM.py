@@ -30,9 +30,9 @@ def convert_fs_to_tum(input_file, output_file):
 
             # Parse floats
             x, y, z = map(float, vals[0:3])
-            x = x / 1000.0
-            y = y / 1000.0
-            z = z / 1000.0
+            # x = x / 1000.0
+            # y = y / 1000.0
+            # z = z / 1000.0
             tx, ty, tz = map(float, vals[3:6])
             nx, ny, nz = map(float, vals[6:9])
             bx, by, bz = map(float, vals[9:12])

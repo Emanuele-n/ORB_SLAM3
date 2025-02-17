@@ -1120,6 +1120,8 @@ Atlas* Tracking::GetAtlas()
 
 void Tracking::Track()
 {   
+    //TODOE: add a separate thread that keeps track of the current candidate frame, 
+    // so that if the track is lost the current pose comes from the candidate only (basically track is never lost)
     // cout << "TRACK" << endl;
     bool printDuration = false;
     // Declare all the durations
@@ -1606,7 +1608,7 @@ void Tracking::MonocularInitialization()
             }
 
             // EMA: Implement the a priori info about the centerline
-            if(mWithPatientData)
+            if(mWithPatientData && mWithEncoder)
             {   
                 // Create centerline in Atlas
                 mpAtlas->SetRefCenterline(mCenterlineFramesPath);
@@ -1623,7 +1625,7 @@ void Tracking::MonocularInitialization()
             CreateInitialMapMonocular();
         }
     }
-    // cout << "End MonocularInitialization" << endl;
+    cout << "End MonocularInitialization" << endl;
 }
 
 void Tracking::CreateInitialMapMonocular()
@@ -1682,10 +1684,8 @@ void Tracking::CreateInitialMapMonocular()
 
     // Bundle Adjustment
     Verbose::PrintMess("New Map created with " + to_string(mpAtlas->MapPointsInMap()) + " points", Verbose::VERBOSITY_QUIET);
-    cout << "Starting Global Bundle Adjustment" << endl;
     Optimizer::GlobalBundleAdjustment(this, mpAtlas->GetCurrentMap(),20);
     // ----- IV. AUTOMATIC MAP INITIALIZATION ends here -----
-    cout << "End Global Bundle Adjustment" << endl;
 
     float medianDepth = pKFini->ComputeSceneMedianDepth(2);
     float invMedianDepth;
@@ -1754,6 +1754,26 @@ void Tracking::CreateInitialMapMonocular()
 
     initID = pKFcur->mnId;
     cout << "Initialization done" << endl;
+
+    // If it's not the first map merge it to the previous one based on the candidate frame
+    if(mpAtlas->GetAllMaps().size()>1 && mWithPatientData && mWithEncoder)
+    {
+        cout << "Merging maps from candidates" << endl;
+        
+        // ----- Stop local mapping and ongoing BA similar to MergeLocal -----
+        mpLocalMapper->RequestStop();
+        mpLocalMapper->EmptyQueue();
+        while(!mpLocalMapper->isStopped())
+        {
+            usleep(1000);
+        }
+        cout << "Local Mapper stopped" << endl;
+        mpAtlas->MergeMapsFromCandidates();
+        cout << "Maps merged" << endl;
+
+        // Release local mapping so tracking can resume.
+        mpLocalMapper->Release();
+    }
 }
 
 void Tracking::CreateMapInAtlas()
@@ -2668,7 +2688,7 @@ bool Tracking::RelocalizationFromEncoder()
 
     // We can keep track of matched points in "SearchByProjection".
     set<MapPoint*> sAlreadyFound;  // or pass empty if we have no pre‐matched points
-    const int searchRadius = 100;   // Coarse or fine, depending on your guess accuracy, the higher the easier
+    const int searchRadius = 1000;   // Coarse or fine, depending on your guess accuracy, the higher the easier
     const int maxMatches   = 1500;  // a cap for the matching, for instance, to avoid too many outliers
 
     int nMatches = matcher.SearchByProjection(
@@ -2699,8 +2719,8 @@ bool Tracking::RelocalizationFromEncoder()
     else
     {
         // If still too few inliers, we fail
-        Verbose::PrintMess("RelocalizationFromEncoder: insufficient inliers (" 
-                           + to_string(nInliers) + ")", Verbose::VERBOSITY_NORMAL);
+        // Verbose::PrintMess("RelocalizationFromEncoder: insufficient inliers (" 
+                        //    + to_string(nInliers) + ")", Verbose::VERBOSITY_NORMAL);
         return false;
     }
 }

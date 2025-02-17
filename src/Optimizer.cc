@@ -558,11 +558,11 @@ void Optimizer::BundleAdjustment(Tracking* pTracking, const vector<KeyFrame *> &
     // If encoder measure is used, scale all keyframes and map points
     if(useEncoderScale && withPatientData)
     {   
-        cout << "Optimizing scale" << endl;
+        if (debug) cout << "Optimizing scale" << endl;
         // Get the scale
         double scale = vScale->estimate();
         // Scale all keyframes
-        cout << "Scale: " << scale << endl;
+        if (debug) cout << "Scale: " << scale << endl;
         for(size_t i=0; i<vpKFs.size(); i++)
         {
             KeyFrame* pKF = vpKFs[i];
@@ -574,7 +574,7 @@ void Optimizer::BundleAdjustment(Tracking* pTracking, const vector<KeyFrame *> &
             pose.translation() *= scale;
             pKF->SetPose(pose);
         }
-        cout << "Scaled KFs" << endl;
+        if (debug) cout << "Scaled KFs" << endl;
         // Scale all map points
         for(size_t i=0; i<vpMP.size(); i++)
         {
@@ -585,7 +585,7 @@ void Optimizer::BundleAdjustment(Tracking* pTracking, const vector<KeyFrame *> &
             }
             pMP->SetWorldPos(pMP->GetWorldPos() * scale);
         }
-        cout << "Scaled MPs" << endl;
+        if (debug) cout << "Scaled MPs" << endl;
     }
 
     // Print the measured distance between keyframes vs the optimized distance for each pair of keyframe
@@ -1190,7 +1190,7 @@ void Optimizer::LocalBundleAdjustment(Tracking* pTracking, KeyFrame *pKF, bool* 
 // --- Local BA (merge) ---
 void Optimizer::LocalBundleAdjustment(Tracking* pTracking, KeyFrame* pMainKF, vector<KeyFrame*> vpAdjustKF, vector<KeyFrame*> vpFixedKF, bool *pbStopFlag)
 {   
-    bool debug = true;
+    bool debug = false;
     if (debug) cout << "Starting Local BA (merge)" << endl;
     vector<MapPoint*> vpMPs;
 

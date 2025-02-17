@@ -390,6 +390,29 @@ Sophus::SE3f System::TrackMonocularWithPatient(const cv::Mat &im, const double &
     mTrackedMapPoints = mpTracker->mCurrentFrame.mvpMapPoints;
     mTrackedKeyPointsUn = mpTracker->mCurrentFrame.mvKeysUn;
 
+    if (mWithPatientData && mWithEncoder){
+        // TODOE: Add some post-processing here
+        // Get candidate frame from encoder
+        Sophus::SE3f Twci = mpTracker->GetAtlas()->FindCandidateFromEncoder(encoder);
+        Sophus::SE3f Tcwi = Twci.inverse();
+
+        // Compute error between candidate and current frame
+        // Compute error by explicitly casting to double
+        Sophus::SE3d TcwDouble(Tcw.unit_quaternion().cast<double>(), Tcw.translation().cast<double>());
+        Sophus::SE3d TcwiDouble(Tcwi.unit_quaternion().cast<double>(), Tcwi.translation().cast<double>());
+        Eigen::Matrix<double, 6, 1> error = TcwDouble.log() - TcwiDouble.log();
+
+        // Get the error norm
+        double errorNorm = error.norm();
+        // cout << "Error norm: " << errorNorm << endl;
+
+        // Get only the translation error
+        Eigen::Vector3d translationError = error.head<3>();
+        double translationErrorNorm = translationError.norm();
+        cout << "Translation error norm: " << translationErrorNorm << endl;
+    }
+
+
     return Tcw;
 }
 

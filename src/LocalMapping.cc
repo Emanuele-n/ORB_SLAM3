@@ -254,7 +254,7 @@ void LocalMapping::ProcessNewKeyFrame()
 }
 
 void LocalMapping::EmptyQueue()
-{
+{   
     while(CheckNewKeyFrames())
         ProcessNewKeyFrame();
 }
