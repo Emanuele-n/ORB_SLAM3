@@ -437,7 +437,6 @@ void MapDrawer::DrawCurrentCamera(pangolin::OpenGlMatrix &Twc)
     glPopMatrix();
 }
 
-
 void MapDrawer::SetCurrentCameraPose(const Sophus::SE3f &Tcw)
 {
     unique_lock<mutex> lock(mMutexCamera);
