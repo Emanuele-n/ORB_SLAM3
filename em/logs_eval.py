@@ -29,7 +29,7 @@ def set_timestamps_in_reference(ref_path, traj_path):
 
     # New ref file
     # Create a new file by adding "_timestamps" suffix to the original reference file
-    new_ref_path = os.path.splitext(traj_path)[0] + "_reference.txt"
+    new_ref_path = os.path.splitext(ref_path)[0] + "_reference.txt"
     print(f"New reference file: {new_ref_path}")
 
     # Create the new reference file and Write the new reference trajectory with timestamps (for each line replace the first column with the new timestamp)
@@ -59,7 +59,7 @@ def run_evo_traj_subprocess(traj_path, ref_path, plot_mode="xy", do_plot=True):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="Convert Frenet-Serret frames to TUM trajectory format."
+        description="Compare camera trajectory to ground truth."
     )
     parser.add_argument(
         "traj_path",
