@@ -20,10 +20,9 @@
 #include<algorithm>
 #include<fstream>
 #include<chrono>
-
 #include<opencv2/core/core.hpp>
-
 #include<System.h>
+#include "ini.h"
 
 using namespace std;
 
@@ -32,18 +31,30 @@ void LoadImages(const string &strAssociationFilename, vector<string> &vstrImageF
 
 int main(int argc, char **argv)
 {
-    if(argc != 5)
+    if(argc != 2)
     {
-        cerr << endl << "Usage: ./rgbd_tum path_to_vocabulary path_to_settings path_to_sequence path_to_association" << endl;
+        cerr << endl << "Usage: ./broncho_rgbd path_to_config.ini" << endl;
         return 1;
     }
+
+    // Get the config file path
+    string configFilePath = argv[1];
+    mINI::INIFile file(configFilePath);
+    mINI::INIStructure ini;
+    file.read(ini);
+
+    // Get the paths to the vocabulary, settings, record and association files
+    string vocabularyPath = ini["RUN"].get("vocabulary");
+    string settingsPath = ini["RUN"].get("calibration");
+    string recordFolderPath = ini["RUN"].get("record");
+    string associationPath = ini["RUN"].get("association");
+    string logsPath = ini["RUN"].get("logs");
 
     // Retrieve paths to images
     vector<string> vstrImageFilenamesRGB;
     vector<string> vstrImageFilenamesD;
     vector<double> vTimestamps;
-    string strAssociationFilename = string(argv[4]);
-    LoadImages(strAssociationFilename, vstrImageFilenamesRGB, vstrImageFilenamesD, vTimestamps);
+    LoadImages(associationPath, vstrImageFilenamesRGB, vstrImageFilenamesD, vTimestamps);
 
     // Check consistency in the number of images and depthmaps
     int nImages = vstrImageFilenamesRGB.size();
@@ -59,7 +70,7 @@ int main(int argc, char **argv)
     }
 
     // Create SLAM system. It initializes all system threads and gets ready to process frames.
-    ORB_SLAM3::System SLAM(argv[1],argv[2],ORB_SLAM3::System::RGBD,true);
+    ORB_SLAM3::System SLAM(vocabularyPath, settingsPath, ORB_SLAM3::System::RGBD, true);
     float imageScale = SLAM.GetImageScale();
 
     // Vector for tracking time statistics
@@ -75,14 +86,13 @@ int main(int argc, char **argv)
     for(int ni=0; ni<nImages; ni++)
     {
         // Read image and depthmap from file
-        imRGB = cv::imread(string(argv[3])+"/"+vstrImageFilenamesRGB[ni],cv::IMREAD_UNCHANGED); //,cv::IMREAD_UNCHANGED);
-        imD = cv::imread(string(argv[3])+"/"+vstrImageFilenamesD[ni],cv::IMREAD_UNCHANGED); //,cv::IMREAD_UNCHANGED);
+        imRGB = cv::imread(recordFolderPath + "/" + vstrImageFilenamesRGB[ni], cv::IMREAD_UNCHANGED);
+        imD = cv::imread(recordFolderPath + "/" + vstrImageFilenamesD[ni], cv::IMREAD_UNCHANGED);
         double tframe = vTimestamps[ni];
 
         if(imRGB.empty())
         {
-            cerr << endl << "Failed to load image at: "
-                 << string(argv[3]) << "/" << vstrImageFilenamesRGB[ni] << endl;
+            cerr << endl << "Failed to load image at: " << recordFolderPath << "/" << vstrImageFilenamesRGB[ni] << endl;
             return 1;
         }
 
@@ -139,8 +149,14 @@ int main(int argc, char **argv)
     cout << "mean tracking time: " << totaltime/nImages << endl;
 
     // Save camera trajectory
-    SLAM.SaveTrajectoryTUM("CameraTrajectory.txt");
-    SLAM.SaveKeyFrameTrajectoryTUM("KeyFrameTrajectory.txt");   
+    // if it doesn't exist, create the logs folder
+    if (mkdir(logsPath.c_str(), 0777) == -1)
+    {
+        cerr << "Error :  " << strerror(errno) << endl;
+    }
+
+    SLAM.SaveKeyFrameTrajectoryTUM(logsPath + "/KeyFrameTrajectory.txt");
+    SLAM.SaveKeyFrameTrajectoryTUM(logsPath + "/CameraTrajectory.txt");
 
     return 0;
 }
