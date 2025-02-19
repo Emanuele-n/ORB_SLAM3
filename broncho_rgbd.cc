@@ -22,7 +22,6 @@
 #include<chrono>
 #include<opencv2/core/core.hpp>
 #include<System.h>
-#include "ini.h"
 
 using namespace std;
 
@@ -50,6 +49,12 @@ int main(int argc, char **argv)
     string associationPath = ini["RUN"].get("association");
     string logsPath = ini["RUN"].get("logs");
 
+    // Get running options
+    bool useViewer = ini["RUN"].get("viewer") == "true";
+
+    // Encoder data
+    string encoderPath = ini["ENCODER"].get("sim_encoder");
+
     // Retrieve paths to images
     vector<string> vstrImageFilenamesRGB;
     vector<string> vstrImageFilenamesD;
@@ -70,7 +75,7 @@ int main(int argc, char **argv)
     }
 
     // Create SLAM system. It initializes all system threads and gets ready to process frames.
-    ORB_SLAM3::System SLAM(vocabularyPath, settingsPath, ORB_SLAM3::System::RGBD, true);
+    ORB_SLAM3::System SLAM(vocabularyPath, settingsPath, ORB_SLAM3::System::RGBD, useViewer, 0, "", configFilePath);
     float imageScale = SLAM.GetImageScale();
 
     // Vector for tracking time statistics

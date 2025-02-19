@@ -78,6 +78,7 @@ ${Pangolin_INCLUDE_DIRS}
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/lib)
 
 add_library(${PROJECT_NAME} SHARED
+src/Skeleton.cc
 src/System.cc
 src/Tracking.cc
 src/LocalMapping.cc
@@ -106,6 +107,7 @@ src/GeometricTools.cc
 src/TwoViewReconstruction.cc
 src/Config.cc
 src/Settings.cc
+include/Skeleton.h
 include/System.h
 include/Tracking.h
 include/LocalMapping.h

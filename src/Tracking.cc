@@ -41,7 +41,7 @@ namespace ORB_SLAM3
 {
 
 
-Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer, MapDrawer *pMapDrawer, Atlas *pAtlas, KeyFrameDatabase* pKFDB, const string &strSettingPath, const int sensor, Settings* settings, const string &_nameSeq):
+Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer, MapDrawer *pMapDrawer, Atlas *pAtlas, KeyFrameDatabase* pKFDB, const string &strSettingPath, const int sensor, Settings* settings, const string &_nameSeq, const string &configPath):
     mState(NO_IMAGES_YET), mSensor(sensor), mTrackedFr(0), mbStep(false),
     mbOnlyTracking(false), mbMapUpdated(false), mbVO(false), mpORBVocabulary(pVoc), mpKeyFrameDB(pKFDB),
     mbReadyToInitializate(false), mpSystem(pSys), mpViewer(NULL), bStepByStep(false),
@@ -115,6 +115,21 @@ Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer,
         {
             std::cout << " is unknown" << std::endl;
         }
+    }
+
+    // If with patient data and encoder init Skeleton
+    mINI::INIFile file(configPath);
+    mINI::INIStructure ini;
+    file.read(ini);
+    bool withPatient = ini["RUN"].get("patient") == "true";
+    bool withEncoder = ini["RUN"].get("encoder") == "true";
+    mbWithPatientData = withPatient;
+    mbWithEncoder = withEncoder;
+
+    if (withPatient && withEncoder){
+        std::cout << "Initializing Skeleton" << std::endl;
+        string centerlinePath = ini["PATIENT"].get("folder");
+        mpSkeleton = new Skeleton(centerlinePath, mpAtlas);
     }
 
 #ifdef REGISTER_TIMES

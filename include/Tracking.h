@@ -36,6 +36,8 @@
 #include "System.h"
 #include "ImuTypes.h"
 #include "Settings.h"
+#include "Skeleton.h"
+#include "ini.h"
 
 #include "GeometricCamera.h"
 
@@ -57,9 +59,13 @@ class Tracking
 {  
 
 public:
+    // Patient and encoder options
+    bool mbWithPatientData;
+    bool mbWithEncoder;
+
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     Tracking(System* pSys, ORBVocabulary* pVoc, FrameDrawer* pFrameDrawer, MapDrawer* pMapDrawer, Atlas* pAtlas,
-             KeyFrameDatabase* pKFDB, const string &strSettingPath, const int sensor, Settings* settings, const string &_nameSeq=std::string());
+             KeyFrameDatabase* pKFDB, const string &strSettingPath, const int sensor, Settings* settings, const string &_nameSeq=std::string(), const string &configPath="");
 
     ~Tracking();
 
@@ -193,6 +199,9 @@ public:
 #endif
 
 protected:
+
+    // Skeleton
+    Skeleton* mpSkeleton;
 
     // Main tracking function. It is independent of the input sensor.
     void Track();
