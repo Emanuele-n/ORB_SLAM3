@@ -231,6 +231,11 @@ System::System(const string &strVocFile, const string &strSettingsFile, const eS
     mpLoopCloser = new LoopClosing(mpAtlas, mpKeyFrameDatabase, mpVocabulary, mSensor!=MONOCULAR, activeLC); // mSensor!=MONOCULAR);
     mptLoopClosing = new thread(&ORB_SLAM3::LoopClosing::Run, mpLoopCloser);
 
+    // Run the Skeleton main thread if we have patient data and encoder data
+    if (mbWithPatientData && mbWithEncoder){
+        mptSkeleton = new thread(&ORB_SLAM3::Skeleton::Run, mpTracker->mpSkeleton);
+    }
+
     //Set pointers between threads
     mpTracker->SetLocalMapper(mpLocalMapper);
     mpTracker->SetLoopClosing(mpLoopCloser);
@@ -343,7 +348,7 @@ Sophus::SE3f System::TrackStereo(const cv::Mat &imLeft, const cv::Mat &imRight, 
     return Tcw;
 }
 
-Sophus::SE3f System::TrackRGBD(const cv::Mat &im, const cv::Mat &depthmap, const double &timestamp, const vector<IMU::Point>& vImuMeas, string filename)
+Sophus::SE3f System::TrackRGBD(const cv::Mat &im, const cv::Mat &depthmap, const double &timestamp, const double &curvilinearAbscissa, const vector<IMU::Point>& vImuMeas, string filename)
 {
     if(mSensor!=RGBD  && mSensor!=IMU_RGBD)
     {
@@ -406,6 +411,11 @@ Sophus::SE3f System::TrackRGBD(const cv::Mat &im, const cv::Mat &depthmap, const
             mpTracker->GrabImuData(vImuMeas[i_imu]);
 
     Sophus::SE3f Tcw = mpTracker->GrabImageRGBD(imToFeed,imDepthToFeed,timestamp,filename);
+
+    // If we have patient data and encoder data, we can use the encoder data to update the curvilinear abscissa
+    if (curvilinearAbscissa != std::numeric_limits<double>::max() && mbWithPatientData && mbWithEncoder){
+        mpTracker->mpSkeleton->SetCurvilinearAbscissa(curvilinearAbscissa);
+    }
 
     unique_lock<mutex> lock2(mMutexState);
     mTrackingState = mpTracker->mState;

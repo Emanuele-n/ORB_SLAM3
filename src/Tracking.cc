@@ -127,7 +127,7 @@ Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer,
     mbWithEncoder = withEncoder;
 
     if (withPatient && withEncoder){
-        std::cout << "Initializing Skeleton" << std::endl;
+        std::cout << "\nInitializing Skeleton" << std::endl;
         string centerlinePath = ini["PATIENT"].get("folder");
         mpSkeleton = new Skeleton(centerlinePath, mpAtlas);
     }

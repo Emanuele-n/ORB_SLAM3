@@ -62,6 +62,9 @@ public:
     // Patient and encoder options
     bool mbWithPatientData;
     bool mbWithEncoder;
+    
+    // Skeleton
+    Skeleton* mpSkeleton;
 
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     Tracking(System* pSys, ORBVocabulary* pVoc, FrameDrawer* pFrameDrawer, MapDrawer* pMapDrawer, Atlas* pAtlas,
@@ -199,9 +202,6 @@ public:
 #endif
 
 protected:
-
-    // Skeleton
-    Skeleton* mpSkeleton;
 
     // Main tracking function. It is independent of the input sensor.
     void Track();

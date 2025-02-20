@@ -50,10 +50,41 @@ int main(int argc, char **argv)
     string logsPath = ini["RUN"].get("logs");
 
     // Get running options
+    bool withPatient = ini["RUN"].get("patient") == "true";
+    bool withEncoder = ini["RUN"].get("encoder") == "true";
     bool useViewer = ini["RUN"].get("viewer") == "true";
 
     // Encoder data
-    string encoderPath = ini["ENCODER"].get("sim_encoder");
+    std::vector<double> encoderData;
+    if (withEncoder){
+        string encoderPath = ini["ENCODER"].get("sim_encoder");
+        std::ifstream csvFile(encoderPath);
+        if(!csvFile.is_open()){
+            std::cerr << "Could not open encoder file: " << encoderPath << std::endl;
+        } else {
+            std::string line;
+            bool isHeader = true;
+            while(std::getline(csvFile, line)) {
+                if(isHeader) {
+                    isHeader = false;
+                    continue;
+                }
+                std::stringstream ss(line);
+                std::string cell, lastCell;
+                while(std::getline(ss, cell, ',')) {
+                    lastCell = cell;
+                }
+                try {
+                    double value = std::stod(lastCell);
+                    encoderData.push_back(value);
+                } catch(const std::exception &e) {
+                    std::cerr << "Invalid number in CSV: " << lastCell << std::endl;
+                }
+            }
+        }
+        std::cout << "Encoder data loaded with size: " << encoderData.size() << std::endl;
+    }
+
 
     // Retrieve paths to images
     vector<string> vstrImageFilenamesRGB;
@@ -116,7 +147,17 @@ int main(int argc, char **argv)
 #endif
 
         // Pass the image to the SLAM system
-        SLAM.TrackRGBD(imRGB,imD,tframe);
+        if (withPatient && withEncoder){
+            if(ni >= encoderData.size()){
+                break;
+            }
+            double encoderValue = encoderData[ni];
+            SLAM.TrackRGBD(imRGB, imD, tframe, encoderValue);
+        }
+        else{
+            SLAM.TrackRGBD(imRGB, imD, tframe);
+        }
+            
 
 #ifdef COMPILEDWITHC11
         std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();
