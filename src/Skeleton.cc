@@ -5,12 +5,22 @@
 #include <chrono>
 #include <mutex>
 
+// TODOE: ATE is too similar among branches
 namespace ORB_SLAM3 {
 
 Skeleton::Skeleton(string &referenceCenterlinePath, Atlas* pAtlas)
     : mReferenceCenterlinePath(referenceCenterlinePath), mpAtlas(pAtlas) {
     // Load the reference centerline poses
     SetReferenceCenterline();
+
+    // Init TCP server
+    serverSocket = InitServer();
+    if (serverSocket < 0) {
+        std::cerr << "Error initializing server." << std::endl;
+    }
+    else {
+        std::cout << "Server initialized successfully." << std::endl;
+    }
 }
 
 Skeleton::~Skeleton() {
@@ -28,6 +38,8 @@ void Skeleton::Run() {
         std::vector<Sophus::SE3f> bestCandidateTrajectory;
         int bestCandidateIndex = -1;
         double bestATE = std::numeric_limits<double>::max();
+        Sophus::Sim3f bestSim3;
+        Sophus::SE3f lastKFPose;
 
         // Get the current trajectory (coming from slam) 
         // TODOE: this must be the trajectory from the current pose to the origin not the complete trajectory
@@ -47,6 +59,9 @@ void Skeleton::Run() {
             Eigen::Matrix4f Twc = pKF->GetPoseInverse().matrix();
             Sophus::SE3f pose(Twc);
             currentTrajectory.push_back(pose);
+            if (i == vpKFs.size() - 1) {
+                lastKFPose = pose;
+            }
         }
         if (isDebug) std::cout << "Current trajectory poses: " << currentTrajectory.size() << std::endl;
         if (currentTrajectory.size() < 10) {
@@ -70,6 +85,7 @@ void Skeleton::Run() {
             if (ate < bestATE) {
                 bestATE = ate;
                 bestCandidateIndex = i;
+                bestSim3 = sim3;
             }
             if (isDebug) std::cout << "Candidate trajectory index: " << i << " ATE: " << ate << std::endl;
         }
@@ -83,10 +99,24 @@ void Skeleton::Run() {
             std::cerr << "No best candidate trajectory found." << std::endl;
         }
 
-        // Get current pose from SLAM 
+        // Transform the last keyframe pose according to the best similarity transformation
+        Eigen::Matrix3f R_new = bestSim3.rotationMatrix() * lastKFPose.rotationMatrix();
+        Eigen::Vector3f t_new = bestSim3.scale() * (bestSim3.rotationMatrix() * lastKFPose.translation()) + bestSim3.translation();
+        SetCurPose(Sophus::SE3f(R_new, t_new));
+        // Temporary set the last pose from the centerline poses
+        std::vector<std::vector<Sophus::SE3f>> refCenterlinePoses = GetReferenceCenterline();
+        if (!refCenterlinePoses.empty()) {
+            std::vector<Sophus::SE3f> &lastBranchPoses = refCenterlinePoses.back();
+            if (!lastBranchPoses.empty()) {
+                SetCurPose(lastBranchPoses.back());
+            }
+        }
+        // std::cout << "Last keyframe pose: " << lastKFPose.translation().transpose() << std::endl;
+        // std::cout << "Aligned last keyframe pose: " << mCurPose.translation().transpose() << std::endl;
+
+        // Send the pose to the server
+        SendPose();
         
-
-
         // Sleep for a while
         // auto endTime = std::chrono::steady_clock::now();
         // auto elapsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime);
@@ -94,6 +124,60 @@ void Skeleton::Run() {
         std::this_thread::sleep_for(std::chrono::seconds(1));
     }
 
+}
+
+template<typename MatrixType>
+std::string MatrixToString(const MatrixType& m) {
+    std::stringstream ss;
+    ss << m;
+    return ss.str();
+}
+
+void Skeleton::SendPose() {
+    // Get the current pose
+    auto curPose = GetCurPose().matrix();
+    std::string data = MatrixToString(curPose);
+    if (send(serverSocket, data.c_str(), data.size(), 0) < 0) {
+        std::cerr << "Error sending data." << std::endl;
+    }
+    else {
+        std::cout << "Data sent successfully." << std::endl;
+    }    
+}
+
+int Skeleton::InitServer(){
+    int sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (sockfd < 0) {
+        std::cerr << "Error opening socket." << std::endl;
+        return -1;
+    }
+
+    struct sockaddr_in serv_addr;
+    memset(&serv_addr, '0', sizeof(serv_addr));
+    serv_addr.sin_family = AF_INET;
+    serv_addr.sin_port = htons(serverPort);
+
+    if (inet_pton(AF_INET, serverIP.c_str(), &serv_addr.sin_addr) <= 0) {
+        std::cerr << "Invalid address/Address not supported." << std::endl;
+        return -1;
+    }
+
+    if (connect(sockfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) < 0) {
+        std::cerr << "Connection failed." << std::endl;
+        return -1;
+    }
+
+    return sockfd;
+}
+
+Sophus::SE3f Skeleton::GetCurPose() {
+    std::unique_lock<std::mutex> lock(mMutexCurPose);
+    return mCurPose;
+}
+
+void Skeleton::SetCurPose(Sophus::SE3f pose) {
+    std::unique_lock<std::mutex> lock(mMutexCurPose);
+    mCurPose = pose;
 }
 
 void Skeleton::SetCurvilinearAbscissa(double value) {

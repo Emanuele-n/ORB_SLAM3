@@ -8,6 +8,9 @@
 #include <cmath>
 #include <cassert>
 #include <iostream>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 
 #include "Thirdparty/Sophus/sophus/sim3.hpp"
 
@@ -28,6 +31,12 @@ public:
     double GetCurvilinearAbscissa();
 
 private:
+
+    const string serverIP = "127.0.0.1";
+    const int serverPort = 12345;
+    int serverSocket;
+    int InitServer();
+    void SendPose();
 
     Atlas* mpAtlas;
 
@@ -74,10 +83,11 @@ private:
     double mCurvilinearAbscissa; 
     std::mutex mMutexCurvilinearAbscissa;
 
-    // Current pose on the real lungs
+    // Current pose on the real lungs wTc
     Sophus::SE3f mCurPose;
-    // prob a function to send the pose to the navigation through tcp ip
-    
+    void SetCurPose(Sophus::SE3f pose);
+    Sophus::SE3f GetCurPose();
+    std::mutex mMutexCurPose;
 };
 
 } // namespace ORB_SLAM3
