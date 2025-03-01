@@ -20,6 +20,7 @@ Skeleton::Skeleton(string &referenceCenterlinePath, Atlas* pAtlas)
     }
     else {
         std::cout << "Server initialized successfully." << std::endl;
+        connected = true;
     }
 }
 
@@ -27,95 +28,91 @@ Skeleton::~Skeleton() {
     // Cleanup resources if needed.
 }
 
-// TODO
 void Skeleton::Run() {
     while (true) {
-        bool isDebug = true;
+        bool isDebug = false;
         if (isDebug) std::cout << "Skeleton thread running..." << std::endl;
-        // auto startTime = std::chrono::steady_clock::now();
-        // Find candidate trajectories
-        std::vector<std::vector<Sophus::SE3f>> candidateTrajectories = FindCandidateTrajectories();
-        std::vector<Sophus::SE3f> bestCandidateTrajectory;
-        int bestCandidateIndex = -1;
-        double bestATE = std::numeric_limits<double>::max();
-        Sophus::Sim3f bestSim3;
-        Sophus::SE3f lastKFPose;
+        if (connected) {
+            // auto startTime = std::chrono::steady_clock::now();
+            // Find candidate trajectories
+            std::vector<std::vector<Sophus::SE3f>> candidateTrajectories = FindCandidateTrajectories();
+            std::vector<Sophus::SE3f> bestCandidateTrajectory;
+            int bestCandidateIndex = -1;
+            double bestATE = std::numeric_limits<double>::max();
+            Sophus::Sim3f bestSim3;
+            Sophus::SE3f lastKFPose;
 
-        // Get the current trajectory (coming from slam) 
-        // TODOE: this must be the trajectory from the current pose to the origin not the complete trajectory
-        Map* pActiveMap = mpAtlas->GetCurrentMap();
-        if (!pActiveMap) {
-            std::cerr << "No active map found." << std::endl;
-            continue;
-        }
-        const vector<KeyFrame*> vpKFs = pActiveMap->GetAllKeyFrames();
-        if (vpKFs.empty()) {
-            std::cerr << "No keyframes found." << std::endl;
-            continue;
-        }
-        std::vector<Sophus::SE3f> currentTrajectory;
-        for (size_t i = 0; i < vpKFs.size(); i++) {
-            KeyFrame* pKF = vpKFs[i];
-            Eigen::Matrix4f Twc = pKF->GetPoseInverse().matrix();
-            Sophus::SE3f pose(Twc);
-            currentTrajectory.push_back(pose);
-            if (i == vpKFs.size() - 1) {
-                lastKFPose = pose;
-            }
-        }
-        if (isDebug) std::cout << "Current trajectory poses: " << currentTrajectory.size() << std::endl;
-        if (currentTrajectory.size() < 10) {
-            std::cerr << "Current trajectory is too short." << std::endl;
-            continue;
-        }
-        
-        // Align current trajectory to each candidate trajectory
-        for (size_t i = 0; i < candidateTrajectories.size(); i++) {
-            std::vector<Sophus::SE3f> &candidateTrajectory = candidateTrajectories[i];
-            if (candidateTrajectory.empty()) {
-                std::cerr << "Empty candidate trajectory found." << std::endl;
+            // Get the current trajectory (coming from slam) 
+            // TODOE: this must be the trajectory from the current pose to the origin not the complete trajectory
+            Map* pActiveMap = mpAtlas->GetCurrentMap();
+            if (!pActiveMap) {
+                std::cerr << "No active map found." << std::endl;
                 continue;
             }
-
-            // Align the current trajectory to the candidate trajectory
-            Sophus::Sim3f sim3 = AlignTrajectories(candidateTrajectory, currentTrajectory, false, false);
-
-            // Compute the ATE
-            double ate = CalculateATE(candidateTrajectory, currentTrajectory, sim3);
-            if (ate < bestATE) {
-                bestATE = ate;
-                bestCandidateIndex = i;
-                bestSim3 = sim3;
+            const vector<KeyFrame*> vpKFs = pActiveMap->GetAllKeyFrames();
+            if (vpKFs.empty()) {
+                std::cerr << "No keyframes found." << std::endl;
+                continue;
             }
-            if (isDebug) std::cout << "Candidate trajectory index: " << i << " ATE: " << ate << std::endl;
-        }
+            std::vector<Sophus::SE3f> currentTrajectory;
+            for (size_t i = 0; i < vpKFs.size(); i++) {
+                KeyFrame* pKF = vpKFs[i];
+                Eigen::Matrix4f Twc = pKF->GetPoseInverse().matrix();
+                Sophus::SE3f pose(Twc);
+                currentTrajectory.push_back(pose);
+                if (i == vpKFs.size() - 1) {
+                    lastKFPose = pose;
+                }
+            }
+            if (isDebug) std::cout << "Current trajectory poses: " << currentTrajectory.size() << std::endl;
+            if (currentTrajectory.size() < 10) {
+                if (isDebug) std::cout << "Current trajectory is too short." << std::endl;
+                continue;
+            }
+            
+            // Align current trajectory to each candidate trajectory
+            for (size_t i = 0; i < candidateTrajectories.size(); i++) {
+                std::vector<Sophus::SE3f> &candidateTrajectory = candidateTrajectories[i];
+                if (candidateTrajectory.empty()) {
+                    std::cerr << "Empty candidate trajectory found." << std::endl;
+                    continue;
+                }
 
-        // Select the one with the smallest ATE
-        if (bestCandidateIndex >= 0) {
-            bestCandidateTrajectory = candidateTrajectories[bestCandidateIndex];
-            std::cout << "\nBest candidate trajectory found at index: " << bestCandidateIndex << " with ATE: " << bestATE << std::endl;
+                // Align the current trajectory to the candidate trajectory
+                Sophus::Sim3f sim3 = AlignTrajectories(candidateTrajectory, currentTrajectory, false, false);
+
+                // Compute the ATE
+                double ate = CalculateATE(candidateTrajectory, currentTrajectory, sim3);
+                if (ate < bestATE) {
+                    bestATE = ate;
+                    bestCandidateIndex = i;
+                    bestSim3 = sim3;
+                }
+                if (isDebug) std::cout << "Candidate trajectory index: " << i << " ATE: " << ate << std::endl;
+            }
+
+            // Select the one with the smallest ATE
+            if (bestCandidateIndex >= 0) {
+                bestCandidateTrajectory = candidateTrajectories[bestCandidateIndex];
+                if (isDebug) std::cout << "\nBest candidate trajectory found at index: " << bestCandidateIndex << " with ATE: " << bestATE << std::endl;
+            }
+            else {
+                if (isDebug) std::cout << "No best candidate trajectory found." << std::endl;
+            }
+
+            // Transform the last keyframe pose according to the best similarity transformation
+            Eigen::Matrix3f R_new = bestSim3.rotationMatrix() * lastKFPose.rotationMatrix();
+            Eigen::Vector3f t_new = bestSim3.scale() * (bestSim3.rotationMatrix() * lastKFPose.translation()) + bestSim3.translation();
+            SetCurPose(Sophus::SE3f(R_new, t_new));
+            // std::cout << "Last keyframe pose: " << lastKFPose.translation().transpose() << std::endl;
+            // std::cout << "Aligned last keyframe pose: " << mCurPose.translation().transpose() << std::endl;
+
+            // Send the pose to the server
+            SendPose();
         }
         else {
-            std::cerr << "No best candidate trajectory found." << std::endl;
+            if (isDebug) std::cerr << "Server not connected. Skeleton not running" << std::endl;
         }
-
-        // Transform the last keyframe pose according to the best similarity transformation
-        Eigen::Matrix3f R_new = bestSim3.rotationMatrix() * lastKFPose.rotationMatrix();
-        Eigen::Vector3f t_new = bestSim3.scale() * (bestSim3.rotationMatrix() * lastKFPose.translation()) + bestSim3.translation();
-        SetCurPose(Sophus::SE3f(R_new, t_new));
-        // Temporary set the last pose from the centerline poses
-        std::vector<std::vector<Sophus::SE3f>> refCenterlinePoses = GetReferenceCenterline();
-        if (!refCenterlinePoses.empty()) {
-            std::vector<Sophus::SE3f> &lastBranchPoses = refCenterlinePoses.back();
-            if (!lastBranchPoses.empty()) {
-                SetCurPose(lastBranchPoses.back());
-            }
-        }
-        // std::cout << "Last keyframe pose: " << lastKFPose.translation().transpose() << std::endl;
-        // std::cout << "Aligned last keyframe pose: " << mCurPose.translation().transpose() << std::endl;
-
-        // Send the pose to the server
-        SendPose();
         
         // Sleep for a while
         // auto endTime = std::chrono::steady_clock::now();

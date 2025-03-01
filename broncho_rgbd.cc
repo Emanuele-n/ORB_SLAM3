@@ -201,8 +201,13 @@ int main(int argc, char **argv)
         cerr << "Error :  " << strerror(errno) << endl;
     }
 
-    SLAM.SaveKeyFrameTrajectoryTUM(logsPath + "/KeyFrameTrajectory.txt");
-    SLAM.SaveKeyFrameTrajectoryTUM(logsPath + "/CameraTrajectory.txt");
+    time_t now = time(0);
+    struct tm *ltm = localtime(&now);
+    char timeStr[20];
+    strftime(timeStr, sizeof(timeStr), "%Y%m%d-%H%M%S", ltm);
+    string timeSuffix(timeStr);
+    SLAM.SaveKeyFrameTrajectoryTUM(logsPath + "/KeyFrameTrajectory_" + timeSuffix + ".txt");
+    SLAM.SaveKeyFrameTrajectoryTUM(logsPath + "/CameraTrajectory_" + timeSuffix + ".txt");
 
     return 0;
 }

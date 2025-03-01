@@ -35,6 +35,7 @@ private:
     const string serverIP = "127.0.0.1";
     const int serverPort = 12345;
     int serverSocket;
+    bool connected = false;
     int InitServer();
     void SendPose();
 

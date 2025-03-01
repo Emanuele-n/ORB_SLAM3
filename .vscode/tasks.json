@@ -1,0 +1,22 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+      {
+        "label": "Build Debug",
+        "type": "shell",
+        "command": "./build.sh",
+        "args": [
+          "release"
+        ],
+        "group": {
+          "kind": "build",
+          "isDefault": true
+        },
+        "problemMatcher": [
+          "$gcc"  // Adjust this if you’re using clang or a custom matcher.
+        ],
+        "detail": "Build project using build.sh with debug configuration"
+      }
+    ]
+  }
+  

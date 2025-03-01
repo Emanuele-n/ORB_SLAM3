@@ -8,27 +8,24 @@ calibration.yaml will be saved in em folder
 
 
 # ORB-SLAM
-how to run ORB-SLAM3 with the calibration.yaml file
+Build with the shell script
 ```
-./Examples/Monocular/mono_realtime Vocabulary/ORBvoc.txt ./em/calibration_Misumi_200p.yaml
+./build.sh release
 ```
 
-also change 
+Run ORB-SLAM3 with the new config.ini
 ```
-    cap.set(CAP_PROP_FRAME_WIDTH, 200); 
-    cap.set(CAP_PROP_FRAME_HEIGHT, 200);
-    cap.set(CAP_PROP_FPS, 30); 
+build/broncho_rgbd em/run/config.ini
 ```
-in mono_realtime.cc to match the camera resolution and fps
 
 Run with gdb
 ```
-gdb ./build/mono_video 
+gdb build/broncho_rgbd 
 (gdb) run em/run/config.ini
 ```
 Run with valgrind
 ```
-valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --verbose --log-file=em/logs/valgrind-out.txt ./build/mono_video em/run/config.ini
+valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --verbose --log-file=em/logs/valgrind-out.txt ./build/broncho_rgbd em/run/config.ini
 ```
 
 # Real time pose
