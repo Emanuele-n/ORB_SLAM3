@@ -29,8 +29,16 @@ public:
 
     void SetCurvilinearAbscissa(double value);
     double GetCurvilinearAbscissa();
+    void RequestStop();
+    bool IsStopped();
+    void SetStopped();
 
 private:
+    
+    bool mStopRequested = false;
+    bool isStopped = false;
+    std::mutex mMutexStopRequested;
+    std::mutex mMutexStopped;   
 
     const string serverIP = "127.0.0.1";
     const int serverPort = 12345;

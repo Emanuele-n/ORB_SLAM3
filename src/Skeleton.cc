@@ -30,6 +30,10 @@ Skeleton::~Skeleton() {
 
 void Skeleton::Run() {
     while (true) {
+        if (mStopRequested) {
+            std::cout << "Stop requested in Skeleton." << std::endl;
+            break;
+        }
         bool isDebug = false;
         if (isDebug) std::cout << "Skeleton thread running..." << std::endl;
         if (connected) {
@@ -120,7 +124,23 @@ void Skeleton::Run() {
         // if (isDebug) std::cout << "Skeleton thread finished in: " << elapsedTime.count() << " ms" << std::endl;
         std::this_thread::sleep_for(std::chrono::seconds(1));
     }
+    SetStopped();
 
+}
+
+void Skeleton::RequestStop() {
+    std::unique_lock<std::mutex> lock(mMutexStopRequested);
+    mStopRequested = true;
+}
+
+bool Skeleton::IsStopped() {
+    std::unique_lock<std::mutex> lock(mMutexStopped);
+    return isStopped;
+}
+
+void Skeleton::SetStopped() {
+    std::unique_lock<std::mutex> lock(mMutexStopped);
+    isStopped = true;
 }
 
 template<typename MatrixType>

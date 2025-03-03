@@ -551,27 +551,37 @@ void System::Shutdown()
 
     mpLocalMapper->RequestFinish();
     mpLoopCloser->RequestFinish();
-    /*if(mpViewer)
+    if(mpViewer)
     {
         mpViewer->RequestFinish();
         while(!mpViewer->isFinished())
             usleep(5000);
-    }*/
+    }
 
     // Wait until all thread have effectively stopped
-    /*while(!mpLocalMapper->isFinished() || !mpLoopCloser->isFinished() || mpLoopCloser->isRunningGBA())
+    bool printedLM = false;
+    bool printedLC = false;
+    while(!mpLocalMapper->isFinished() || !mpLoopCloser->isFinished() || mpLoopCloser->isRunningGBA())
     {
-        if(!mpLocalMapper->isFinished())
-            cout << "mpLocalMapper is not finished" << endl;*/
-        /*if(!mpLoopCloser->isFinished())
-            cout << "mpLoopCloser is not finished" << endl;
+        if(!mpLocalMapper->isFinished()){
+            if (!printedLM){
+                cout << "Waiting for mpLocalMapper to finish" << endl;
+                printedLM = true;
+            }
+        }
+        if(!mpLoopCloser->isFinished()){
+            if (!printedLC){
+                cout << "Waiting for mpLoopCloser to finish" << endl;
+                printedLC = true;
+            }
+        }
         if(mpLoopCloser->isRunningGBA()){
             cout << "mpLoopCloser is running GBA" << endl;
             cout << "break anyway..." << endl;
             break;
-        }*/
-        /*usleep(5000);
-    }*/
+        }
+        usleep(5000);
+    }
 
     if(!mStrSaveAtlasToFile.empty())
     {
@@ -579,8 +589,23 @@ void System::Shutdown()
         SaveAtlas(FileType::BINARY_FILE);
     }
 
-    /*if(mpViewer)
-        pangolin::BindToContext("ORB-SLAM2: Map Viewer");*/
+    if(mptSkeleton)
+    {   
+        mpTracker->mpSkeleton->RequestStop();
+        bool printedSkeleton = false;
+        while(!mpTracker->mpSkeleton->IsStopped())
+        {
+            if (!printedSkeleton){
+                cout << "Waiting for Skeleton to finish" << endl;
+                printedSkeleton = true;
+            }
+            usleep(10000);
+        }
+        cout << "Skeleton stopped" << endl;
+        mptSkeleton->join();    
+    }
+    if(mpViewer)
+        pangolin::BindToContext("ORB-SLAM3: Map Viewer");
 
 #ifdef REGISTER_TIMES
     mpTracker->PrintTimeStats();
@@ -596,7 +621,7 @@ bool System::isShutDown() {
 
 void System::SaveTrajectoryTUM(const string &filename)
 {
-    cout << endl << "Saving camera trajectory to " << filename << " ..." << endl;
+    cout << "Saving camera trajectory to " << filename << " ..." << endl;
     if(mSensor==MONOCULAR)
     {
         cerr << "ERROR: SaveTrajectoryTUM cannot be used for monocular." << endl;
@@ -656,7 +681,7 @@ void System::SaveTrajectoryTUM(const string &filename)
 
 void System::SaveKeyFrameTrajectoryTUM(const string &filename)
 {
-    cout << endl << "Saving keyframe trajectory to " << filename << " ..." << endl;
+    cout << "Saving keyframe trajectory to " << filename << " ..." << endl;
 
     vector<KeyFrame*> vpKFs = mpAtlas->GetAllKeyFrames();
     sort(vpKFs.begin(),vpKFs.end(),KeyFrame::lId);

@@ -182,6 +182,7 @@ int main(int argc, char **argv)
 
     // Stop all threads
     SLAM.Shutdown();
+    cout << "SLAM shutdown" << endl << endl;
 
     // Tracking time statistics
     sort(vTimesTrack.begin(),vTimesTrack.end());
@@ -196,9 +197,10 @@ int main(int argc, char **argv)
 
     // Save camera trajectory
     // if it doesn't exist, create the logs folder
+    cout << endl << "Saving logs" << endl;
     if (mkdir(logsPath.c_str(), 0777) == -1)
     {
-        cerr << "Error :  " << strerror(errno) << endl;
+        cerr << "Logs folder already exists" << endl;
     }
 
     time_t now = time(0);
@@ -207,7 +209,11 @@ int main(int argc, char **argv)
     strftime(timeStr, sizeof(timeStr), "%Y%m%d-%H%M%S", ltm);
     string timeSuffix(timeStr);
     SLAM.SaveKeyFrameTrajectoryTUM(logsPath + "/KeyFrameTrajectory_" + timeSuffix + ".txt");
-    SLAM.SaveKeyFrameTrajectoryTUM(logsPath + "/CameraTrajectory_" + timeSuffix + ".txt");
+    SLAM.SaveTrajectoryTUM(logsPath + "/CameraTrajectory_" + timeSuffix + ".txt");
+
+    // Sleep for a while
+    std::this_thread::sleep_for(std::chrono::seconds(2));
+    cout << endl << "End of the program" << endl << endl;
 
     return 0;
 }
