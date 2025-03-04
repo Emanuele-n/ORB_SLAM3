@@ -86,18 +86,20 @@ void LoopClosing::SetLocalMapper(LocalMapping *pLocalMapper)
     mpLocalMapper=pLocalMapper;
 }
 
-
 void LoopClosing::Run()
 {
     mbFinished =false;
 
     while(1)
     {
+        // Check finish
+        if(CheckFinish()){
+            cout << "Loop Closing finish requested" << endl;
+            break;
+        }
 
         //NEW LOOP AND MERGE DETECTION ALGORITHM
         //----------------------------
-
-
         if(CheckNewKeyFrames())
         {
             if(mpLastCurrentKF)
@@ -216,7 +218,19 @@ void LoopClosing::Run()
                         mnLoopNumNotFound = 0;
                         mbLoopDetected = false;
                     }
+                    else{
+                        if(CheckFinish()){
+                            cout << "Loop Closing finish requested" << endl;
+                            break;
+                        }
+                    }
 
+                }
+                else{
+                    if(CheckFinish()){
+                        cout << "Loop Closing finish requested" << endl;
+                        break;
+                    }
                 }
 
                 if(mbLoopDetected)
@@ -291,14 +305,33 @@ void LoopClosing::Run()
                     mnLoopNumNotFound = 0;
                     mbLoopDetected = false;
                 }
+                else{
+                    if(CheckFinish()){
+                        cout << "Loop Closing finish requested" << endl;
+                        break;
+                    }
+                }
 
             }
+            else{
+                if(CheckFinish()){
+                    cout << "Loop Closing finish requested" << endl;
+                    break;
+                }
+            }
+            
             mpLastCurrentKF = mpCurrentKF;
         }
-
+        else{
+            if(CheckFinish()){
+                cout << "Loop Closing finish requested" << endl;
+                break;
+            }
+        }
         ResetIfRequested();
 
         if(CheckFinish()){
+            cout << "LoopClosing finshed requested" << endl;
             break;
         }
 
@@ -1779,7 +1812,6 @@ void LoopClosing::MergeLocal()
 
 }
 
-
 void LoopClosing::MergeLocal2()
 {
     //cout << "Merge detected!!!!" << endl;
@@ -2111,7 +2143,6 @@ void LoopClosing::CheckObservations(set<KeyFrame*> &spKFsMap1, set<KeyFrame*> &s
     cout << "----------------------" << endl;
 }
 
-
 void LoopClosing::SearchAndFuse(const KeyFrameAndPose &CorrectedPosesMap, vector<MapPoint*> &vpMapPoints)
 {
     ORBmatcher matcher(0.8);
@@ -2153,7 +2184,6 @@ void LoopClosing::SearchAndFuse(const KeyFrameAndPose &CorrectedPosesMap, vector
     //cout << "[FUSE]: " << total_replaces << " MPs had been fused" << endl;
 }
 
-
 void LoopClosing::SearchAndFuse(const vector<KeyFrame*> &vConectedKFs, vector<MapPoint*> &vpMapPoints)
 {
     ORBmatcher matcher(0.8);
@@ -2194,8 +2224,6 @@ void LoopClosing::SearchAndFuse(const vector<KeyFrame*> &vConectedKFs, vector<Ma
     }
     //cout << "FUSE-POSE: " << total_replaces << " MPs had been fused" << endl;
 }
-
-
 
 void LoopClosing::RequestReset()
 {
@@ -2512,14 +2540,13 @@ void LoopClosing::RunGlobalBundleAdjustment(Map* pActiveMap, unsigned long nLoop
 
 void LoopClosing::RequestFinish()
 {
-    unique_lock<mutex> lock(mMutexFinish);
-    // cout << "LC: Finish requested" << endl;
+    unique_lock<mutex> lock(mMutexFinishRequested);
     mbFinishRequested = true;
 }
 
 bool LoopClosing::CheckFinish()
 {
-    unique_lock<mutex> lock(mMutexFinish);
+    unique_lock<mutex> lock(mMutexFinishRequested);
     return mbFinishRequested;
 }
 

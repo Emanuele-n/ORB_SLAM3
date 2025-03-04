@@ -35,6 +35,8 @@ int main(int argc, char **argv)
         cerr << endl << "Usage: ./broncho_rgbd path_to_config.ini" << endl;
         return 1;
     }
+    // For debugging use
+    std::cout << << __FILE__ << " " << __LINE__ << std::endl;
 
     // Get the config file path
     string configFilePath = argv[1];

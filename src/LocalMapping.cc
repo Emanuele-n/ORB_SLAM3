@@ -67,6 +67,12 @@ void LocalMapping::Run()
 
     while(1)
     {
+        // Check finish (TODOE: probably I should remove this)
+        if(CheckFinish()){
+            cout << "Local Mapping finish requested" << endl;
+            break;
+        }
+
         // Tracking will see that Local Mapping is busy
         SetAcceptKeyFrames(false);
 
@@ -261,10 +267,13 @@ void LocalMapping::Run()
             // Safe area to stop
             while(isStopped() && !CheckFinish())
             {
+                cout << "LocalMapping: waiting to stop" << endl;
                 usleep(3000);
             }
-            if(CheckFinish())
+            if(CheckFinish()){
+                cout << "LocalMapping finished requested" << endl;
                 break;
+            }
         }
 
         ResetIfRequested();
@@ -272,8 +281,10 @@ void LocalMapping::Run()
         // Tracking will see that Local Mapping is busy
         SetAcceptKeyFrames(true);
 
-        if(CheckFinish())
+        if(CheckFinish()){
+            cout << "LocalMapping finished requested" << endl;
             break;
+        }
 
         usleep(3000);
     }
@@ -287,7 +298,6 @@ void LocalMapping::InsertKeyFrame(KeyFrame *pKF)
     mlNewKeyFrames.push_back(pKF);
     mbAbortBA=true;
 }
-
 
 bool LocalMapping::CheckNewKeyFrames()
 {
@@ -383,7 +393,6 @@ void LocalMapping::MapPointCulling()
         }
     }
 }
-
 
 void LocalMapping::CreateNewMapPoints()
 {
@@ -1495,13 +1504,10 @@ void LocalMapping::ScaleRefinement()
     return;
 }
 
-
-
 bool LocalMapping::IsInitializing()
 {
     return bInitializing;
 }
-
 
 double LocalMapping::GetCurrKFTime()
 {

@@ -501,8 +501,6 @@ Sophus::SE3f System::TrackMonocular(const cv::Mat &im, const double &timestamp, 
     return Tcw;
 }
 
-
-
 void System::ActivateLocalizationMode()
 {
     unique_lock<mutex> lock(mMutexMode);
@@ -547,48 +545,61 @@ void System::Shutdown()
         mbShutDown = true;
     }
 
-    cout << "Shutdown" << endl;
+    cout << "Shutting down" << endl;
 
-    mpLocalMapper->RequestFinish();
-    mpLoopCloser->RequestFinish();
+    // Stop viewer
     if(mpViewer)
     {
         mpViewer->RequestFinish();
-        while(!mpViewer->isFinished())
+        while(!mpViewer->isFinished()){
             usleep(5000);
+        }
+        cout << "Viewer stopped" << endl;
     }
 
-    // Wait until all thread have effectively stopped
-    bool printedLM = false;
+    // Stop loop closer
+    mpLoopCloser->RequestFinish();
+    usleep(5000);
     bool printedLC = false;
-    while(!mpLocalMapper->isFinished() || !mpLoopCloser->isFinished() || mpLoopCloser->isRunningGBA())
+    while(!mpLoopCloser->isFinished() || mpLoopCloser->isRunningGBA())
     {
-        if(!mpLocalMapper->isFinished()){
-            if (!printedLM){
-                cout << "Waiting for mpLocalMapper to finish" << endl;
-                printedLM = true;
-            }
-        }
         if(!mpLoopCloser->isFinished()){
             if (!printedLC){
                 cout << "Waiting for mpLoopCloser to finish" << endl;
                 printedLC = true;
             }
+            mpLoopCloser->RequestFinish();
         }
         if(mpLoopCloser->isRunningGBA()){
             cout << "mpLoopCloser is running GBA" << endl;
             cout << "break anyway..." << endl;
             break;
         }
+        usleep(10000);
+        cout << "Break anyway" << endl;
+        break; // TODO
+    }
+    cout << "Loop Closer stopped" << endl;
+
+
+    // Stop local mapper
+    mpLocalMapper->RequestFinish();
+    usleep(5000);
+    bool printedLM = false;
+    while(!mpLocalMapper->isFinished())
+    {
+        if(!mpLocalMapper->isFinished()){
+            if (!printedLM){
+                cout << "Waiting for mpLocalMapper to finish" << endl;
+                printedLM = true;
+            }
+            mpLocalMapper->RequestFinish();
+        }
         usleep(5000);
     }
+    cout << "Local Mapper stopped" << endl;
 
-    if(!mStrSaveAtlasToFile.empty())
-    {
-        Verbose::PrintMess("Atlas saving to file " + mStrSaveAtlasToFile, Verbose::VERBOSITY_NORMAL);
-        SaveAtlas(FileType::BINARY_FILE);
-    }
-
+    // Stop Skeleton
     if(mptSkeleton)
     {   
         mpTracker->mpSkeleton->RequestStop();
@@ -604,6 +615,13 @@ void System::Shutdown()
         cout << "Skeleton stopped" << endl;
         mptSkeleton->join();    
     }
+
+    if(!mStrSaveAtlasToFile.empty())
+    {
+        Verbose::PrintMess("Atlas saving to file " + mStrSaveAtlasToFile, Verbose::VERBOSITY_NORMAL);
+        SaveAtlas(FileType::BINARY_FILE);
+    }
+
     if(mpViewer)
         pangolin::BindToContext("ORB-SLAM3: Map Viewer");
 

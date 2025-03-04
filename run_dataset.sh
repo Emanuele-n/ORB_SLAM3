@@ -14,12 +14,15 @@ EXECUTABLE="./build/broncho_rgbd"  # Replace with the path to your executable if
 for config in "$CONFIG_DIR"/*.ini; do
     echo " "
     echo " "
-    echo " "
+    echo "------------------------------------------------"
     echo "PROCESSING CONFIG FILE: $config"
     # Run the executable for the specified number of times
     for (( run=1; run<=NUM_RUNS; run++ )); do
-        echo " "
+        echo "-----------------------------------"
         echo "Run #$run for config: $config"
         $EXECUTABLE "$config"
+        echo "-----------------------------------"
     done
+    echo "------------------------------------------------"
 done
+echo "Done"

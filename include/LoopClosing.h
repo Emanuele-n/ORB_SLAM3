@@ -155,6 +155,7 @@ protected:
     bool mbFinishRequested;
     bool mbFinished;
     std::mutex mMutexFinish;
+    std::mutex mMutexFinishRequested;
 
     Atlas* mpAtlas;
     Tracking* mpTracker;
