@@ -25,4 +25,5 @@ for config in "$CONFIG_DIR"/*.ini; do
     done
     echo "------------------------------------------------"
 done
+echo "Use em/prepare_logs.py to prepare the logs for analysis with rpg_trajectory_evaluation"
 echo "Done"

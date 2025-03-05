@@ -147,7 +147,7 @@ def main():
         eval_cfg_path = os.path.join(dataset_folder, "eval_cfg.yaml")
         with open(eval_cfg_path, "w") as f:
             yaml.dump(eval_cfg, f, default_flow_style=False)
-        print(f"\nCreated evaluation config file at {eval_cfg_path}\n")
+        print(f"Created evaluation config file at {eval_cfg_path}\n")
 
     # Create the configuration file for multiple trajectory evaluation.
     # Note: The expected algorithm function key is "traj_est"
@@ -166,7 +166,7 @@ def main():
     config_path = os.path.join(output_root, config_filename)
     with open(config_path, "w") as f:
         yaml.dump(config_data, f, default_flow_style=False)
-    print(f"Created configuration file at {config_path}\n")
+    print(f"\nCreated configuration file at {config_path}\n")
 
     print("\nDataset preparation completed.")
     print(
