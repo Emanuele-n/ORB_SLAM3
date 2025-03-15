@@ -36,7 +36,7 @@ int main(int argc, char **argv)
         return 1;
     }
     // For debugging use
-    std::cout << << __FILE__ << " " << __LINE__ << std::endl;
+    std::cout << __FILE__ << " " << __LINE__ << std::endl;
 
     // Get the config file path
     string configFilePath = argv[1];
@@ -182,20 +182,6 @@ int main(int argc, char **argv)
             usleep((T-ttrack)*1e6);
     }
 
-    // Stop all threads
-    SLAM.Shutdown();
-    cout << "SLAM shutdown" << endl << endl;
-
-    // Tracking time statistics
-    sort(vTimesTrack.begin(),vTimesTrack.end());
-    float totaltime = 0;
-    for(int ni=0; ni<nImages; ni++)
-    {
-        totaltime+=vTimesTrack[ni];
-    }
-    cout << "-------" << endl << endl;
-    cout << "median tracking time: " << vTimesTrack[nImages/2] << endl;
-    cout << "mean tracking time: " << totaltime/nImages << endl;
 
     // Save camera trajectory
     // if it doesn't exist, create the logs folder
@@ -212,6 +198,21 @@ int main(int argc, char **argv)
     string timeSuffix(timeStr);
     SLAM.SaveKeyFrameTrajectoryTUM(logsPath + "/KeyFrameTrajectory_" + timeSuffix + ".txt");
     SLAM.SaveTrajectoryTUM(logsPath + "/CameraTrajectory_" + timeSuffix + ".txt");
+
+    // Stop all threads
+    SLAM.Shutdown();
+    cout << "SLAM shutdown" << endl;
+
+    // Tracking time statistics
+    sort(vTimesTrack.begin(),vTimesTrack.end());
+    float totaltime = 0;
+    for(int ni=0; ni<nImages; ni++)
+    {
+        totaltime+=vTimesTrack[ni];
+    }
+    cout << "-------" << endl << endl;
+    cout << "median tracking time: " << vTimesTrack[nImages/2] << endl;
+    cout << "mean tracking time: " << totaltime/nImages << endl << endl;
 
     // Sleep for a while
     std::this_thread::sleep_for(std::chrono::seconds(2));

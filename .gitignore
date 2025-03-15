@@ -1,5 +1,7 @@
 em/logs/valgrind-out.txt
 em/run/videos/datasets/sim/record*
+em/run/videos/datasets/bronchoscopy_dataset/dataset/*
+em/run/videos/datasets/phantom/*
 
 # Ignore all
 *
