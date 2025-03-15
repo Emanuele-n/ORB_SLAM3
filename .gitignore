@@ -3,29 +3,29 @@ em/run/videos/datasets/sim/record*
 em/run/videos/datasets/bronchoscopy_dataset/dataset/*
 em/run/videos/datasets/phantom/*
 
-em/run/videos/datasets/bronchoscopy_dataset/dataset/
-em/run/videos/datasets/phantom/
-em/run/videos/datasets/sim/record_b10_1740547668.49173/
-em/run/videos/datasets/sim/record_b11_1740547816.3950827/
-em/run/videos/datasets/sim/record_b12_1740547967.2442446/
-em/run/videos/datasets/sim/record_b13_1740548115.846258/
-em/run/videos/datasets/sim/record_b14_1740548265.3986208/
-em/run/videos/datasets/sim/record_b15_1740548415.875967/
-em/run/videos/datasets/sim/record_b16_1740548560.5002992/
-em/run/videos/datasets/sim/record_b17_1740549242.6083152/
-em/run/videos/datasets/sim/record_b18_1740549387.3161519/
-em/run/videos/datasets/sim/record_b19_1740549546.0296922/
-em/run/videos/datasets/sim/record_b1_1739772556.0280187/
-em/run/videos/datasets/sim/record_b20_1740549691.998788/
-em/run/videos/datasets/sim/record_b21_1740549838.2857003/
-em/run/videos/datasets/sim/record_b2_1740014260.3883376/
-em/run/videos/datasets/sim/record_b3_1740546415.8646488/
-em/run/videos/datasets/sim/record_b4_1740546748.5807724/
-em/run/videos/datasets/sim/record_b5_1740546906.665847/
-em/run/videos/datasets/sim/record_b6_1740547056.4211974/
-em/run/videos/datasets/sim/record_b7_1740547218.5918849/
-em/run/videos/datasets/sim/record_b8_1740547371.8928466/
-em/run/videos/datasets/sim/record_b9_1740547519.5461228/
+em/run/videos/datasets/bronchoscopy_dataset/dataset
+em/run/videos/datasets/phantom
+em/run/videos/datasets/sim/record_b10_1740547668.49173
+em/run/videos/datasets/sim/record_b11_1740547816.3950827
+em/run/videos/datasets/sim/record_b12_1740547967.2442446
+em/run/videos/datasets/sim/record_b13_1740548115.846258
+em/run/videos/datasets/sim/record_b14_1740548265.3986208
+em/run/videos/datasets/sim/record_b15_1740548415.875967
+em/run/videos/datasets/sim/record_b16_1740548560.5002992
+em/run/videos/datasets/sim/record_b17_1740549242.6083152
+em/run/videos/datasets/sim/record_b18_1740549387.3161519
+em/run/videos/datasets/sim/record_b19_1740549546.0296922
+em/run/videos/datasets/sim/record_b1_1739772556.0280187
+em/run/videos/datasets/sim/record_b20_1740549691.998788
+em/run/videos/datasets/sim/record_b21_1740549838.2857003
+em/run/videos/datasets/sim/record_b2_1740014260.3883376
+em/run/videos/datasets/sim/record_b3_1740546415.8646488
+em/run/videos/datasets/sim/record_b4_1740546748.5807724
+em/run/videos/datasets/sim/record_b5_1740546906.665847
+em/run/videos/datasets/sim/record_b6_1740547056.4211974
+em/run/videos/datasets/sim/record_b7_1740547218.5918849
+em/run/videos/datasets/sim/record_b8_1740547371.8928466
+em/run/videos/datasets/sim/record_b9_1740547519.5461228
 
 
 # Ignore all
