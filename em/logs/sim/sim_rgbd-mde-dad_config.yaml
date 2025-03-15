@@ -1,7 +1,7 @@
 Algorithms:
-  rgbd_mde_dad:
+  rgbd-mde-dad:
     fn: traj_est
-    label: rgbd_mde_dad
+    label: rgbd-mde-dad
 Datasets:
   b1:
     label: b1
