@@ -1,14 +1,14 @@
 em/logs/valgrind-out.txt
 em/run/datasets
 
-# Ignore all
-*
+# # Ignore all
+# *
 
-# Unignore all with extensions
-!*.*
+# # Unignore all with extensions
+# !*.*
 
-# Unignore all dirs
-!*/
+# # Unignore all dirs
+# !*/
 
 CMakeLists.txt.user
 CMakeLists_modified.txt
