@@ -1,5 +1,5 @@
 em/logs/valgrind-out.txt
-em/run/videos/datasets/*
+em/run/videos/datasets/sim/record*
 
 # Ignore all
 *
