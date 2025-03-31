@@ -5,7 +5,8 @@ import yaml
 # Camera name
 # camera_name = 'Misumi_200x200p'
 # camera_name = "Misumi_400x380p"
-camera_name = "videoscope_1280x720p"
+# camera_name = "videoscope_1280x720p"
+camera_name = "videoscope_940x970p"
 
 # Define the chessboard size
 chessboard_size = (9, 6)
@@ -28,12 +29,12 @@ imgpoints = []
 
 # Folder name calibration_images + camera name
 folder_name = "calibration_images_" + camera_name
-first = 16
-last = 72
+first = 1
+last = 15
 
 # Capture images of the calibration pattern
 images = [
-    cv2.imread(f"{folder_name}/image_{i}.jpg") for i in range(first, last + 1)
+    cv2.imread(f"{folder_name}/image_{i}.png") for i in range(first, last + 1)
 ]  # Assuming 20 images
 
 for img in images:
